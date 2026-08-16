@@ -1,0 +1,399 @@
+/**
+ * Generador de Guía de Formación IECV — FTO-EDU-FOR-96 V3
+ *
+ * Uso: edita el bloque CONFIG de abajo con los datos de la semana (sección 9 del
+ * prompt maestro), luego ajusta el contenido dentro de las funciones que arman
+ * `children` (INICIO / DESARROLLO / rúbrica / talleres) para el tema puntual.
+ * No cambies la estructura de las tablas (encabezado, datos del estudiante,
+ * rúbrica, cargue) — esa parte ya fue validada contra documentos reales del
+ * docente y debe permanecer idéntica entre guías.
+ *
+ * Ejecutar con:
+ *   NODE_PATH=/usr/local/lib/node_modules_global/lib/node_modules node build_guia.js
+ */
+const fs = require("fs");
+const {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  Header, Footer, ImageRun, AlignmentType, WidthType,
+  VerticalAlign, ShadingType, ExternalHyperlink,
+} = require("docx");
+
+// ======================= CONFIG (editar por cada guía) =======================
+const CONFIG = {
+  clei: "III",                          // III | IV | V | VI
+  grupoCleiJornada: "6-7/III/SEMANAL 1", // sugerencia pre-llenada en la tabla de datos
+  semana: 21,
+  guia: 21,
+  fechaClase: "15/07/26",               // como aparece en el encabezado (dd/mm/aa)
+  fechaClaseLarga: "15/07/2026",        // como aparece en la tabla de cargue (dd/mm/aaaa)
+  tema: "INTRODUCCIÓN A INTERNET",      // MAYÚSCULAS, para el encabezado
+  duracion: "1 hora (60 minutos).",     // "1 hora (60 minutos)." (III) o "2 horas (120 minutos)." (IV/V/VI)
+  fechaCargue: "15/07/2026",
+  horaMaxima: "23:59",
+  maxPaginas: "Máximo 3",               // 3 si es de 1 hora, 5 si es de 2 horas (salvo que el docente diga otro valor)
+  formatoEntrega: "PDF, DOCX",
+  logoPath: "/sessions/determined-sharp-johnson/mnt/GUIAS IECV 2026 CLAUDE/00_PLANTILLAS_REFERENCIA/logo comfenalco.jpg",
+  ilustracionPath: "/sessions/determined-sharp-johnson/mnt/outputs/ilustracion_tema.png", // foto real + frase motivacional — genera con scripts/gen_imagen_motivacional_v2.py (ver SKILL.md)
+  outPath: "/sessions/determined-sharp-johnson/mnt/outputs/FTO-EDU-FOR-96_V3_Guia_SEMANA_GUIA_CLEI.docx",
+  iconosDir: "/sessions/determined-sharp-johnson/mnt/GUIAS IECV 2026 CLAUDE/00_PLANTILLAS_REFERENCIA/iconos_pasos_institucionales",
+  iconosNativosDir: "/sessions/determined-sharp-johnson/mnt/GUIAS IECV 2026 CLAUDE/00_PLANTILLAS_REFERENCIA/iconos_pasos_nativos_ms",
+  // Video de apoyo gratuito de YouTube (máx. 5 min), verificado antes de usarlo — ver SKILL.md
+  videoApoyo: {
+    titulo: "[Título real del video]",
+    canal: "[Nombre del canal]",
+    duracion: "[m:ss, verificada]",
+    url: "https://www.youtube.com/watch?v=XXXXXXXXXXX",
+  },
+};
+// ===============================================================================
+
+const FONT = "Arial";
+
+function p(text, opts = {}) {
+  return new Paragraph({
+    alignment: opts.align || AlignmentType.JUSTIFIED,
+    spacing: { after: opts.after ?? 160, before: opts.before ?? 0 },
+    children: [new TextRun({ text, font: FONT, size: (opts.size || 12) * 2, bold: !!opts.bold, italics: !!opts.italics })],
+  });
+}
+
+function videoApoyoParagraph(v) {
+  // Línea "Video de apoyo:" con hipervínculo real a YouTube, justo después de la Introducción.
+  return new Paragraph({
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { after: 160 },
+    children: [
+      new TextRun({ text: "Video de apoyo (", font: FONT, size: 24, bold: true }),
+      new TextRun({ text: `máx. 5 min — ${v.duracion}): `, font: FONT, size: 24, bold: true }),
+      new TextRun({ text: `"${v.titulo}" — ${v.canal}. `, font: FONT, size: 24 }),
+      new ExternalHyperlink({
+        link: v.url,
+        children: [new TextRun({ text: v.url, font: FONT, size: 24, style: "Hyperlink" })],
+      }),
+    ],
+  });
+}
+
+function pRuns(runs, opts = {}) {
+  return new Paragraph({
+    alignment: opts.align || AlignmentType.JUSTIFIED,
+    spacing: { after: opts.after ?? 160, before: opts.before ?? 0 },
+    indent: opts.indent,
+    children: runs.map(r => new TextRun({ text: r.text, font: FONT, size: (opts.size || 12) * 2, bold: !!r.bold, italics: !!r.italics })),
+  });
+}
+
+function heading(text, opts = {}) {
+  return new Paragraph({
+    alignment: opts.align || AlignmentType.LEFT,
+    spacing: { before: opts.before ?? 300, after: opts.after ?? 160 },
+    children: [new TextRun({ text, font: FONT, size: (opts.size || 13) * 2, bold: true, italics: !!opts.italics })],
+  });
+}
+
+function numItem(n, text) {
+  return new Paragraph({
+    spacing: { after: 140 },
+    indent: { left: 400, hanging: 300 },
+    children: [
+      new TextRun({ text: `${n}. `, font: FONT, size: 24 }),
+      new TextRun({ text, font: FONT, size: 24 }),
+    ],
+  });
+}
+
+function mono(text) {
+  // OBSOLETO para "Imagen Representativa" de subtemas — usa rutaVisual() en su lugar (ver
+  // scripts/gen_ruta_visual.py y la sección "Imagen Representativa de cada subtema" en SKILL.md).
+  // Se deja disponible solo por si se necesita un fragmento de texto monoespaciado puntual.
+  return new Paragraph({
+    alignment: AlignmentType.LEFT,
+    indent: { left: 400 },
+    spacing: { after: 40 },
+    children: [new TextRun({ text, font: "Courier New", size: 20 })],
+  });
+}
+
+function rutaVisual(pngPath, width, height) {
+  // RESPALDO cuando no hay acceso real a Office (ver capturaReal() abajo, que es el método
+  // preferido). Imagen "ruta visual" (pestaña > grupo > íconos) generada con
+  // scripts/gen_ruta_visual.py — reemplaza el texto Courier New para "Imagen Representativa:".
+  const buf = fs.readFileSync(pngPath);
+  return new Paragraph({
+    spacing: { after: 160 },
+    indent: { left: 400 },
+    children: [new ImageRun({ data: buf, type: "png", transformation: { width, height } })],
+  });
+}
+
+function capturaReal(jpgPath, width = 460, height = 287, producto = "Excel") {
+  // MÉTODO PREFERIDO para "Imagen Representativa:" — captura real de Office obtenida vía
+  // computer-use (ver sección "Imagen Representativa de cada subtema" en SKILL.md). La imagen debe
+  // ser la ventana COMPLETA, solo redimensionada (nunca recortada), por la política de Microsoft.
+  // Grande y CENTRADA (no en el margen izquierdo) para que se lea bien. Ancho por defecto ~460px
+  // (proporción 460x287, la de una captura de pantalla completa 1389x868). Devuelve [imagen, párrafo
+  // de crédito] — hacer children.push(...capturaReal(...)).
+  const buf = fs.readFileSync(jpgPath);
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      children: [new ImageRun({ data: buf, type: "jpg", transformation: { width, height } })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 160 },
+      children: [new TextRun({ text: `Captura de pantalla de Microsoft ${producto}. Used with permission from Microsoft.`, font: FONT, size: 15, italics: true })],
+    }),
+  ];
+}
+
+function iconStep(n, iconFile, text, opts = {}) {
+  // opts.native = true (ESTÁNDAR, úsalo siempre que exista el ícono) -> usa el ícono real de
+  // Microsoft (Fluent, color gris/negro original #212121, SIN recolorear, SIN insignia de color)
+  // desde CONFIG.iconosNativosDir. Ya existe un ícono nativo real para casi cualquier acción típica
+  // de Word/Excel/PowerPoint — revisa primero la carpeta 00_PLANTILLAS_REFERENCIA/
+  // iconos_pasos_nativos_ms/ antes de asumir que hace falta uno institucional. Solo usa el badge
+  // institucional propio (CONFIG.iconosDir, opts.native=false/omitido) como último recurso, cuando
+  // de verdad no exista un ícono real de Microsoft para esa acción puntual.
+  //
+  // IMPORTANTE — coherencia ícono↔texto: cuando busques el ícono más parecido al de Microsoft,
+  // ten cuidado con nombres de familia engañosos. Ejemplo real: para "centrar texto/celda" el
+  // ícono correcto es "Text Align Center" (3 barras centradas, como el botón real de Word/Excel),
+  // NO "Align Center Horizontal" (que en Fluent es para alinear OBJETOS/formas entre sí en
+  // PowerPoint, no texto — visualmente es una pesa/dumbbell y confunde). Verifica siempre que el
+  // ícono elegido sea el que de verdad aparece en la cinta de opciones para esa acción específica,
+  // no solo un ícono con un nombre parecido.
+  const dir = opts.native === false ? CONFIG.iconosDir : CONFIG.iconosNativosDir;
+  const size = opts.native === false ? 22 : 28;
+  const buf = fs.readFileSync(`${dir}/${iconFile}.png`);
+  return new Paragraph({
+    spacing: { after: 140 },
+    indent: { left: 400, hanging: 300 },
+    children: [
+      new TextRun({ text: `${n}. `, font: FONT, size: 24 }),
+      new ImageRun({ data: buf, type: "png", transformation: { width: size, height: size } }),
+      new TextRun({ text: `  ${text}`, font: FONT, size: 24 }),
+    ],
+  });
+}
+
+// ---------- HEADER (repite en cada página) ----------
+const logoBuf = fs.readFileSync(CONFIG.logoPath);
+
+const headerTable = new Table({
+  width: { size: 10500, type: WidthType.DXA },
+  columnWidths: [8000, 2500],
+  rows: [
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 8000, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          margins: { top: 80, bottom: 80, left: 100, right: 100 },
+          children: [
+            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "INSTITUTO DE EDUCACIÓN COMFENALCO VALLE", font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "EDUCACIÓN BÁSICA y MEDIA POR CICLOS (CLEI)", font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: `SEMANA No ${CONFIG.semana} / ${CONFIG.fechaClase} /   GUÍA DE FORMACIÓN No ${CONFIG.guia}`, font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "ASIGNATURA TECNOLOGIA E INFORMATICA", font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: `NOMBRE DE LA GUÍA ${CONFIG.tema}`, font: FONT, size: 20, bold: true })] }),
+          ],
+        }),
+        new TableCell({
+          width: { size: 2500, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          margins: { top: 80, bottom: 80, left: 100, right: 100 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ data: logoBuf, type: "jpg", transformation: { width: 130, height: 54 } })] })],
+        }),
+      ],
+    }),
+  ],
+});
+
+const header = new Header({ children: [headerTable] });
+const footer = new Footer({
+  children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "FTO-EDU-FOR-96 V3", font: FONT, size: 18 })] })],
+});
+
+// ---------- TABLA DE DATOS DEL ESTUDIANTE (estructura fija, no cambiar) ----------
+function labelCell(text, w, span, opts = {}) {
+  return new TableCell({
+    width: { size: w, type: WidthType.DXA },
+    columnSpan: span || 1,
+    verticalAlign: opts.vAlign || VerticalAlign.TOP,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: opts.extra
+      ? [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] }), ...opts.extra]
+      : [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] })],
+  });
+}
+function valueCell(text, w, span) {
+  return new TableCell({
+    width: { size: w, type: WidthType.DXA },
+    columnSpan: span || 1,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20 })] })],
+  });
+}
+
+const W1 = 3500, W2 = 3500, W3 = 3500;
+
+const studentTable = new Table({
+  width: { size: 10500, type: WidthType.DXA },
+  columnWidths: [W1, W2, W3],
+  rows: [
+    new TableRow({ children: [labelCell("PRIMER APELLIDO: ", W1), labelCell("SEGUNDO APELLIDO: ", W2), labelCell("NOMBRE: ", W3)] }),
+    new TableRow({
+      children: [
+        labelCell("GRUPO/ CLEI/ JORNADA", W1, 1, { extra: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: CONFIG.grupoCleiJornada, font: FONT, size: 20 })] })] }),
+        new TableCell({
+          width: { size: W2, type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+          children: [
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TIPO DE DOCUMENTO", font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TI [   ]        CC [   ]", font: FONT, size: 20 })] }),
+          ],
+        }),
+        new TableCell({
+          width: { size: W3, type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+          children: [
+            new Paragraph({ children: [new TextRun({ text: "NÚMERO DOCUMENTO", font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ children: [new TextRun({ text: "_____________________", font: FONT, size: 20 })] }),
+          ],
+        }),
+      ],
+    }),
+    new TableRow({ children: [labelCell("SEDE:", W1), valueCell("CALI", W2 + W3, 2)] }),
+    new TableRow({ children: [labelCell("NOMBRE DEL DOCENTE:", W1), valueCell("EDWARD QUIÑONES VALENZUELA", W2 + W3, 2)] }),
+  ],
+});
+
+// ---------- ILUSTRACIÓN DEL TEMA ----------
+const illusBuf = fs.readFileSync(CONFIG.ilustracionPath);
+
+// ---------- TABLA DE RÚBRICA (helper — arma las filas según los talleres reales) ----------
+function rcell(text, opts = {}) {
+  return new TableCell({
+    width: { size: opts.w || 2000, type: WidthType.DXA },
+    shading: opts.shade ? { type: ShadingType.CLEAR, fill: opts.shade } : undefined,
+    verticalAlign: VerticalAlign.CENTER,
+    margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    children: [new Paragraph({ alignment: opts.center ? AlignmentType.CENTER : AlignmentType.LEFT, children: [new TextRun({ text, font: FONT, size: 18, bold: !!opts.bold })] })],
+  });
+}
+function buildRubricTable(rows) {
+  // rows: array de [criterio, superior, alto, basico, bajo] — la primera fila es el header
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    columnWidths: [1900, 2150, 2150, 2150, 2150],
+    rows: rows.map((row, i) => new TableRow({
+      children: row.map((text, j) => rcell(text, { w: j === 0 ? 1900 : 2150, bold: i === 0 || j === 0, center: i === 0, shade: i === 0 ? "D9E1F2" : undefined })),
+    })),
+  });
+}
+const rubricHeaderRow = ["Criterios a evaluar", "Superior (5.0 - 4.6)", "Alto (4.5 - 4.0)", "Básico (3.9 - 3.0)", "Bajo (2.9 - 1.0)"];
+
+// ---------- TABLA DE CARGUE (estructura fija, no cambiar) ----------
+function cLabel(text) {
+  return new TableCell({ width: { size: 4200, type: WidthType.DXA }, margins: { top: 70, bottom: 70, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20 })] })] });
+}
+function cValue(text) {
+  return new TableCell({ width: { size: 6300, type: WidthType.DXA }, margins: { top: 70, bottom: 70, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] })] });
+}
+const cargueTable = new Table({
+  width: { size: 10500, type: WidthType.DXA },
+  columnWidths: [4200, 6300],
+  rows: [
+    new TableRow({ children: [cLabel("FECHA DE CARGUE DE LA GUÍA\n(día, mes, año)"), cValue(CONFIG.fechaCargue)] }),
+    new TableRow({ children: [cLabel("HORA MÁXIMA DE ENTREGA"), cValue(CONFIG.horaMaxima)] }),
+    new TableRow({ children: [cLabel("CANTIDAD DE PÁGINAS A RECIBIR"), cValue(CONFIG.maxPaginas)] }),
+    new TableRow({ children: [cLabel("FORMATO (FOTO O PDF)"), cValue(CONFIG.formatoEntrega)] }),
+    new TableRow({ children: [cLabel("NOMBRE DEL ADJUNTO"), cValue("Nombre estudiante + guía")] }),
+    new TableRow({ children: [cLabel("CARGUE DE LA TAREA"), cValue("moodlecomfenalco.datasae.com")] }),
+  ],
+});
+
+// =======================================================================================
+// A PARTIR DE AQUÍ: contenido específico del tema. Reemplaza el ejemplo (Internet, CLEI III)
+// por el saludo/introducción/competencias/subtemas/talleres/rúbrica/bibliografía reales de
+// la guía que estás generando. Mantén el patrón de numeración y las funciones de arriba.
+// =======================================================================================
+const children = [];
+
+children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+children.push(studentTable);
+children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: "ESTRUCTURA DE LA GUÍA DE FORMACIÓN", font: FONT, size: 24, bold: true })] }));
+
+children.push(heading("INICIO", { size: 16, before: 200 }));
+children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 }, children: [new ImageRun({ data: illusBuf, type: "png", transformation: { width: 260, height: 217 } })] }));
+
+children.push(heading("1. Saludo y Motivación:", { size: 13 }));
+children.push(p("[Saludo cercano, motivador, sin infantilizar, anclado a una situación laboral o cotidiana de adultos, relacionado con el tema de la semana.]"));
+
+children.push(heading("2. Introducción:", { size: 13 }));
+children.push(p("[Contexto y relevancia del tema.]"));
+children.push(videoApoyoParagraph(CONFIG.videoApoyo));
+
+children.push(heading("3. Competencias y Desempeños:", { size: 13 }));
+children.push(pRuns([{ text: "Competencia: ", bold: true }, { text: "[particularizada al tema puntual, no genérica]." }], { indent: { left: 400 }, after: 100 }));
+children.push(pRuns([{ text: "Desempeño: ", bold: true }, { text: "[particularizado al tema puntual]." }], { indent: { left: 400 } }));
+
+children.push(heading("4. Duración de horas de la guía:", { size: 13 }));
+children.push(p(CONFIG.duracion));
+
+children.push(heading("DESARROLLO", { size: 16, before: 500 }));
+
+children.push(heading("1. Actividades de Reflexión Inicial.", { size: 13 }));
+children.push(p("[Analogía o pregunta detonante.]"));
+
+children.push(heading("2. Explicación y presentación de temáticas, ejemplarización de contenidos, ejercicios, definiciones, leyes, premisas y recursos didácticos:", { size: 13 }));
+children.push(heading("A. [Subtema 1]", { size: 12, before: 200, italics: true }));
+children.push(pRuns([{ text: "Función: ", bold: true }, { text: "[explicación técnica]." }], { indent: { left: 400 } }));
+// Repite el patrón A./B./C.… para cada subtema. Usa "Imagen Representativa:" + mono(...)
+// cuando el subtema se beneficie de un esquema de botones/menús en Courier New.
+
+children.push(heading("3. Asignación de Actividades Formativas:", { size: 13, before: 300 }));
+children.push(heading("TALLER 1: [tipo de taller — cuestionario, emparejamiento, caso de estudio, ejercicio guiado o producto entregable]", { size: 12, italics: true }));
+children.push(p("[Instrucciones del taller 1.]"));
+children.push(numItem(1, "[Pregunta o paso 1.]"));
+// CLEI III = 2 talleres. CLEI IV/V/VI = 3 talleres (agrega TALLER 3 con el mismo patrón).
+
+children.push(heading("4. Seguimiento, retroalimentación, evaluación y verificación del cumplimiento de objetivos, competencias y desempeños (RÚBRICA)", { size: 13, before: 300 }));
+children.push(heading("RÚBRICA CRITERIOS GENERALES (FTO-EDU-FOR-96 V3)", { size: 12, italics: true, before: 100 }));
+children.push(buildRubricTable([
+  rubricHeaderRow,
+  ["Participación", "[desc. Superior]", "[desc. Alto]", "[desc. Básico]", "[desc. Bajo]"],
+  ["[Criterio específico del subtema A]", "[desc. Superior]", "[desc. Alto]", "[desc. Básico]", "[desc. Bajo]"],
+  ["[Criterio específico del subtema B]", "[desc. Superior]", "[desc. Alto]", "[desc. Básico]", "[desc. Bajo]"],
+  ["[Criterio específico del subtema C]", "[desc. Superior]", "[desc. Alto]", "[desc. Básico]", "[desc. Bajo]"],
+  ["Reconocimiento de herramientas de la cinta", "[desc. Superior]", "[desc. Alto]", "[desc. Básico]", "[desc. Bajo]"],
+  ["Trabajo práctico (entrega)", "[desc. Superior]", "[desc. Alto]", "[desc. Básico]", "[desc. Bajo]"],
+  // ESTÁNDAR: 6 criterios (ver sección "Rúbrica de evaluación" en SKILL.md) — 1 genérico de proceso
+  // (Participación) + 3-4 específicos del tema de la semana (uno por subtema A/B/C…) + 1 genérico de
+  // reconocimiento de herramientas + 1 genérico de entrega. Ya no una fila por taller.
+]));
+
+children.push(pRuns([{ text: "5. INDICACIONES ", bold: true }, { text: "PARA EL CARGUE DE LAS ACTIVIDADES:" }], { after: 160, before: 400 }));
+children.push(cargueTable);
+
+children.push(heading("6. BIBLIOGRAFÍA Y WEBGRAFÍA:", { size: 13, before: 400 }));
+children.push(pRuns([{ text: "[Autor]. " }, { text: "(2026). [Título].", italics: true }], { indent: { left: 400 } }));
+children.push(pRuns([{ text: "Formato estandarizado institucional de diseño instruccional integrado: " }, { text: "FTO-EDU-FOR-96 V3.", italics: true }], { indent: { left: 400 } }));
+
+const doc = new Document({
+  sections: [
+    {
+      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1000, bottom: 900, left: 1100, right: 1100 } } },
+      headers: { default: header },
+      footers: { default: footer },
+      children,
+    },
+  ],
+});
+
+Packer.toBuffer(doc).then((buf) => {
+  fs.writeFileSync(CONFIG.outPath, buf);
+  console.log("done ->", CONFIG.outPath);
+});

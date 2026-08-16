@@ -1,0 +1,297 @@
+import {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  Header, Footer, ImageRun, AlignmentType, WidthType,
+  VerticalAlign, ShadingType, ExternalHyperlink,
+} from "docx";
+import type { ParametrosGuia, ContenidoGuia } from "./types";
+import { duracionPorClei } from "./types";
+
+// Puerto a TypeScript de scripts/build_guia.js (skill iecv-guia-formacion),
+// parametrizado: en vez de un CONFIG hardcodeado editado a mano por guía,
+// recibe los datos del formulario + el contenido generado por IA.
+// La estructura de tablas (encabezado, datos del estudiante, cargue) se deja
+// IDÉNTICA a la validada en la skill original — no se toca su diseño.
+
+const FONT = "Arial";
+
+function p(text: string, opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number; before?: number; size?: number; bold?: boolean; italics?: boolean } = {}) {
+  return new Paragraph({
+    alignment: opts.align || AlignmentType.JUSTIFIED,
+    spacing: { after: opts.after ?? 160, before: opts.before ?? 0 },
+    children: [new TextRun({ text, font: FONT, size: (opts.size || 12) * 2, bold: !!opts.bold, italics: !!opts.italics })],
+  });
+}
+
+function pRuns(runs: Array<{ text: string; bold?: boolean; italics?: boolean }>, opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number; before?: number; indent?: { left: number; hanging?: number }; size?: number } = {}) {
+  return new Paragraph({
+    alignment: opts.align || AlignmentType.JUSTIFIED,
+    spacing: { after: opts.after ?? 160, before: opts.before ?? 0 },
+    indent: opts.indent,
+    children: runs.map((r) => new TextRun({ text: r.text, font: FONT, size: (opts.size || 12) * 2, bold: !!r.bold, italics: !!r.italics })),
+  });
+}
+
+function heading(text: string, opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; before?: number; after?: number; size?: number; italics?: boolean } = {}) {
+  return new Paragraph({
+    alignment: opts.align || AlignmentType.LEFT,
+    spacing: { before: opts.before ?? 300, after: opts.after ?? 160 },
+    children: [new TextRun({ text, font: FONT, size: (opts.size || 13) * 2, bold: true, italics: !!opts.italics })],
+  });
+}
+
+function numItem(n: number, text: string) {
+  return new Paragraph({
+    spacing: { after: 140 },
+    indent: { left: 400, hanging: 300 },
+    children: [
+      new TextRun({ text: `${n}. `, font: FONT, size: 24 }),
+      new TextRun({ text, font: FONT, size: 24 }),
+    ],
+  });
+}
+
+function videoApoyoParagraph(v: ParametrosGuia["videoApoyo"]) {
+  return new Paragraph({
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { after: 160 },
+    children: [
+      new TextRun({ text: "Video de apoyo (", font: FONT, size: 24, bold: true }),
+      new TextRun({ text: `máx. 5 min — ${v.duracion}): `, font: FONT, size: 24, bold: true }),
+      new TextRun({ text: `"${v.titulo}" — ${v.canal}. `, font: FONT, size: 24 }),
+      new ExternalHyperlink({
+        link: v.url,
+        children: [new TextRun({ text: v.url, font: FONT, size: 24, style: "Hyperlink" })],
+      }),
+    ],
+  });
+}
+
+// ---------- Tabla de encabezado (repite en cada página) ----------
+function buildHeader(params: ParametrosGuia, logoBuf: Buffer) {
+  const headerTable = new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    columnWidths: [8000, 2500],
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 8000, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 80, bottom: 80, left: 100, right: 100 },
+            children: [
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "INSTITUTO DE EDUCACIÓN COMFENALCO VALLE", font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "EDUCACIÓN BÁSICA y MEDIA POR CICLOS (CLEI)", font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: `SEMANA No ${params.semana} / ${params.fechaClase} /   GUÍA DE FORMACIÓN No ${params.guia}`, font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "ASIGNATURA TECNOLOGIA E INFORMATICA", font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: `NOMBRE DE LA GUÍA ${params.tema}`, font: FONT, size: 20, bold: true })] }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 2500, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 80, bottom: 80, left: 100, right: 100 },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ data: logoBuf, type: "jpg", transformation: { width: 130, height: 54 } })] })],
+          }),
+        ],
+      }),
+    ],
+  });
+  return new Header({ children: [headerTable] });
+}
+
+function buildFooter() {
+  return new Footer({
+    children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "FTO-EDU-FOR-96 V3", font: FONT, size: 18 })] })],
+  });
+}
+
+// ---------- Tabla de datos del estudiante (estructura fija) ----------
+function labelCell(text: string, w: number, span = 1, extra?: Paragraph[]) {
+  return new TableCell({
+    width: { size: w, type: WidthType.DXA },
+    columnSpan: span,
+    verticalAlign: VerticalAlign.TOP,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: extra
+      ? [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] }), ...extra]
+      : [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] })],
+  });
+}
+function valueCell(text: string, w: number, span = 1) {
+  return new TableCell({
+    width: { size: w, type: WidthType.DXA },
+    columnSpan: span,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20 })] })],
+  });
+}
+
+function buildStudentTable(params: ParametrosGuia) {
+  const W1 = 3500, W2 = 3500, W3 = 3500;
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    columnWidths: [W1, W2, W3],
+    rows: [
+      new TableRow({ children: [labelCell("PRIMER APELLIDO: ", W1), labelCell("SEGUNDO APELLIDO: ", W2), labelCell("NOMBRE: ", W3)] }),
+      new TableRow({
+        children: [
+          labelCell("GRUPO/ CLEI/ JORNADA", W1, 1, [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: params.grupoCleiJornada, font: FONT, size: 20 })] })]),
+          new TableCell({
+            width: { size: W2, type: WidthType.DXA },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            children: [
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TIPO DE DOCUMENTO", font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TI [   ]        CC [   ]", font: FONT, size: 20 })] }),
+            ],
+          }),
+          new TableCell({
+            width: { size: W3, type: WidthType.DXA },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            children: [
+              new Paragraph({ children: [new TextRun({ text: "NÚMERO DOCUMENTO", font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ children: [new TextRun({ text: "_____________________", font: FONT, size: 20 })] }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({ children: [labelCell("SEDE:", W1), valueCell("CALI", W2 + W3, 2)] }),
+      new TableRow({ children: [labelCell("NOMBRE DEL DOCENTE:", W1), valueCell("EDWARD QUIÑONES VALENZUELA", W2 + W3, 2)] }),
+    ],
+  });
+}
+
+// ---------- Tabla de rúbrica ----------
+function rcell(text: string, opts: { w?: number; bold?: boolean; center?: boolean; shade?: string } = {}) {
+  return new TableCell({
+    width: { size: opts.w || 2000, type: WidthType.DXA },
+    shading: opts.shade ? { type: ShadingType.CLEAR, fill: opts.shade } : undefined,
+    verticalAlign: VerticalAlign.CENTER,
+    margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    children: [new Paragraph({ alignment: opts.center ? AlignmentType.CENTER : AlignmentType.LEFT, children: [new TextRun({ text, font: FONT, size: 18, bold: !!opts.bold })] })],
+  });
+}
+function buildRubricTable(rows: string[][]) {
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    columnWidths: [1900, 2150, 2150, 2150, 2150],
+    rows: rows.map((row, i) => new TableRow({
+      children: row.map((text, j) => rcell(text, { w: j === 0 ? 1900 : 2150, bold: i === 0 || j === 0, center: i === 0, shade: i === 0 ? "D9E1F2" : undefined })),
+    })),
+  });
+}
+const RUBRIC_HEADER_ROW = ["Criterios a evaluar", "Superior (5.0 - 4.6)", "Alto (4.5 - 4.0)", "Básico (3.9 - 3.0)", "Bajo (2.9 - 1.0)"];
+
+// Criterios genéricos institucionales (no dependen del tema puntual).
+const CRITERIO_PARTICIPACION = ["Participación", "Participa activamente en toda la sesión, aporta y respeta los aportes de sus compañeros.", "Participa la mayor parte de la sesión, con aportes pertinentes.", "Participa de forma intermitente o con aportes poco pertinentes.", "No participa o su participación es disruptiva."];
+const CRITERIO_HERRAMIENTAS = ["Reconocimiento de herramientas de la cinta", "Identifica y utiliza correctamente todas las herramientas de la cinta de opciones trabajadas.", "Identifica y utiliza la mayoría de las herramientas trabajadas.", "Identifica algunas herramientas, con apoyo del docente.", "No identifica ni utiliza las herramientas trabajadas."];
+const CRITERIO_ENTREGA = ["Trabajo práctico (entrega)", "Entrega el trabajo completo, en el formato y fecha indicados, sin errores.", "Entrega el trabajo completo, en el formato y fecha indicados, con errores menores.", "Entrega el trabajo incompleto o fuera del formato/fecha indicados.", "No entrega el trabajo."];
+
+// ---------- Tabla de cargue (estructura fija) ----------
+function cLabel(text: string) {
+  return new TableCell({ width: { size: 4200, type: WidthType.DXA }, margins: { top: 70, bottom: 70, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20 })] })] });
+}
+function cValue(text: string) {
+  return new TableCell({ width: { size: 6300, type: WidthType.DXA }, margins: { top: 70, bottom: 70, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] })] });
+}
+function buildCargueTable(params: ParametrosGuia, maxPaginas: string) {
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    columnWidths: [4200, 6300],
+    rows: [
+      new TableRow({ children: [cLabel("FECHA DE CARGUE DE LA GUÍA\n(día, mes, año)"), cValue(params.fechaCargue)] }),
+      new TableRow({ children: [cLabel("HORA MÁXIMA DE ENTREGA"), cValue(params.horaMaxima)] }),
+      new TableRow({ children: [cLabel("CANTIDAD DE PÁGINAS A RECIBIR"), cValue(maxPaginas)] }),
+      new TableRow({ children: [cLabel("FORMATO (FOTO O PDF)"), cValue("PDF, DOCX")] }),
+      new TableRow({ children: [cLabel("NOMBRE DEL ADJUNTO"), cValue("Nombre estudiante + guía")] }),
+      new TableRow({ children: [cLabel("CARGUE DE LA TAREA"), cValue("moodlecomfenalco.datasae.com")] }),
+    ],
+  });
+}
+
+export interface BuildGuiaAssets {
+  logoBuf: Buffer;
+  ilustracionBuf: Buffer;
+}
+
+/** Arma el .docx completo y devuelve el Buffer listo para descargar. */
+export async function buildGuiaDocx(params: ParametrosGuia, contenido: ContenidoGuia, assets: BuildGuiaAssets): Promise<Buffer> {
+  const { duracion, maxPaginas } = duracionPorClei(params.clei);
+
+  const children: (Paragraph | Table)[] = [];
+
+  children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+  children.push(buildStudentTable(params));
+  children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: "ESTRUCTURA DE LA GUÍA DE FORMACIÓN", font: FONT, size: 24, bold: true })] }));
+
+  // INICIO
+  children.push(heading("INICIO", { size: 16, before: 200 }));
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 }, children: [new ImageRun({ data: assets.ilustracionBuf, type: "png", transformation: { width: 260, height: 217 } })] }));
+
+  children.push(heading("1. Saludo y Motivación:", { size: 13 }));
+  children.push(p(contenido.saludoMotivacion));
+
+  children.push(heading("2. Introducción:", { size: 13 }));
+  children.push(p(contenido.introduccion));
+  children.push(videoApoyoParagraph(params.videoApoyo));
+
+  children.push(heading("3. Competencias y Desempeños:", { size: 13 }));
+  children.push(pRuns([{ text: "Competencia: ", bold: true }, { text: contenido.competencia }], { indent: { left: 400 }, after: 100 }));
+  children.push(pRuns([{ text: "Desempeño: ", bold: true }, { text: contenido.desempeno }], { indent: { left: 400 } }));
+
+  children.push(heading("4. Duración de horas de la guía:", { size: 13 }));
+  children.push(p(duracion));
+
+  // DESARROLLO
+  children.push(heading("DESARROLLO", { size: 16, before: 500 }));
+
+  children.push(heading("1. Actividades de Reflexión Inicial.", { size: 13 }));
+  children.push(p(contenido.reflexionInicial));
+
+  children.push(heading("2. Explicación y presentación de temáticas, ejemplarización de contenidos, ejercicios, definiciones, leyes, premisas y recursos didácticos:", { size: 13 }));
+  const letras = "ABCDEFGH";
+  contenido.subtemas.forEach((st, i) => {
+    children.push(heading(`${letras[i] || i + 1}. ${st.titulo}`, { size: 12, before: 200, italics: true }));
+    children.push(pRuns([{ text: "Función: ", bold: true }, { text: st.funcion }], { indent: { left: 400 } }));
+  });
+
+  children.push(heading("3. Asignación de Actividades Formativas:", { size: 13, before: 300 }));
+  contenido.talleres.forEach((taller, i) => {
+    children.push(heading(`TALLER ${i + 1}: ${taller.tipo}`, { size: 12, italics: true }));
+    children.push(p(taller.instrucciones));
+    taller.items.forEach((item, j) => children.push(numItem(j + 1, item)));
+  });
+
+  children.push(heading("4. Seguimiento, retroalimentación, evaluación y verificación del cumplimiento de objetivos, competencias y desempeños (RÚBRICA)", { size: 13, before: 300 }));
+  children.push(heading("RÚBRICA CRITERIOS GENERALES (FTO-EDU-FOR-96 V3)", { size: 12, italics: true, before: 100 }));
+  const rubricRows: string[][] = [
+    RUBRIC_HEADER_ROW,
+    CRITERIO_PARTICIPACION,
+    ...contenido.rubricaCriteriosEspecificos.map((c) => [c.criterio, c.superior, c.alto, c.basico, c.bajo]),
+    CRITERIO_HERRAMIENTAS,
+    CRITERIO_ENTREGA,
+  ];
+  children.push(buildRubricTable(rubricRows));
+
+  children.push(pRuns([{ text: "5. INDICACIONES ", bold: true }, { text: "PARA EL CARGUE DE LAS ACTIVIDADES:" }], { after: 160, before: 400 }));
+  children.push(buildCargueTable(params, maxPaginas));
+
+  children.push(heading("6. BIBLIOGRAFÍA Y WEBGRAFÍA:", { size: 13, before: 400 }));
+  contenido.bibliografia.forEach((ref) => {
+    children.push(pRuns([{ text: `${ref.autor}. ` }, { text: `(${ref.anio}). ${ref.titulo}.`, italics: true }], { indent: { left: 400 } }));
+  });
+  children.push(pRuns([{ text: "Formato estandarizado institucional de diseño instruccional integrado: " }, { text: "FTO-EDU-FOR-96 V3.", italics: true }], { indent: { left: 400 } }));
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1000, bottom: 900, left: 1100, right: 1100 } } },
+        headers: { default: buildHeader(params, assets.logoBuf) },
+        footers: { default: buildFooter() },
+        children,
+      },
+    ],
+  });
+
+  return Packer.toBuffer(doc);
+}
