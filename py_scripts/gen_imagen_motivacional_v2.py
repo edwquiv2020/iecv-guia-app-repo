@@ -31,7 +31,7 @@ BANCO_DIR = os.environ.get(
     "BANCO_DIR",
     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "banco_fotos"),
 )
-FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+FONT_DIR = os.environ.get("FONT_DIR", "/usr/share/fonts/truetype/dejavu")
 
 PALETTE = {
     "verde_oscuro": (27, 91, 42),
