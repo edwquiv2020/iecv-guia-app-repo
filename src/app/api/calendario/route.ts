@@ -8,7 +8,7 @@ interface FilaHorario {
   semana: number;
   guia: number;
   fecha: string; // yyyy-mm-dd
-  tipoSemana: string;
+  actividadId: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
   }
   const filas = await sql`
     select cc.id, cc.semana_academica as semana, cc.guia_numero as guia, cc.fecha_clase as fecha,
-           cc.tipo_semana, cc.origen, c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
+           cc.origen, a.nombre as actividad_nombre, c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
     from calendario_clases cc
+    join actividades a on a.id = cc.actividad_id
     left join cursos c on c.id = cc.curso_id
     left join temas t on t.id = cc.tema_id
     where cc.ciclo_id = ${cicloId} and cc.jornada_id = ${jornadaId}
@@ -73,11 +74,11 @@ export async function POST(request: NextRequest) {
       }
 
       await sql`
-        insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, tipo_semana, origen)
-        values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.tipoSemana || "CLASES"}, 'horario')
+        insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
+        values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'horario')
         on conflict (ciclo_id, jornada_id, semana_academica) do update set
           fecha_clase = excluded.fecha_clase, guia_numero = excluded.guia_numero,
-          curso_id = excluded.curso_id, tema_id = excluded.tema_id, tipo_semana = excluded.tipo_semana,
+          curso_id = excluded.curso_id, tema_id = excluded.tema_id, actividad_id = excluded.actividad_id,
           origen = 'horario'
       `;
     }

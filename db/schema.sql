@@ -11,8 +11,19 @@ drop table if exists temas cascade;
 drop table if exists curso_ciclos cascade;
 drop table if exists ciclos cascade;
 drop table if exists cursos cascade;
+drop table if exists actividades cascade;
 drop table if exists malla_items cascade;
 drop table if exists tematicas cascade;
+
+-- Catálogo de tipos de actividad semanal (qué es cada semana del calendario:
+-- clase normal, examen, día institucional, etc.) — lista abierta, se amplía
+-- agregando filas aquí, sin tocar código ni el esquema.
+create table actividades (
+  id uuid primary key default gen_random_uuid(),
+  nombre text unique not null,
+  activa boolean not null default true,
+  created_at timestamptz not null default now()
+);
 
 create table cursos (
   id uuid primary key default gen_random_uuid(),
@@ -87,11 +98,7 @@ create table calendario_clases (
   -- dentro del lote según temas.numero; si el curso no tiene más temas que
   -- semanas cargadas, queda en null para asignarlo después.
   tema_id uuid references temas(id),
-  -- CLASES (normal) | SEMANA DIAGNÓSTICO | EXAMEN INTERMEDIO | EXAMEN FINAL |
-  -- DÍA DEL EMPRENDIMIENTO | BIENESTAR ESTUDIANTIL | DÍA DEL PROFESOR |
-  -- RACE / PLAN DE MEJORAMIENTO | GRADOS | MATRÍCULAS | ... (abierto, se
-  -- amplía con el tiempo — por eso es texto libre, no un enum cerrado).
-  tipo_semana text not null default 'CLASES',
+  actividad_id uuid not null references actividades(id),
   -- 'horario' = cargada desde /horarios (auto o manual). 'ad_hoc' = creada
   -- al vuelo desde la pantalla de generar guía, para un caso puntual sin
   -- horario oficial todavía. Sirve para avisar antes de sobrescribir una

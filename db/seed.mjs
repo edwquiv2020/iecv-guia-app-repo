@@ -32,5 +32,14 @@ await sql`
   on conflict (slug) do nothing
 `;
 
-console.log("Seed inicial aplicado: jornadas, ciclos, cursos.");
+await sql`
+  insert into actividades (nombre) values
+    ('CLASES'), ('SEMANA DIAGNÓSTICO'), ('GUÍA DE REPASO'),
+    ('EXAMEN INTERMEDIO'), ('EXAMEN FINAL'), ('DÍA DEL EMPRENDIMIENTO'),
+    ('BIENESTAR ESTUDIANTIL'), ('DÍA DEL PROFESOR'),
+    ('RACE / PLANES DE MEJORA'), ('GRADOS'), ('CLAUSURA'), ('MATRÍCULAS')
+  on conflict (nombre) do nothing
+`;
+
+console.log("Seed inicial aplicado: jornadas, ciclos, cursos, actividades.");
 await sql.end();

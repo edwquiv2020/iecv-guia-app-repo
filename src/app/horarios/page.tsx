@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 interface Ciclo { id: string; nombre: string; grados: string[] }
 interface Jornada { id: string; nombre: string }
 interface Curso { id: string; nombre: string }
+interface Actividad { id: string; nombre: string }
 interface FilaExistente {
   id: string;
   semana: number;
   guia: number;
   fecha: string;
-  tipo_semana: string;
+  actividad_nombre: string;
   origen: "horario" | "ad_hoc";
   curso_nombre: string | null;
   tema_numero: number | null;
@@ -21,15 +22,9 @@ interface FilaNueva {
   semana: number;
   guia: number;
   fecha: string; // yyyy-mm-dd
-  tipoSemana: string;
+  actividadId: string;
 }
 interface Conflicto { semana: number; fecha: string; guia: number }
-
-const TIPOS_SEMANA_SUGERIDOS = [
-  "CLASES", "SEMANA DIAGNÓSTICO", "EXAMEN INTERMEDIO", "EXAMEN FINAL",
-  "DÍA DEL EMPRENDIMIENTO", "BIENESTAR ESTUDIANTIL", "DÍA DEL PROFESOR",
-  "RACE / PLAN DE MEJORAMIENTO", "GRADOS", "MATRÍCULAS",
-];
 
 function sumarDias(fechaIso: string, dias: number): string {
   const d = new Date(fechaIso + "T00:00:00");
@@ -41,6 +36,7 @@ export default function Horarios() {
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
+  const [actividades, setActividades] = useState<Actividad[]>([]);
   const [cicloId, setCicloId] = useState("");
   const [jornadaId, setJornadaId] = useState("");
   const [filasExistentes, setFilasExistentes] = useState<FilaExistente[]>([]);
@@ -53,13 +49,13 @@ export default function Horarios() {
   const [autoSemanaInicial, setAutoSemanaInicial] = useState(1);
   const [autoGuiaInicial, setAutoGuiaInicial] = useState(0);
   const [autoCantidad, setAutoCantidad] = useState(10);
-  // Tipo de semana por fila (índice dentro del lote) — cada semana puede ser
+  // Actividad por fila (índice dentro del lote) — cada semana puede ser
   // distinta (CLASES, GUÍA DE REPASO, EXAMEN...), no todas iguales.
-  const [autoTiposPorFila, setAutoTiposPorFila] = useState<Record<number, string>>({});
+  const [autoActividadesPorFila, setAutoActividadesPorFila] = useState<Record<number, string>>({});
 
   // Modo manual
   const [filasManual, setFilasManual] = useState<FilaNueva[]>([
-    { cursoId: "", semana: 1, guia: 0, fecha: "", tipoSemana: "CLASES" },
+    { cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: "" },
   ]);
 
   const [guardando, setGuardando] = useState(false);
@@ -70,12 +66,19 @@ export default function Horarios() {
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[] }) => {
+      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[] }) => {
         setCiclos(data.ciclos);
         setCursos(data.cursos);
         setJornadas(data.jornadas);
+        setActividades(data.actividades);
+        const clases = data.actividades.find((a) => a.nombre === "CLASES");
+        if (clases) {
+          setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: clases.id }]);
+        }
       });
   }, []);
+
+  const actividadClasesId = actividades.find((a) => a.nombre === "CLASES")?.id ?? "";
 
   function cargarExistentes() {
     if (!cicloId || !jornadaId) {
@@ -89,20 +92,20 @@ export default function Horarios() {
 
   useEffect(cargarExistentes, [cicloId, jornadaId]);
 
-  const previewAuto: FilaNueva[] = !modoAutomatico || !autoCursoId || !autoFechaInicio
+  const previewAuto: FilaNueva[] = !modoAutomatico || !autoCursoId || !autoFechaInicio || !actividadClasesId
     ? []
     : Array.from({ length: autoCantidad }, (_, i) => ({
         cursoId: autoCursoId,
         semana: autoSemanaInicial + i,
         guia: autoGuiaInicial + i,
         fecha: sumarDias(autoFechaInicio, i * 7),
-        tipoSemana: autoTiposPorFila[i] ?? "CLASES",
+        actividadId: autoActividadesPorFila[i] ?? actividadClasesId,
       }));
 
   function agregarFilaManual() {
     setFilasManual((prev) => [...prev, {
       cursoId: "", semana: (prev.at(-1)?.semana ?? 0) + 1, guia: (prev.at(-1)?.guia ?? 0) + 1,
-      fecha: "", tipoSemana: "CLASES",
+      fecha: "", actividadId: actividadClasesId,
     }]);
   }
   function quitarFilaManual(i: number) {
@@ -121,8 +124,8 @@ export default function Horarios() {
       return;
     }
     const filas = modoAutomatico ? previewAuto : filasManual;
-    if (filas.length === 0 || filas.some((f) => !f.fecha)) {
-      setError("Completa al menos la fecha en todas las filas antes de guardar.");
+    if (filas.length === 0 || filas.some((f) => !f.fecha || !f.actividadId)) {
+      setError("Completa la fecha y el tipo de actividad en todas las filas antes de guardar.");
       return;
     }
     setGuardando(true);
@@ -132,7 +135,7 @@ export default function Horarios() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cicloId, jornadaId, confirmar,
-          filas: filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, tipoSemana: f.tipoSemana })),
+          filas: filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, actividadId: f.actividadId })),
         }),
       });
       const data = await res.json();
@@ -144,7 +147,7 @@ export default function Horarios() {
       setExito(`${data.filasGuardadas} semanas guardadas.`);
       setConflictos(null);
       cargarExistentes();
-      setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", tipoSemana: "CLASES" }]);
+      setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: actividadClasesId }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -164,10 +167,6 @@ export default function Horarios() {
         Carga las fechas que entrega rectoría por ciclo y jornada. Semanal 1 suele ser regular
         (cada 7 días); Sábado 1/2 rota entre cursos, así que normalmente necesita carga manual.
       </p>
-
-      <datalist id="tipos-semana">
-        {TIPOS_SEMANA_SUGERIDOS.map((t) => <option key={t} value={t} />)}
-      </datalist>
 
       <div className="mt-8 grid grid-cols-2 gap-4">
         <label className="block">
@@ -226,7 +225,7 @@ export default function Horarios() {
               {previewAuto.length > 0 && (
                 <div className="mt-4 max-h-72 overflow-y-auto rounded border">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50"><tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Tipo (edítalo por semana)</th></tr></thead>
+                    <thead className="bg-gray-50"><tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Actividad (edítala por semana)</th></tr></thead>
                     <tbody>
                       {previewAuto.map((f, i) => (
                         <tr key={i} className="border-t">
@@ -234,12 +233,13 @@ export default function Horarios() {
                           <td className="p-2">{f.guia}</td>
                           <td className="p-2">{f.fecha}</td>
                           <td className="p-2">
-                            <input
-                              list="tipos-semana"
+                            <select
                               className="w-full rounded border px-2 py-1"
-                              value={f.tipoSemana}
-                              onChange={(e) => setAutoTiposPorFila((prev) => ({ ...prev, [i]: e.target.value }))}
-                            />
+                              value={f.actividadId}
+                              onChange={(e) => setAutoActividadesPorFila((prev) => ({ ...prev, [i]: e.target.value }))}
+                            >
+                              {actividades.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                            </select>
                           </td>
                         </tr>
                       ))}
@@ -261,7 +261,10 @@ export default function Horarios() {
                     <input type="number" className="col-span-1 rounded border px-2 py-1 text-sm" value={f.semana} onChange={(e) => actualizarFilaManual(i, "semana", Number(e.target.value))} placeholder="Semana" />
                     <input type="number" className="col-span-1 rounded border px-2 py-1 text-sm" value={f.guia} onChange={(e) => actualizarFilaManual(i, "guia", Number(e.target.value))} placeholder="Guía" />
                     <input type="date" className="col-span-2 rounded border px-2 py-1 text-sm" value={f.fecha} onChange={(e) => actualizarFilaManual(i, "fecha", e.target.value)} />
-                    <input list="tipos-semana" className="col-span-4 rounded border px-2 py-1 text-sm" value={f.tipoSemana} onChange={(e) => actualizarFilaManual(i, "tipoSemana", e.target.value)} placeholder="Tipo de semana" />
+                    <select className="col-span-4 rounded border px-2 py-1 text-sm" value={f.actividadId} onChange={(e) => actualizarFilaManual(i, "actividadId", e.target.value)}>
+                      <option value="" disabled>Actividad…</option>
+                      {actividades.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                    </select>
                     <button type="button" className="col-span-1 text-red-600" onClick={() => quitarFilaManual(i)}>✕</button>
                   </div>
                 ))}
@@ -303,7 +306,7 @@ export default function Horarios() {
           ) : (
             <table className="mt-2 w-full text-sm">
               <thead className="bg-gray-50">
-                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th></th></tr>
+                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Actividad</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th></th></tr>
               </thead>
               <tbody>
                 {filasExistentes.map((f) => (
@@ -312,7 +315,7 @@ export default function Horarios() {
                     <td className="p-2">{f.guia}</td>
                     <td className="p-2">{f.fecha.slice(0, 10)}</td>
                     <td className="p-2">
-                      {f.tipo_semana}
+                      {f.actividad_nombre}
                       {f.origen === "ad_hoc" && <span className="ml-1 text-xs text-amber-600">(manual)</span>}
                     </td>
                     <td className="p-2">{f.curso_nombre ?? "—"}</td>
