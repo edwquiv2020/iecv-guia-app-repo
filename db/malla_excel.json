@@ -1,0 +1,107 @@
+[
+  {
+    "numero": 1,
+    "tema": "Introducción a MS Excel",
+    "subtemas": "Entorno de Excel: cinta de opciones, celdas, filas, columnas y hojas; libro, hoja y referencia de celda.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Conceptos básicos de Excel",
+    "subtemas": "Tipos de datos (texto, número, fecha, fórmula), selección de celdas/rangos, autocompletar y series.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Formato de celdas",
+    "subtemas": "Formato de número, moneda, porcentaje y fecha; alineación, combinar celdas y bordes.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Operaciones básicas",
+    "subtemas": "Operadores aritméticos y uso de referencias relativas y absolutas ($).",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Funciones básicas",
+    "subtemas": "Funciones SUMA, PROMEDIO, MAX, MIN, CONTAR y CONTARA; asistente de funciones y autosuma.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Función lógica SI",
+    "subtemas": "Sintaxis de la función SI y comparadores lógicos, aplicada a una clasificación simple.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "Función SI anidada",
+    "subtemas": "Construcción de condiciones múltiples anidando varias funciones SI.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "Gráficos en Excel",
+    "subtemas": "Tipos de gráficos, selección de datos, inserción y personalización básica.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Ordenar y filtrar datos",
+    "subtemas": "Ordenar datos ascendente/descendente y aplicar filtro automático y avanzado.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Nómina de pago",
+    "subtemas": "Estructura de una nómina y cálculo de salario, auxilio de transporte y deducciones.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "Horas extras",
+    "subtemas": "Tipos de recargo (diurno, nocturno, dominical, festivo) y fórmulas de cálculo.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Tablas dinámicas (parte 1)",
+    "subtemas": "Concepto de tabla dinámica y creación a partir de una base de datos.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "Tablas dinámicas (parte 2)",
+    "subtemas": "Filtros, segmentación y cambio del tipo de cálculo en una tabla dinámica.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "Validación de datos",
+    "subtemas": "Creación de listas desplegables y reglas de validación para evitar errores de captura.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "Proyecto integrador de Excel",
+    "subtemas": "Aplicación de lo aprendido en un caso real: presupuesto, inventario o control simple.",
+    "url_video": "https://www.youtube.com/watch?v=eZPCVg4Jk00",
+    "archivo_kahoot": "kahoot it"
+  }
+]
