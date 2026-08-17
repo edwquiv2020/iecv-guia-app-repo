@@ -77,10 +77,14 @@ create table calendario_clases (
   id uuid primary key default gen_random_uuid(),
   fecha_clase date not null,
   semana_academica int not null,
+  guia_numero int not null,
   ciclo_id uuid not null references ciclos(id),
   jornada_id uuid not null references jornadas(id),
   curso_id uuid not null references cursos(id),
-  tema_id uuid not null references temas(id),
+  -- Nullable: al cargar el horario se resuelve automáticamente por orden
+  -- dentro del lote según temas.numero; si el curso no tiene más temas que
+  -- semanas cargadas, queda en null para asignarlo después.
+  tema_id uuid references temas(id),
   created_at timestamptz not null default now(),
   unique (ciclo_id, jornada_id, semana_academica)
 );

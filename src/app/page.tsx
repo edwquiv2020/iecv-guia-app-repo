@@ -211,10 +211,15 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="text-2xl font-bold">Generador de Guía de Formación — IECV</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
-      </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Generador de Guía de Formación — IECV</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
+          </p>
+        </div>
+        <a href="/horarios" className="text-sm text-emerald-700 underline">Cargar horarios →</a>
+      </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
         {catalogoError && <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{catalogoError}</p>}
