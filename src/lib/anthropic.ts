@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ParametrosGuia, ContenidoGuia } from "./types";
-import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR } from "./types";
+import type { ParametrosGuia, ContenidoGuia, ContenidoDua } from "./types";
+import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA } from "./types";
 
 const BANCO_KEYS = [
   "tortuga", "buho", "leon", "elefante", "aguila", "delfin", "lobo",
@@ -187,4 +187,168 @@ export async function generarContenidoGuia(params: ParametrosGuia): Promise<Cont
     bibliografia: [...data.bibliografia, ...BIBLIOGRAFIA_TEORICA_ESTANDAR],
     fotoMotivacionalClave: fotoParaSemana(params.semana),
   };
+}
+
+// ---------- Guía DUA: segunda llamada encadenada a partir del contenido Estándar ----------
+
+const CONTENIDO_DUA_TOOL = {
+  name: "entregar_contenido_dua",
+  description: "Entrega el contenido de la versión DUA (accesible/adaptada) de la guía, derivado del subtema A de la guía Estándar.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      saludoMotivacion: { type: "string", description: "Versión corta (2-3 frases) del saludo, mismo tono cercano y motivador." },
+      introduccion: { type: "string", description: "Versión corta (1-2 frases) de la introducción, enfocada solo en el procedimiento elegido." },
+      competencia: { type: "string", description: "Competencia reescrita para un procedimiento guiado y repetido (no cubre todos los subtemas, solo el elegido)." },
+      desempeno: { type: "string", description: "Desempeño como una secuencia de acciones concretas y repetibles." },
+      objetivoGuia: { type: "string", description: "Una sola frase fluida: 'Al terminar, vas a poder [acción] solo, sin ayuda.'" },
+      reflexionInicial: { type: "string", description: "Analogía corta y concreta." },
+      parteDeLoQueYaSabes: { type: "string", description: "1 frase corta conectando con algo cotidiano." },
+      funcionExplicita: { type: "string", description: "Explicación del procedimiento MUY explícita y simple, en pasos cortos — nada de tecnicismos innecesarios." },
+      repeticiones: {
+        type: "array",
+        description: "Exactamente 4 repeticiones del MISMO procedimiento, cambiando solo el dato de entrada. La repetición 1 (índice 0) es un ejemplo YA RESUELTO con un dato concreto de muestra (marca explícitamente que ya está resuelto). Las repeticiones 2-4 son para que el estudiante las haga, con apoyo decreciente.",
+        items: { type: "object", properties: { instruccion: { type: "string" } }, required: ["instruccion"] },
+      },
+      tallerSituacionPropia: {
+        type: "object",
+        description: "Segundo taller: el estudiante elige UNA de dos opciones concretas de su vida real para aplicar el procedimiento una vez más.",
+        properties: { opcionA: { type: "string" }, opcionB: { type: "string" } },
+        required: ["opcionA", "opcionB"],
+      },
+      rubricaCriteriosEspecificos: {
+        type: "array",
+        description: "3 criterios específicos (SIN incluir Participación, esa la agrega la app): deben evaluar la ejecución del procedimiento, la autonomía en la última repetición, y la entrega del Taller 2.",
+        items: {
+          type: "object",
+          properties: { criterio: { type: "string" }, superior: { type: "string" }, alto: { type: "string" }, basico: { type: "string" }, bajo: { type: "string" } },
+          required: ["criterio", "superior", "alto", "basico", "bajo"],
+        },
+      },
+      listaVerificacion: { type: "array", description: "3 ítems cortos en primera persona sobre las 4 repeticiones.", items: { type: "string" } },
+      antesDeCerrarPregunta: { type: "string" },
+      fichaResumen: { type: "string", description: "Una sola frase tipo 'paso 1 → paso 2 → paso 3. Ese es el ciclo completo, siempre igual.'" },
+      bibliografia: {
+        type: "array",
+        description: "2-3 referencias sobre el tema puntual (no incluyas aquí la bibliografía teórica DUA — la agrega la app aparte).",
+        items: {
+          type: "object",
+          properties: { autor: { type: "string" }, anio: { type: "string" }, titulo: { type: "string" } },
+          required: ["autor", "anio", "titulo"],
+        },
+      },
+    },
+    required: [
+      "saludoMotivacion", "introduccion", "competencia", "desempeno", "objetivoGuia",
+      "reflexionInicial", "parteDeLoQueYaSabes", "funcionExplicita", "repeticiones",
+      "tallerSituacionPropia", "rubricaCriteriosEspecificos", "listaVerificacion",
+      "antesDeCerrarPregunta", "fichaResumen", "bibliografia",
+    ],
+  },
+};
+
+function systemPromptDua(): string {
+  return `Actúas como docente experto en Diseño Universal para el Aprendizaje (DUA) del
+Instituto de Educación Comfenalco Valle (IECV). Vas a reescribir UN subtema
+puntual de una guía ya generada como una versión accesible/adaptada, para
+estudiantes con dificultad de lectura, de visión, o motricidad fina —
+típicamente adultos de jornada sabatina.
+
+Regla central: NO es contenido nuevo, es la MISMA guía reestructurada.
+Quita toda la carga cognitiva que puedas: frases cortas, un solo
+procedimiento (nunca varios subtemas), sin tecnicismos innecesarios, todo
+explicado paso a paso.
+
+Estructura obligatoria: un único procedimiento, repetido EXACTAMENTE 4
+veces, cambiando solo el dato de entrada en cada repetición — nunca varios
+procedimientos distintos. La repetición 1 es un ejemplo ya resuelto, tan
+explícito que el estudiante pueda copiar el patrón sin dudas. Las
+repeticiones 2 a 4 aumentan la autonomía progresivamente (menos apoyo en
+cada una).
+
+Nunca menciones el día de la semana ni la jornada. No uses markdown en los
+textos (nada de **, #, etc.).
+
+Entrega el resultado exclusivamente llamando a la herramienta entregar_contenido_dua.`;
+}
+
+function userPromptDua(params: ParametrosGuia, contenidoEstandar: ContenidoGuia): string {
+  const subtemaA = contenidoEstandar.subtemas[0];
+  return `Convierte este subtema de la guía Estándar en la versión DUA de esta semana:
+
+- Tema de la guía: ${params.tema}
+- Subtema A elegido (base de la versión DUA): ${subtemaA.titulo}
+- Explicación técnica ya usada en la Estándar (para que no inventes datos nuevos): ${subtemaA.funcion}
+- Competencia de la Estándar (para mantener coherencia de fondo): ${contenidoEstandar.competencia}
+- CLEI: ${params.clei}`;
+}
+
+/**
+ * Segunda llamada, encadenada a partir del contenido ya generado de la
+ * Estándar — garantiza que el subtema A se explique con la misma base de
+ * fondo en ambas versiones, solo cambia el tratamiento pedagógico.
+ */
+export async function generarContenidoDua(params: ParametrosGuia, contenidoEstandar: ContenidoGuia): Promise<ContenidoDua> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("Falta ANTHROPIC_API_KEY en el entorno.");
+  }
+
+  const client = new Anthropic({ apiKey });
+
+  // El modelo a veces omite algún campo cuando la llamada tiene muchos
+  // requeridos a la vez — un reintento resuelve la gran mayoría de casos.
+  let ultimoError: Error | null = null;
+  for (let intento = 1; intento <= 2; intento++) {
+    const message = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 4096,
+      system: systemPromptDua(),
+      messages: [{ role: "user", content: userPromptDua(params, contenidoEstandar) }],
+      tools: [CONTENIDO_DUA_TOOL],
+      tool_choice: { type: "tool", name: "entregar_contenido_dua" },
+    });
+
+    const toolUse = message.content.find((b) => b.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      ultimoError = new Error("El modelo no devolvió el contenido DUA esperado (sin tool_use en la respuesta).");
+      continue;
+    }
+
+    const data = toolUse.input as Omit<ContenidoDua, "subtemaTitulo">;
+    const faltantes = validarContenidoDua(data);
+    if (faltantes.length > 0) {
+      ultimoError = new Error(`El modelo devolvió contenido DUA incompleto (faltan o están vacíos: ${faltantes.join(", ")}).`);
+      continue;
+    }
+
+    return {
+      ...data,
+      subtemaTitulo: params.subtemas[0] ?? contenidoEstandar.subtemas[0]?.titulo ?? "",
+      bibliografia: [...data.bibliografia, ...BIBLIOGRAFIA_TEORICA_DUA],
+    };
+  }
+
+  throw ultimoError ?? new Error("No se pudo generar el contenido DUA.");
+}
+
+/** Valida que el modelo haya llenado todos los campos requeridos (a veces omite alguno en llamadas con muchos campos). Devuelve la lista de campos faltantes/vacíos. */
+function validarContenidoDua(data: Omit<ContenidoDua, "subtemaTitulo">): string[] {
+  const faltantes: string[] = [];
+  const textos: Array<[string, unknown]> = [
+    ["saludoMotivacion", data.saludoMotivacion], ["introduccion", data.introduccion],
+    ["competencia", data.competencia], ["desempeno", data.desempeno],
+    ["objetivoGuia", data.objetivoGuia], ["reflexionInicial", data.reflexionInicial],
+    ["parteDeLoQueYaSabes", data.parteDeLoQueYaSabes], ["funcionExplicita", data.funcionExplicita],
+    ["antesDeCerrarPregunta", data.antesDeCerrarPregunta], ["fichaResumen", data.fichaResumen],
+  ];
+  for (const [campo, valor] of textos) {
+    if (typeof valor !== "string" || valor.trim() === "") faltantes.push(campo);
+  }
+  if (!Array.isArray(data.repeticiones) || data.repeticiones.length !== 4 || data.repeticiones.some((r) => !r?.instruccion)) faltantes.push("repeticiones");
+  if (!data.tallerSituacionPropia?.opcionA || !data.tallerSituacionPropia?.opcionB) faltantes.push("tallerSituacionPropia");
+  if (!Array.isArray(data.rubricaCriteriosEspecificos) || data.rubricaCriteriosEspecificos.length === 0) faltantes.push("rubricaCriteriosEspecificos");
+  if (!Array.isArray(data.listaVerificacion) || data.listaVerificacion.length === 0) faltantes.push("listaVerificacion");
+  if (!Array.isArray(data.bibliografia) || data.bibliografia.length === 0) faltantes.push("bibliografia");
+  return faltantes;
 }

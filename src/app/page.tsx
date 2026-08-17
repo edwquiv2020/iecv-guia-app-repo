@@ -132,63 +132,56 @@ export default function Home() {
     const fechaClase = formatearFechas(fechaClaseIso);
     const fechaCargue = formatearFechas(fechaCargueIso || fechaClaseIso).larga;
 
+    const tipos: Array<"estandar" | "dua"> = [
+      ...(quiereEstandar ? (["estandar"] as const) : []),
+      ...(quiereDua ? (["dua"] as const) : []),
+    ];
+
     setEnviando(true);
     try {
-      const mensajes: string[] = [];
+      const formData = new FormData();
+      formData.append("params", JSON.stringify({
+        clei,
+        jornada,
+        grupoCleiJornada,
+        semana: Number(semana),
+        guia: Number(guia),
+        fechaClase: fechaClase.corta,
+        fechaClaseLarga: fechaClase.larga,
+        tema: tema.toUpperCase(),
+        subtemas,
+        fechaCargue,
+        horaMaxima,
+        videoApoyo: { titulo: videoTitulo, canal: videoCanal, duracion: videoDuracion, url: videoUrl },
+        tipos,
+      }));
+      subtemas.forEach((_, i) => {
+        (subtemaImagenes[i] ?? []).forEach((file) => formData.append(`subtemaImg_${i}`, file));
+        formData.append(`subtemaImgEsCaptura_${i}`, String(!!subtemaEsCaptura[i]));
+      });
 
-      if (quiereEstandar) {
-        const formData = new FormData();
-        formData.append("params", JSON.stringify({
-          clei,
-          jornada,
-          grupoCleiJornada,
-          semana: Number(semana),
-          guia: Number(guia),
-          fechaClase: fechaClase.corta,
-          fechaClaseLarga: fechaClase.larga,
-          tema: tema.toUpperCase(),
-          subtemas,
-          fechaCargue,
-          horaMaxima,
-          videoApoyo: { titulo: videoTitulo, canal: videoCanal, duracion: videoDuracion, url: videoUrl },
-        }));
-        subtemas.forEach((_, i) => {
-          (subtemaImagenes[i] ?? []).forEach((file) => formData.append(`subtemaImg_${i}`, file));
-          formData.append(`subtemaImgEsCaptura_${i}`, String(!!subtemaEsCaptura[i]));
-        });
+      const res = await fetch("/api/generar-guia", { method: "POST", body: formData });
+      const data = await res.json().catch(() => null);
 
-        const res = await fetch("/api/generar-guia", {
-          method: "POST",
-          body: formData,
-        });
+      if (!res.ok || !data) {
+        throw new Error(data?.error || "Error generando la guía.");
+      }
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({ error: "Error generando la guía estándar." }));
-          throw new Error(data.error || "Error generando la guía estándar.");
-        }
-
-        const blob = await res.blob();
-        const nombre =
-          res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ||
-          `Guia_Semana${semana}_${clei}.docx`;
+      const archivos: Array<{ nombre: string; contenidoBase64: string }> = data.archivos;
+      for (const archivo of archivos) {
+        const bytes = Uint8Array.from(atob(archivo.contenidoBase64), (c) => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = nombre;
+        a.download = archivo.nombre;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        mensajes.push(`Guía estándar generada: ${nombre}`);
       }
 
-      if (quiereDua) {
-        mensajes.push(
-          "Guía DUA: pendiente — todavía no tenemos cargada la plantilla real, así que no se genera hasta ajustar el formato con el docente."
-        );
-      }
-
-      setExito(mensajes.join(" · "));
+      setExito(`Guía(s) generada(s): ${archivos.map((a) => a.nombre).join(" · ")}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -435,8 +428,8 @@ export default function Home() {
             </label>
           </div>
           {quiereDua && (
-            <p className="mt-2 text-xs text-amber-600">
-              La generación de la guía DUA está pendiente de las plantillas reales — por ahora solo se genera la estándar si está marcada.
+            <p className="mt-2 text-xs text-gray-500">
+              La versión DUA toma el subtema A ya generado y lo convierte en un procedimiento de 4 repeticiones con apoyo decreciente — reutiliza las imágenes que subas para ese subtema.
             </p>
           )}
         </fieldset>

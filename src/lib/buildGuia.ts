@@ -3,8 +3,8 @@ import {
   Header, Footer, ImageRun, AlignmentType, WidthType,
   VerticalAlign, ShadingType, ExternalHyperlink,
 } from "docx";
-import type { ParametrosGuia, ContenidoGuia, ImagenSubtema } from "./types";
-import { duracionPorClei } from "./types";
+import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ImagenSubtema } from "./types";
+import { duracionPorClei, CRITERIO_PARTICIPACION_DUA } from "./types";
 
 // Puerto a TypeScript de scripts/build_guia.js (skill iecv-guia-formacion),
 // parametrizado: en vez de un CONFIG hardcodeado editado a mano por guía,
@@ -372,6 +372,135 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
     ...contenido.rubricaCriteriosEspecificos.map((c) => [c.criterio, c.superior, c.alto, c.basico, c.bajo]),
     CRITERIO_HERRAMIENTAS,
     CRITERIO_ENTREGA,
+  ];
+  children.push(buildRubricTable(rubricRows));
+
+  children.push(pRuns([{ text: "5. INDICACIONES ", bold: true }, { text: "PARA EL CARGUE DE LAS ACTIVIDADES:" }], { after: 160, before: 400 }));
+  children.push(buildCargueTable(params, maxPaginas));
+
+  children.push(heading("6. BIBLIOGRAFÍA Y WEBGRAFÍA:", { size: 13, before: 400 }));
+  contenido.bibliografia.forEach((ref) => {
+    children.push(pRuns([{ text: `${ref.autor}. ` }, { text: `(${ref.anio}). ${ref.titulo}.`, italics: true }], { indent: { left: 400 } }));
+  });
+  children.push(pRuns([{ text: "Formato estandarizado institucional de diseño instruccional integrado: " }, { text: "FTO-EDU-FOR-96 V3.", italics: true }], { indent: { left: 400 } }));
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1000, bottom: 900, left: 1100, right: 1100 } } },
+        headers: { default: buildHeader(params, assets.logoBuf) },
+        footers: { default: buildFooter() },
+        children,
+      },
+    ],
+  });
+
+  return Packer.toBuffer(doc);
+}
+
+// ---------- Guía DUA ----------
+
+const SHADE_AZUL_EJEMPLO = "DDEBF7";
+const SHADE_AMARILLO_ULTIMA = "FFF2CC";
+
+/** Una repetición del taller de "ciclo completo", con sombreado si es el ejemplo resuelto o la última (sin ayuda). */
+function repeticionParagraph(n: number, instruccion: string, opts: { esEjemplo?: boolean; esUltima?: boolean }) {
+  const shade = opts.esEjemplo ? SHADE_AZUL_EJEMPLO : opts.esUltima ? SHADE_AMARILLO_ULTIMA : undefined;
+  const sufijo = opts.esEjemplo ? " (ya resuelto)" : "";
+  const texto = opts.esEjemplo ? `${n} · EJEMPLO.  ${instruccion}${sufijo}` : `${n}.  ${instruccion}`;
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    rows: [new TableRow({ children: [new TableCell({
+      width: { size: 10500, type: WidthType.DXA },
+      shading: shade ? { type: ShadingType.CLEAR, fill: shade } : undefined,
+      margins: { top: 100, bottom: 100, left: 150, right: 150 },
+      children: [new Paragraph({ children: [new TextRun({ text: texto, font: FONT, size: 24 })] })],
+    })] })],
+  });
+}
+
+export interface BuildGuiaDuaAssets {
+  logoBuf: Buffer;
+  ilustracionBuf: Buffer;
+  /** Imágenes ya subidas para el subtema A de la Estándar — se reutilizan tal cual, no se piden de nuevo. */
+  imagenesSubtemaA?: ImagenSubtema[];
+}
+
+/** Arma el .docx de la versión DUA (accesible/adaptada) y devuelve el Buffer listo para descargar. */
+export async function buildGuiaDuaDocx(params: ParametrosGuia, contenido: ContenidoDua, assets: BuildGuiaDuaAssets): Promise<Buffer> {
+  const { maxPaginas } = duracionPorClei(params.clei);
+
+  const children: (Paragraph | Table)[] = [];
+
+  children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+  children.push(buildStudentTable(params));
+  children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: "ESTRUCTURA DE LA GUÍA DE FORMACIÓN", font: FONT, size: 24, bold: true })] }));
+
+  // INICIO
+  children.push(heading("INICIO", { size: 16, before: 200 }));
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 }, children: [new ImageRun({ data: assets.ilustracionBuf, type: "png", transformation: { width: 260, height: 217 } })] }));
+
+  children.push(heading("1. Saludo y Motivación:", { size: 13 }));
+  children.push(p(contenido.saludoMotivacion));
+
+  children.push(heading("2. Introducción:", { size: 13 }));
+  children.push(p(contenido.introduccion));
+  children.push(videoApoyoParagraph(params.videoApoyo));
+
+  children.push(heading("3. Competencias y Desempeños:", { size: 13 }));
+  children.push(pRuns([{ text: "Competencia: ", bold: true }, { text: contenido.competencia }], { indent: { left: 400 }, after: 100 }));
+  children.push(pRuns([{ text: "Desempeño: ", bold: true }, { text: contenido.desempeno }], { indent: { left: 400 } }));
+
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box("OBJETIVO DE LA GUÍA (lo que vas a lograr hoy)", [contenido.objetivoGuia], SHADE_AMARILLO));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+
+  children.push(heading("4. Duración de horas de la guía:", { size: 13 }));
+  children.push(p(duracionPorClei(params.clei).duracion));
+
+  // DESARROLLO
+  children.push(heading("DESARROLLO", { size: 16, before: 500 }));
+
+  children.push(heading("1. Actividades de Reflexión Inicial.", { size: 13 }));
+  children.push(p(contenido.reflexionInicial));
+
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box("PARTE DE LO QUE YA SABES", [contenido.parteDeLoQueYaSabes], SHADE_AZUL));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+
+  // Un único subtema (A) — sin mapa de aprendizaje, para no sumar carga cognitiva.
+  children.push(heading("2. Explicación y presentación de temáticas, ejemplarización de contenidos, ejercicios, definiciones, leyes, premisas y recursos didácticos:", { size: 13 }));
+  children.push(heading(`A. ${contenido.subtemaTitulo}`, { size: 12, before: 200, italics: true }));
+  children.push(pRuns([{ text: "Función: ", bold: true }, { text: contenido.funcionExplicita }], { indent: { left: 400 } }));
+  if (assets.imagenesSubtemaA?.length) children.push(...imagenesDeSubtema(assets.imagenesSubtemaA));
+
+  children.push(heading("3. Asignación de Actividades Formativas:", { size: 13, before: 300 }));
+  children.push(heading("TALLER 1: Ciclo completo — 4 repeticiones", { size: 13, italics: false }));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  contenido.repeticiones.forEach((rep, i) => {
+    children.push(repeticionParagraph(i + 1, rep.instruccion, { esEjemplo: i === 0, esUltima: i === contenido.repeticiones.length - 1 }));
+    children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  });
+  children.push(pRuns([{ text: "Leyenda de color: ", bold: true }, { text: "azul = ejemplo ya resuelto   ·   amarillo = último ciclo, sin ayuda" }], { after: 200 }));
+
+  children.push(heading("TALLER 2: Situación propia", { size: 12, italics: true }));
+  children.push(p(`Elija UNA: Opción A — ${contenido.tallerSituacionPropia.opcionA}. Opción B — ${contenido.tallerSituacionPropia.opcionB}.`));
+
+  children.push(new Paragraph({ text: "", spacing: { before: 200, after: 100 } }));
+  children.push(box("LISTA DE VERIFICACIÓN ANTES DE ENTREGAR", contenido.listaVerificacion.map((it) => `☐ ${it}`), SHADE_AMARILLO));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box("ANTES DE CERRAR: ¿EN QUÉ TE SIRVE ESTO?", [contenido.antesDeCerrarPregunta], SHADE_AZUL));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box("FICHA RESUMEN", [contenido.fichaResumen], SHADE_VERDE));
+  children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+  children.push(heading("4. Seguimiento, retroalimentación, evaluación y verificación del cumplimiento de objetivos, competencias y desempeños (RÚBRICA)", { size: 13, before: 300 }));
+  children.push(heading("RÚBRICA CRITERIOS GENERALES (FTO-EDU-FOR-96 V3)", { size: 12, italics: true, before: 100 }));
+  const rubricRows: string[][] = [
+    RUBRIC_HEADER_ROW,
+    CRITERIO_PARTICIPACION_DUA,
+    ...contenido.rubricaCriteriosEspecificos.map((c) => [c.criterio, c.superior, c.alto, c.basico, c.bajo]),
   ];
   children.push(buildRubricTable(rubricRows));
 

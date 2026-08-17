@@ -83,6 +83,57 @@ export const BIBLIOGRAFIA_TEORICA_ESTANDAR = [
   { autor: "Knowles, M.", anio: "1980", titulo: "The Modern Practice of Adult Education — base de los ajustes de contexto adulto" },
 ];
 
+/**
+ * Contenido de la guía DUA — generado en una SEGUNDA llamada encadenada,
+ * a partir del contenido ya generado de la Estándar (mismo tema, misma
+ * competencia de fondo), tomando solo el subtema A y convirtiéndolo en un
+ * procedimiento repetible con apoyo decreciente (4 repeticiones). Todos los
+ * textos van reescritos más cortos/explícitos — no se reutilizan verbatim
+ * salvo el video, la foto motivacional y las imágenes del subtema.
+ */
+export interface ContenidoDua {
+  saludoMotivacion: string;
+  introduccion: string;
+  competencia: string;
+  desempeno: string;
+  /** Una sola frase fluida (no una lista numerada como en Estándar). */
+  objetivoGuia: string;
+  reflexionInicial: string;
+  parteDeLoQueYaSabes: string;
+  subtemaTitulo: string;
+  /** Explicación muy explícita y simple del procedimiento (reemplaza "Función:"). */
+  funcionExplicita: string;
+  /** Exactamente 4 repeticiones del mismo procedimiento, cambiando solo el dato de entrada. La primera (índice 0) es el ejemplo ya resuelto. */
+  repeticiones: Array<{ instruccion: string }>;
+  tallerSituacionPropia: { opcionA: string; opcionB: string };
+  rubricaCriteriosEspecificos: Array<{
+    criterio: string;
+    superior: string;
+    alto: string;
+    basico: string;
+    bajo: string;
+  }>;
+  listaVerificacion: string[];
+  antesDeCerrarPregunta: string;
+  /** Una sola frase de cierre tipo "ciclo completo" (no una tabla de conceptos como en Estándar). */
+  fichaResumen: string;
+  bibliografia: Array<{ autor: string; anio: string; titulo: string }>;
+}
+
+export const CRITERIO_PARTICIPACION_DUA = [
+  "Participación",
+  "Realiza las repeticiones con acompañamiento mínimo.",
+  "Realiza casi todas, con algún acompañamiento puntual.",
+  "Realiza las repeticiones con acompañamiento constante.",
+  "No completa las repeticiones incluso con acompañamiento.",
+];
+
+export const BIBLIOGRAFIA_TEORICA_DUA = [
+  { autor: "CAST (Center for Applied Special Technology)", anio: "2018", titulo: "Universal Design for Learning Guidelines version 2.2" },
+  { autor: "Paivio, A.", anio: "1971", titulo: "Imagery and Verbal Processes — base de los apoyos visuales de esta guía" },
+  { autor: "Knowles, M.", anio: "1980", titulo: "The Modern Practice of Adult Education — base de los ajustes de contexto adulto" },
+];
+
 /** Imagen subida manualmente por el docente para un subtema (captura real u otra ilustración). */
 export interface ImagenSubtema {
   subtemaIndex: number;

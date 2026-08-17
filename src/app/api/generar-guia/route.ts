@@ -2,15 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ParametrosGuia, ImagenSubtema } from "@/lib/types";
-import { generarContenidoGuia } from "@/lib/anthropic";
+import { generarContenidoGuia, generarContenidoDua } from "@/lib/anthropic";
 import { generarImagenMotivacional } from "@/lib/images";
-import { buildGuiaDocx } from "@/lib/buildGuia";
+import { buildGuiaDocx, buildGuiaDuaDocx } from "@/lib/buildGuia";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function validar(body: unknown): { ok: true; data: ParametrosGuia } | { ok: false; error: string } {
-  const b = body as Partial<ParametrosGuia> | null;
+type TipoGuia = "estandar" | "dua";
+interface ParamsConTipos extends ParametrosGuia {
+  tipos: TipoGuia[];
+}
+
+function validar(body: unknown): { ok: true; data: ParamsConTipos } | { ok: false; error: string } {
+  const b = body as Partial<ParamsConTipos> | null;
   if (!b) return { ok: false, error: "Cuerpo de la petición vacío." };
   const requeridos: Array<keyof ParametrosGuia> = [
     "clei", "grupoCleiJornada", "jornada", "semana", "guia",
@@ -28,7 +33,10 @@ function validar(body: unknown): { ok: true; data: ParametrosGuia } | { ok: fals
   if (!b.videoApoyo?.url || !b.videoApoyo?.titulo) {
     return { ok: false, error: "Falta el video de apoyo (título y URL)." };
   }
-  return { ok: true, data: b as ParametrosGuia };
+  if (!Array.isArray(b.tipos) || b.tipos.length === 0) {
+    return { ok: false, error: "Debes elegir al menos un tipo de guía (Estándar, DUA)." };
+  }
+  return { ok: true, data: b as ParamsConTipos };
 }
 
 /** Extrae params (JSON) + imágenes por subtema de un FormData multipart. */
@@ -81,17 +89,29 @@ export async function POST(request: NextRequest) {
       fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg")),
     ]);
 
-    const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas });
+    const archivos: Array<{ nombre: string; contenidoBase64: string }> = [];
 
-    const nombreArchivo = `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`;
+    if (params.tipos.includes("estandar")) {
+      const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas });
+      archivos.push({
+        nombre: `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`,
+        contenidoBase64: docxBuf.toString("base64"),
+      });
+    }
 
-    return new NextResponse(docxBuf as unknown as BodyInit, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
-      },
-    });
+    if (params.tipos.includes("dua")) {
+      // Encadenada: usa el contenido de la Estándar (subtema A) como base,
+      // para que ambas versiones queden consistentes en el fondo.
+      const contenidoDua = await generarContenidoDua(params, contenido);
+      const imagenesSubtemaA = imagenesSubtemas.filter((img) => img.subtemaIndex === 0);
+      const docxDuaBuf = await buildGuiaDuaDocx(params, contenidoDua, { logoBuf, ilustracionBuf, imagenesSubtemaA });
+      archivos.push({
+        nombre: `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}_ADAPTADA.docx`,
+        contenidoBase64: docxDuaBuf.toString("base64"),
+      });
+    }
+
+    return NextResponse.json({ archivos });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido generando la guía.";
     return NextResponse.json({ error: message }, { status: 500 });
