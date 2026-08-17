@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParametrosGuia, ContenidoGuia } from "./types";
-import { duracionPorClei } from "./types";
+import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR } from "./types";
 
 const BANCO_KEYS = [
   "tortuga", "buho", "leon", "elefante", "aguila", "delfin", "lobo",
@@ -24,7 +24,16 @@ const CONTENIDO_TOOL = {
       introduccion: { type: "string", description: "Contexto y relevancia del tema." },
       competencia: { type: "string", description: "Competencia particularizada al tema puntual, no genérica." },
       desempeno: { type: "string", description: "Desempeño particularizado al tema puntual." },
+      objetivoGuia: {
+        type: "array",
+        description: "Exactamente 3 logros concretos y verificables que el estudiante podrá hacer SOLO, sin ayuda, al terminar la guía (recuadro 'OBJETIVO DE LA GUÍA'). Cada ítem empieza directo con el verbo en infinitivo, SIN repetir 'vas a poder' (la app ya antepone esa frase una sola vez) — ej. 'ubicar cualquier celda por su referencia', no 'vas a poder ubicar cualquier celda...'.",
+        items: { type: "string" },
+      },
       reflexionInicial: { type: "string", description: "Analogía o pregunta detonante para iniciar el DESARROLLO." },
+      parteDeLoQueYaSabes: {
+        type: "string",
+        description: "1-2 frases que conectan el tema con algo que el estudiante adulto ya sabe hacer en su vida cotidiana o trabajo, sin computador (recuadro 'PARTE DE LO QUE YA SABES').",
+      },
       subtemas: {
         type: "array",
         items: {
@@ -64,8 +73,27 @@ const CONTENIDO_TOOL = {
           required: ["criterio", "superior", "alto", "basico", "bajo"],
         },
       },
+      listaVerificacion: {
+        type: "array",
+        description: "3-4 frases cortas en primera persona que el estudiante marca antes de entregar (recuadro 'LISTA DE VERIFICACIÓN ANTES DE ENTREGAR'), ej. 'Guardé el archivo con el nombre correcto.'",
+        items: { type: "string" },
+      },
+      antesDeCerrarPregunta: {
+        type: "string",
+        description: "Pregunta reflexiva breve que conecta lo aprendido con la vida real del estudiante esta semana (recuadro 'ANTES DE CERRAR: ¿EN QUÉ TE SIRVE ESTO?').",
+      },
+      fichaResumen: {
+        type: "array",
+        description: "Un ítem por cada subtema (mismo orden y cantidad que 'subtemas'): concepto = el título corto, resumen = una frase de referencia rápida (recuadro 'FICHA RESUMEN').",
+        items: {
+          type: "object",
+          properties: { concepto: { type: "string" }, resumen: { type: "string" } },
+          required: ["concepto", "resumen"],
+        },
+      },
       bibliografia: {
         type: "array",
+        description: "3-4 referencias sobre el TEMA puntual de la semana (no incluyas aquí la bibliografía teórica de andragogía/visual — esa la agrega la app aparte).",
         items: {
           type: "object",
           properties: { autor: { type: "string" }, anio: { type: "string" }, titulo: { type: "string" } },
@@ -74,8 +102,10 @@ const CONTENIDO_TOOL = {
       },
     },
     required: [
-      "saludoMotivacion", "introduccion", "competencia", "desempeno", "reflexionInicial",
-      "subtemas", "talleres", "rubricaCriteriosEspecificos", "bibliografia",
+      "saludoMotivacion", "introduccion", "competencia", "desempeno", "objetivoGuia",
+      "reflexionInicial", "parteDeLoQueYaSabes", "subtemas", "talleres",
+      "rubricaCriteriosEspecificos", "listaVerificacion", "antesDeCerrarPregunta",
+      "fichaResumen", "bibliografia",
     ],
   },
 };
@@ -94,10 +124,15 @@ laboral, etc.).
 
 Reglas de contenido:
 - Competencia y Desempeño deben ser particularizados al tema puntual, nunca genéricos.
+- objetivoGuia: 3 logros de acción verificables, en segunda persona ("vas a poder..."), no genéricos ni copiados del estándar.
+- parteDeLoQueYaSabes: conecta con una situación real de un adulto (gastos de casa, un negocio propio, un trámite laboral), nunca con experiencia escolar previa.
 - Los subtemas deben cubrir exactamente los subtemas indicados por el docente, en el mismo orden.
 - Los talleres deben basarse en los conceptos exactos del tema/subtemas de esta semana, no inventes temas nuevos.
 - La rúbrica específica debe tener un criterio por subtema (3-4 criterios), con descripciones de desempeño reales y verificables, no genéricas ("hace bien el ejercicio" no sirve).
-- La bibliografía debe ser plausible y estar relacionada con el tema (formato: Autor. (Año). Título.).
+- listaVerificacion: en primera persona ("Guardé...", "Escribí..."), específica de las acciones de esta guía, no genérica.
+- fichaResumen: mismo orden y cantidad que subtemas, resumen de una frase corta cada uno, pensado como referencia rápida sin releer la guía.
+- La bibliografía debe ser plausible y estar relacionada con el tema (formato: Autor. (Año). Título.). No incluyas aquí la bibliografía teórica de andragogía — la agrega la aplicación aparte.
+- Nunca menciones el día de la semana ni la jornada (nada de "esta sesión de sábado") — la misma guía se reutiliza para Semanal 1, Sábado 1 y Sábado 2.
 - No uses markdown en los textos (nada de **, #, etc.), son párrafos de un documento Word formal.
 
 Entrega el resultado exclusivamente llamando a la herramienta entregar_contenido_guia.`;
@@ -149,6 +184,7 @@ export async function generarContenidoGuia(params: ParametrosGuia): Promise<Cont
 
   return {
     ...data,
+    bibliografia: [...data.bibliografia, ...BIBLIOGRAFIA_TEORICA_ESTANDAR],
     fotoMotivacionalClave: fotoParaSemana(params.semana),
   };
 }

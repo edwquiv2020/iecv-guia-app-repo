@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ParametrosGuia } from "@/lib/types";
+import type { ParametrosGuia, ImagenSubtema } from "@/lib/types";
 import { generarContenidoGuia } from "@/lib/anthropic";
 import { generarImagenMotivacional } from "@/lib/images";
 import { buildGuiaDocx } from "@/lib/buildGuia";
@@ -31,12 +31,37 @@ function validar(body: unknown): { ok: true; data: ParametrosGuia } | { ok: fals
   return { ok: true, data: b as ParametrosGuia };
 }
 
+/** Extrae params (JSON) + imágenes por subtema de un FormData multipart. */
+async function leerFormData(request: NextRequest): Promise<{ body: unknown; imagenesSubtemas: ImagenSubtema[] }> {
+  const form = await request.formData();
+  const paramsRaw = form.get("params");
+  const body = typeof paramsRaw === "string" ? JSON.parse(paramsRaw) : null;
+
+  const imagenesSubtemas: ImagenSubtema[] = [];
+  for (const [key, value] of form.entries()) {
+    if (!key.startsWith("subtemaImg_") || !(value instanceof File)) continue;
+    const [, subtemaIndexStr] = key.split("_");
+    const subtemaIndex = Number(subtemaIndexStr);
+    const esCapturaOffice = form.get(`subtemaImgEsCaptura_${subtemaIndex}`) === "true";
+    const tipo = value.type === "image/jpeg" ? "jpg" : "png";
+    const buffer = Buffer.from(await value.arrayBuffer());
+    imagenesSubtemas.push({ subtemaIndex, buffer, tipo, esCapturaOffice });
+  }
+  return { body, imagenesSubtemas };
+}
+
 export async function POST(request: NextRequest) {
   let body: unknown;
+  let imagenesSubtemas: ImagenSubtema[] = [];
+  const contentType = request.headers.get("content-type") || "";
   try {
-    body = await request.json();
+    if (contentType.includes("multipart/form-data")) {
+      ({ body, imagenesSubtemas } = await leerFormData(request));
+    } else {
+      body = await request.json();
+    }
   } catch {
-    return NextResponse.json({ error: "JSON inválido en el cuerpo de la petición." }, { status: 400 });
+    return NextResponse.json({ error: "Cuerpo de la petición inválido." }, { status: 400 });
   }
 
   const validado = validar(body);
@@ -56,7 +81,7 @@ export async function POST(request: NextRequest) {
       fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg")),
     ]);
 
-    const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf });
+    const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas });
 
     const nombreArchivo = `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`;
 

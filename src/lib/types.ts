@@ -40,7 +40,11 @@ export interface ContenidoGuia {
   introduccion: string;
   competencia: string;
   desempeno: string;
+  /** 3 logros concretos y verificables que el estudiante puede hacer solo al terminar (recuadro "OBJETIVO DE LA GUÍA"). */
+  objetivoGuia: string[];
   reflexionInicial: string;
+  /** Conecta el tema con algo que el estudiante adulto ya sabe de su vida cotidiana (recuadro "PARTE DE LO QUE YA SABES"). */
+  parteDeLoQueYaSabes: string;
   subtemas: Array<{
     titulo: string;
     funcion: string; // explicación técnica del subtema
@@ -57,6 +61,12 @@ export interface ContenidoGuia {
     basico: string;
     bajo: string;
   }>;
+  /** Checklist que el estudiante revisa antes de entregar (recuadro "LISTA DE VERIFICACIÓN ANTES DE ENTREGAR"). */
+  listaVerificacion: string[];
+  /** Pregunta reflexiva de cierre, conecta el tema con la vida real del estudiante (recuadro "ANTES DE CERRAR"). */
+  antesDeCerrarPregunta: string;
+  /** 2-4 conceptos clave de la semana con una frase de resumen cada uno (recuadro "FICHA RESUMEN"). */
+  fichaResumen: Array<{ concepto: string; resumen: string }>;
   bibliografia: Array<{
     autor: string;
     anio: string;
@@ -64,4 +74,19 @@ export interface ContenidoGuia {
   }>;
   /** Clave del banco de fotos motivacionales (ver py_scripts/gen_imagen_motivacional_v2.py) elegida para esta semana. */
   fotoMotivacionalClave: string;
+}
+
+/** Bibliografía teórica fija que respalda los elementos de andragogía/visuales — se agrega siempre, después de la del tema. */
+export const BIBLIOGRAFIA_TEORICA_ESTANDAR = [
+  { autor: "Paivio, A.", anio: "1971", titulo: "Imagery and Verbal Processes — base de los apoyos visuales (mapa, capturas anotadas, ficha resumen) de esta guía" },
+  { autor: "Mayer, R.", anio: "2009", titulo: "Multimedia Learning — base del principio de aprender mejor de imágenes + palabras que solo de palabras" },
+  { autor: "Knowles, M.", anio: "1980", titulo: "The Modern Practice of Adult Education — base de los ajustes de contexto adulto" },
+];
+
+/** Imagen subida manualmente por el docente para un subtema (captura real u otra ilustración). */
+export interface ImagenSubtema {
+  subtemaIndex: number;
+  buffer: Buffer;
+  tipo: "png" | "jpg";
+  esCapturaOffice: boolean;
 }

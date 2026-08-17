@@ -3,7 +3,7 @@ import {
   Header, Footer, ImageRun, AlignmentType, WidthType,
   VerticalAlign, ShadingType, ExternalHyperlink,
 } from "docx";
-import type { ParametrosGuia, ContenidoGuia } from "./types";
+import type { ParametrosGuia, ContenidoGuia, ImagenSubtema } from "./types";
 import { duracionPorClei } from "./types";
 
 // Puerto a TypeScript de scripts/build_guia.js (skill iecv-guia-formacion),
@@ -64,6 +64,79 @@ function videoApoyoParagraph(v: ParametrosGuia["videoApoyo"]) {
       }),
     ],
   });
+}
+
+// ---------- Recuadros sombreados (Objetivo, Parte de lo que ya sabes, Mapa, Lista de verificación, Antes de cerrar) ----------
+const SHADE_AMARILLO = "FFF2CC";
+const SHADE_AZUL = "DDEBF7";
+const SHADE_VERDE = "E2EFDA";
+
+function box(titulo: string, cuerpo: string[], shade: string, opts: { before?: number; after?: number } = {}) {
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 10500, type: WidthType.DXA },
+            shading: { type: ShadingType.CLEAR, fill: shade },
+            margins: { top: 120, bottom: 120, left: 150, right: 150 },
+            children: [
+              new Paragraph({ spacing: { after: cuerpo.length ? 80 : 0 }, children: [new TextRun({ text: titulo, font: FONT, size: 22, bold: true })] }),
+              ...cuerpo.map((linea) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 60 }, children: [new TextRun({ text: linea, font: FONT, size: 22 })] })),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/** "MAPA DE LO QUE VAS A APRENDER HOY" — secuencia de los subtemas en orden, unidos con flechas. */
+function mapaAprendizaje(titulosSubtemas: string[]) {
+  const texto = titulosSubtemas.map((t, i) => `${i + 1}. ${t}`).join("   →   ");
+  return box("MAPA DE LO QUE VAS A APRENDER HOY", [texto], SHADE_VERDE, { before: 200, after: 200 });
+}
+
+/** "FICHA RESUMEN" — tabla de 2 a 4 columnas, una por concepto clave. */
+function fichaResumen(items: ContenidoGuia["fichaResumen"]) {
+  const w = Math.floor(10500 / Math.max(items.length, 1));
+  return new Table({
+    width: { size: 10500, type: WidthType.DXA },
+    rows: [
+      new TableRow({
+        children: items.map((it) => new TableCell({
+          width: { size: w, type: WidthType.DXA },
+          shading: { type: ShadingType.CLEAR, fill: SHADE_VERDE },
+          margins: { top: 100, bottom: 100, left: 100, right: 100 },
+          children: [
+            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: it.concepto, font: FONT, size: 20, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: it.resumen, font: FONT, size: 18 })] }),
+          ],
+        })),
+      }),
+    ],
+  });
+}
+
+/** Imágenes subidas por el docente para un subtema puntual, con crédito de Microsoft cuando aplica. */
+function imagenesDeSubtema(imagenes: ImagenSubtema[]) {
+  const out: Paragraph[] = [];
+  for (const img of imagenes) {
+    out.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 120, after: img.esCapturaOffice ? 40 : 160 },
+      children: [new ImageRun({ data: img.buffer, type: img.tipo, transformation: { width: 420, height: 262 } })],
+    }));
+    if (img.esCapturaOffice) {
+      out.push(new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 160 },
+        children: [new TextRun({ text: "Captura de pantalla de Microsoft Office. Used with permission from Microsoft.", font: FONT, size: 16, italics: true })],
+      }));
+    }
+  }
+  return out;
 }
 
 // ---------- Tabla de encabezado (repite en cada página) ----------
@@ -211,6 +284,7 @@ function buildCargueTable(params: ParametrosGuia, maxPaginas: string) {
 export interface BuildGuiaAssets {
   logoBuf: Buffer;
   ilustracionBuf: Buffer;
+  imagenesSubtemas?: ImagenSubtema[];
 }
 
 /** Arma el .docx completo y devuelve el Buffer listo para descargar. */
@@ -239,6 +313,14 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
   children.push(pRuns([{ text: "Competencia: ", bold: true }, { text: contenido.competencia }], { indent: { left: 400 }, after: 100 }));
   children.push(pRuns([{ text: "Desempeño: ", bold: true }, { text: contenido.desempeno }], { indent: { left: 400 } }));
 
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box(
+    "OBJETIVO DE LA GUÍA (lo que vas a lograr hoy)",
+    [`Al terminar, vas a poder: ${contenido.objetivoGuia.map((o, i) => `(${i + 1}) ${o}`).join(", ")}.`],
+    SHADE_AMARILLO,
+  ));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+
   children.push(heading("4. Duración de horas de la guía:", { size: 13 }));
   children.push(p(duracion));
 
@@ -248,11 +330,23 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
   children.push(heading("1. Actividades de Reflexión Inicial.", { size: 13 }));
   children.push(p(contenido.reflexionInicial));
 
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box("PARTE DE LO QUE YA SABES", [contenido.parteDeLoQueYaSabes], SHADE_AZUL));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+
   children.push(heading("2. Explicación y presentación de temáticas, ejemplarización de contenidos, ejercicios, definiciones, leyes, premisas y recursos didácticos:", { size: 13 }));
+
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(mapaAprendizaje(contenido.subtemas.map((s) => s.titulo)));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+
   const letras = "ABCDEFGH";
+  const imagenesPorSubtema = assets.imagenesSubtemas ?? [];
   contenido.subtemas.forEach((st, i) => {
     children.push(heading(`${letras[i] || i + 1}. ${st.titulo}`, { size: 12, before: 200, italics: true }));
     children.push(pRuns([{ text: "Función: ", bold: true }, { text: st.funcion }], { indent: { left: 400 } }));
+    const imgs = imagenesPorSubtema.filter((img) => img.subtemaIndex === i);
+    if (imgs.length) children.push(...imagenesDeSubtema(imgs));
   });
 
   children.push(heading("3. Asignación de Actividades Formativas:", { size: 13, before: 300 }));
@@ -261,6 +355,14 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
     children.push(p(taller.instrucciones));
     taller.items.forEach((item, j) => children.push(numItem(j + 1, item)));
   });
+
+  children.push(new Paragraph({ text: "", spacing: { before: 200, after: 100 } }));
+  children.push(box("LISTA DE VERIFICACIÓN ANTES DE ENTREGAR", contenido.listaVerificacion.map((it) => `☐ ${it}`), SHADE_AMARILLO));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(box("ANTES DE CERRAR: ¿EN QUÉ TE SIRVE ESTO?", [contenido.antesDeCerrarPregunta], SHADE_AZUL));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(fichaResumen(contenido.fichaResumen));
+  children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
 
   children.push(heading("4. Seguimiento, retroalimentación, evaluación y verificación del cumplimiento de objetivos, competencias y desempeños (RÚBRICA)", { size: 13, before: 300 }));
   children.push(heading("RÚBRICA CRITERIOS GENERALES (FTO-EDU-FOR-96 V3)", { size: 12, italics: true, before: 100 }));

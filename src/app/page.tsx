@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Clei } from "@/lib/types";
 
 function formatearFechas(iso: string): { corta: string; larga: string } {
@@ -9,7 +9,41 @@ function formatearFechas(iso: string): { corta: string; larga: string } {
   return { corta: `${d}/${m}/${y.slice(2)}`, larga: `${d}/${m}/${y}` };
 }
 
+interface Ciclo {
+  id: string;
+  slug: string;
+  nombre: string; // "Ciclo III"
+  grados: string[];
+}
+interface Curso {
+  id: string;
+  slug: string;
+  nombre: string;
+}
+interface Tema {
+  id: string;
+  numero: number;
+  tema: string;
+  subtemas: string;
+  url_video: string | null;
+  archivo_kahoot: string | null;
+}
+
+/** "Ciclo III" -> "III". Los ciclos que no calzan con el tipo Clei (hoy solo Ciclo II) se filtran fuera. */
+function cleiDesdeCiclo(nombreCiclo: string): Clei | null {
+  const codigo = nombreCiclo.replace("Ciclo", "").trim();
+  return (["III", "IV", "V", "VI"] as const).includes(codigo as Clei) ? (codigo as Clei) : null;
+}
+
 export default function Home() {
+  const [ciclos, setCiclos] = useState<Ciclo[]>([]);
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [temas, setTemas] = useState<Tema[]>([]);
+  const [cicloId, setCicloId] = useState("");
+  const [cursoId, setCursoId] = useState("");
+  const [temaId, setTemaId] = useState("");
+  const [catalogoError, setCatalogoError] = useState<string | null>(null);
+
   const [clei, setClei] = useState<Clei>("III");
   const [jornada, setJornada] = useState("SEMANAL 1");
   const [grupoCleiJornada, setGrupoCleiJornada] = useState("6-7/III/SEMANAL 1");
@@ -18,21 +52,72 @@ export default function Home() {
   const [fechaClaseIso, setFechaClaseIso] = useState("");
   const [tema, setTema] = useState("");
   const [subtemasTexto, setSubtemasTexto] = useState("");
+  const [archivoKahoot, setArchivoKahoot] = useState<string | null>(null);
   const [fechaCargueIso, setFechaCargueIso] = useState("");
   const [horaMaxima, setHoraMaxima] = useState("23:59");
   const [videoTitulo, setVideoTitulo] = useState("");
   const [videoCanal, setVideoCanal] = useState("");
   const [videoDuracion, setVideoDuracion] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [quiereEstandar, setQuiereEstandar] = useState(true);
+  const [quiereDua, setQuiereDua] = useState(false);
+  const [subtemaImagenes, setSubtemaImagenes] = useState<Record<number, File[]>>({});
+  const [subtemaEsCaptura, setSubtemaEsCaptura] = useState<Record<number, boolean>>({});
 
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
 
+  // Catálogo: ciclos y cursos (curso_ciclos aún no tiene filas, así que los
+  // cursos no se filtran por ciclo todavía — se listan todos los activos).
+  useEffect(() => {
+    fetch("/api/catalogo")
+      .then((r) => r.json())
+      .then((data: { ciclos: Ciclo[]; cursos: Curso[] }) => {
+        setCiclos(data.ciclos.filter((c) => cleiDesdeCiclo(c.nombre) !== null));
+        setCursos(data.cursos);
+      })
+      .catch(() => setCatalogoError("No se pudo cargar el catálogo de ciclos/cursos desde la base de datos."));
+  }, []);
+
+  // Temas del curso elegido.
+  useEffect(() => {
+    setTemaId("");
+    setTemas([]);
+    if (!cursoId) return;
+    fetch(`/api/temas?cursoId=${cursoId}`)
+      .then((r) => r.json())
+      .then((data: { temas: Tema[] }) => setTemas(data.temas))
+      .catch(() => setCatalogoError("No se pudo cargar la malla de temas de ese curso."));
+  }, [cursoId]);
+
+  function onCicloChange(id: string) {
+    setCicloId(id);
+    const c = ciclos.find((x) => x.id === id);
+    const codigo = c ? cleiDesdeCiclo(c.nombre) : null;
+    if (codigo) setClei(codigo);
+  }
+
+  function onTemaChange(id: string) {
+    setTemaId(id);
+    const t = temas.find((x) => x.id === id);
+    if (!t) return;
+    setTema(t.tema.toUpperCase());
+    setSubtemasTexto(t.subtemas);
+    setVideoUrl(t.url_video ?? "");
+    setArchivoKahoot(t.archivo_kahoot);
+    setSemana(t.numero);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setExito(null);
+
+    if (!quiereEstandar && !quiereDua) {
+      setError("Elige al menos un tipo de guía: Estándar, DUA, o ambas.");
+      return;
+    }
 
     const subtemas = subtemasTexto
       .split("\n")
@@ -49,10 +134,11 @@ export default function Home() {
 
     setEnviando(true);
     try {
-      const res = await fetch("/api/generar-guia", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const mensajes: string[] = [];
+
+      if (quiereEstandar) {
+        const formData = new FormData();
+        formData.append("params", JSON.stringify({
           clei,
           jornada,
           grupoCleiJornada,
@@ -65,33 +151,52 @@ export default function Home() {
           fechaCargue,
           horaMaxima,
           videoApoyo: { titulo: videoTitulo, canal: videoCanal, duracion: videoDuracion, url: videoUrl },
-        }),
-      });
+        }));
+        subtemas.forEach((_, i) => {
+          (subtemaImagenes[i] ?? []).forEach((file) => formData.append(`subtemaImg_${i}`, file));
+          formData.append(`subtemaImgEsCaptura_${i}`, String(!!subtemaEsCaptura[i]));
+        });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Error generando la guía." }));
-        throw new Error(data.error || "Error generando la guía.");
+        const res = await fetch("/api/generar-guia", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Error generando la guía estándar." }));
+          throw new Error(data.error || "Error generando la guía estándar.");
+        }
+
+        const blob = await res.blob();
+        const nombre =
+          res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ||
+          `Guia_Semana${semana}_${clei}.docx`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        mensajes.push(`Guía estándar generada: ${nombre}`);
       }
 
-      const blob = await res.blob();
-      const nombre =
-        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ||
-        `Guia_Semana${semana}_${clei}.docx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = nombre;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      setExito(`Guía generada: ${nombre}`);
+      if (quiereDua) {
+        mensajes.push(
+          "Guía DUA: pendiente — todavía no tenemos cargada la plantilla real, así que no se genera hasta ajustar el formato con el docente."
+        );
+      }
+
+      setExito(mensajes.join(" · "));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
       setEnviando(false);
     }
   }
+
+  const subtemasList = subtemasTexto.split("\n").map((s) => s.trim()).filter(Boolean);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -101,28 +206,79 @@ export default function Home() {
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
+        {catalogoError && <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{catalogoError}</p>}
+
+        <fieldset className="rounded border p-4">
+          <legend className="px-1 text-sm font-medium">Catálogo (ciclo → curso → tema)</legend>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-sm">Ciclo</span>
+              <select
+                className="mt-1 w-full rounded border px-3 py-2"
+                value={cicloId}
+                onChange={(e) => onCicloChange(e.target.value)}
+                required
+              >
+                <option value="" disabled>Selecciona un ciclo…</option>
+                {ciclos.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm">Curso</span>
+              <select
+                className="mt-1 w-full rounded border px-3 py-2"
+                value={cursoId}
+                onChange={(e) => setCursoId(e.target.value)}
+                required
+              >
+                <option value="" disabled>Selecciona un curso…</option>
+                {cursos.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="mt-4 block">
+            <span className="text-sm">Tema de la malla</span>
+            <select
+              className="mt-1 w-full rounded border px-3 py-2"
+              value={temaId}
+              onChange={(e) => onTemaChange(e.target.value)}
+              disabled={temas.length === 0}
+              required
+            >
+              <option value="" disabled>
+                {cursoId ? (temas.length ? "Selecciona un tema…" : "Este curso no tiene malla cargada todavía") : "Elige primero un curso"}
+              </option>
+              {temas.map((t) => (
+                <option key={t.id} value={t.id}>{t.numero}. {t.tema}</option>
+              ))}
+            </select>
+            {archivoKahoot && (
+              <span className="mt-1 block text-xs text-gray-400">Kahoot sugerido: {archivoKahoot}</span>
+            )}
+          </label>
+        </fieldset>
+
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium">CLEI</span>
-            <select
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={clei}
-              onChange={(e) => setClei(e.target.value as Clei)}
-            >
-              <option value="III">III</option>
-              <option value="IV">IV</option>
-              <option value="V">V</option>
-              <option value="VI">VI</option>
-            </select>
+            <input className="mt-1 w-full rounded border bg-gray-50 px-3 py-2" value={clei} disabled />
           </label>
           <label className="block">
             <span className="text-sm font-medium">Jornada</span>
-            <input
+            <select
               className="mt-1 w-full rounded border px-3 py-2"
               value={jornada}
               onChange={(e) => setJornada(e.target.value)}
-              placeholder="SEMANAL 1 / SABADO 1"
-            />
+            >
+              <option value="SEMANAL 1">SEMANAL 1</option>
+              <option value="SABADO 1">SABADO 1</option>
+              <option value="SABADO 2">SABADO 2</option>
+            </select>
           </label>
         </div>
 
@@ -183,6 +339,7 @@ export default function Home() {
 
         <label className="block">
           <span className="text-sm font-medium">Tema de la semana</span>
+          <span className="ml-1 text-xs text-gray-400">(autocompletado desde el tema elegido, editable)</span>
           <input
             className="mt-1 w-full rounded border px-3 py-2"
             value={tema}
@@ -194,6 +351,7 @@ export default function Home() {
 
         <label className="block">
           <span className="text-sm font-medium">Subtemas (uno por línea, en orden)</span>
+          <span className="ml-1 text-xs text-gray-400">(autocompletado, edítalo si quieres dividirlo en varios A/B/C)</span>
           <textarea
             className="mt-1 w-full rounded border px-3 py-2"
             rows={4}
@@ -204,8 +362,38 @@ export default function Home() {
           />
         </label>
 
+        {subtemasList.length > 0 && (
+          <fieldset className="rounded border p-4">
+            <legend className="px-1 text-sm font-medium">Imágenes por subtema (opcional — captura real u otra ilustración)</legend>
+            <div className="space-y-4">
+              {subtemasList.map((titulo, i) => (
+                <div key={i} className="rounded border p-3">
+                  <p className="text-sm font-medium">{i + 1}. {titulo}</p>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    multiple
+                    className="mt-2 w-full text-sm"
+                    onChange={(e) =>
+                      setSubtemaImagenes((prev) => ({ ...prev, [i]: Array.from(e.target.files ?? []) }))
+                    }
+                  />
+                  <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={!!subtemaEsCaptura[i]}
+                      onChange={(e) => setSubtemaEsCaptura((prev) => ({ ...prev, [i]: e.target.checked }))}
+                    />
+                    Es captura real de Office (agrega el crédito de Microsoft automáticamente)
+                  </label>
+                </div>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
         <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Video de apoyo (verifícalo tú antes de enviarlo)</legend>
+          <legend className="px-1 text-sm font-medium">Video de apoyo (URL autocompletada — verifica título/canal/duración tú antes de enviarlo)</legend>
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
               <span className="text-sm">Título</span>
@@ -224,6 +412,33 @@ export default function Home() {
               <input className="mt-1 w-full rounded border px-3 py-2" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." required />
             </label>
           </div>
+        </fieldset>
+
+        <fieldset className="rounded border p-4">
+          <legend className="px-1 text-sm font-medium">Tipo de guía a generar</legend>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={quiereEstandar}
+                onChange={(e) => setQuiereEstandar(e.target.checked)}
+              />
+              Estándar
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={quiereDua}
+                onChange={(e) => setQuiereDua(e.target.checked)}
+              />
+              DUA (accesible/adaptada)
+            </label>
+          </div>
+          {quiereDua && (
+            <p className="mt-2 text-xs text-amber-600">
+              La generación de la guía DUA está pendiente de las plantillas reales — por ahora solo se genera la estándar si está marcada.
+            </p>
+          )}
         </fieldset>
 
         <label className="block">
