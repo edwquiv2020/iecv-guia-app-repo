@@ -1,0 +1,107 @@
+[
+  {
+    "numero": 1,
+    "tema": "Inicio de sesión y pantalla de bloqueo",
+    "subtemas": "Encendido, inicio de sesión y reconocimiento de la pantalla de bloqueo de Windows 11.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 2,
+    "tema": "El escritorio de Windows 11",
+    "subtemas": "Íconos, fondo de pantalla, barra de tareas y organización de accesos directos.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 3,
+    "tema": "El menú Inicio y búsqueda de aplicaciones",
+    "subtemas": "Uso del menú Inicio para abrir programas y buscar aplicaciones instaladas.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 4,
+    "tema": "Ventanas y multitarea",
+    "subtemas": "Abrir, minimizar, maximizar y cerrar ventanas; trabajo con varios programas a la vez.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 5,
+    "tema": "Cambiar entre ventanas abiertas",
+    "subtemas": "Alternar y organizar varias ventanas abiertas en la pantalla.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 6,
+    "tema": "El Explorador de archivos",
+    "subtemas": "Reconocimiento de unidades, carpetas y archivos dentro del Explorador de archivos.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 7,
+    "tema": "Crear, copiar, mover y eliminar archivos",
+    "subtemas": "Gestión básica de archivos y carpetas: crear, renombrar, copiar, mover y eliminar.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 8,
+    "tema": "Papelera de reciclaje",
+    "subtemas": "Qué es la papelera, cómo restaurar archivos eliminados y cómo vaciarla de forma segura.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 9,
+    "tema": "Configuración básica del sistema",
+    "subtemas": "Ajustes de fecha, hora, idioma, volumen y brillo de pantalla.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 10,
+    "tema": "Personalización del sistema",
+    "subtemas": "Cambiar el fondo de pantalla y alternar entre modo oscuro y claro.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 11,
+    "tema": "Herramientas de accesibilidad de Windows",
+    "subtemas": "Uso de Lupa, Narrador y Alto contraste para facilitar el uso del sistema.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 12,
+    "tema": "Instalación de programas y tienda de aplicaciones",
+    "subtemas": "Diferencia entre instalar un programa y abrir una app; uso de Microsoft Store.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 13,
+    "tema": "Actualizaciones de Windows",
+    "subtemas": "Qué son las actualizaciones del sistema y por qué instalarlas.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 14,
+    "tema": "Cuentas de usuario y contraseñas seguras",
+    "subtemas": "Tipos de cuenta (administrador/estándar) y creación de una contraseña segura.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  },
+  {
+    "numero": 15,
+    "tema": "Organización de ventanas en pantalla",
+    "subtemas": "Uso de funciones de acomodo automático de ventanas para trabajar de forma ordenada.",
+    "url_video": "https://www.youtube.com/watch?v=QHUrfwLX5Mw",
+    "archivo_kahoot": "Windows 11 kahoot"
+  }
+]
