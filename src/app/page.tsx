@@ -35,6 +35,11 @@ function cleiDesdeCiclo(nombreCiclo: string): Clei | null {
   return (["III", "IV", "V", "VI"] as const).includes(codigo as Clei) ? (codigo as Clei) : null;
 }
 
+/** ['8°','9°'] -> "8-9". Quita el símbolo de grado y une con guion. */
+function gradosATexto(grados: string[]): string {
+  return grados.map((g) => g.replace("°", "")).join("-");
+}
+
 export default function Home() {
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
@@ -46,7 +51,7 @@ export default function Home() {
 
   const [clei, setClei] = useState<Clei>("III");
   const [jornada, setJornada] = useState("SEMANAL 1");
-  const [grupoCleiJornada, setGrupoCleiJornada] = useState("6-7/III/SEMANAL 1");
+  const [grupoCleiJornada, setGrupoCleiJornada] = useState("");
   const [semana, setSemana] = useState(1);
   const [guia, setGuia] = useState(1);
   const [fechaClaseIso, setFechaClaseIso] = useState("");
@@ -97,6 +102,19 @@ export default function Home() {
     const codigo = c ? cleiDesdeCiclo(c.nombre) : null;
     if (codigo) setClei(codigo);
   }
+
+  // "GRUPO/CLEI/JORNADA" tal como debe quedar dentro de la guía — se deriva
+  // siempre del ciclo y la jornada elegidos, nunca se escribe a mano (define
+  // qué guía es, tiene que ser exacto).
+  useEffect(() => {
+    const c = ciclos.find((x) => x.id === cicloId);
+    if (!c) {
+      setGrupoCleiJornada("");
+      return;
+    }
+    const codigo = cleiDesdeCiclo(c.nombre);
+    setGrupoCleiJornada(`${gradosATexto(c.grados)}/${codigo}/${jornada}`);
+  }, [cicloId, jornada, ciclos]);
 
   function onTemaChange(id: string) {
     setTemaId(id);
@@ -277,10 +295,11 @@ export default function Home() {
 
         <label className="block">
           <span className="text-sm font-medium">Grupo / CLEI / Jornada (como aparece en la tabla)</span>
+          <span className="ml-1 text-xs text-gray-400">(automático — depende del ciclo y la jornada elegidos)</span>
           <input
-            className="mt-1 w-full rounded border px-3 py-2"
-            value={grupoCleiJornada}
-            onChange={(e) => setGrupoCleiJornada(e.target.value)}
+            className="mt-1 w-full rounded border bg-gray-50 px-3 py-2"
+            value={grupoCleiJornada || "Elige ciclo y jornada arriba"}
+            disabled
           />
         </label>
 
