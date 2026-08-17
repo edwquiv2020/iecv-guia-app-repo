@@ -10,7 +10,9 @@ interface FilaExistente {
   semana: number;
   guia: number;
   fecha: string;
-  curso_nombre: string;
+  tipo_semana: string;
+  origen: "horario" | "ad_hoc";
+  curso_nombre: string | null;
   tema_numero: number | null;
   tema_nombre: string | null;
 }
@@ -19,7 +21,15 @@ interface FilaNueva {
   semana: number;
   guia: number;
   fecha: string; // yyyy-mm-dd
+  tipoSemana: string;
 }
+interface Conflicto { semana: number; fecha: string; guia: number }
+
+const TIPOS_SEMANA_SUGERIDOS = [
+  "CLASES", "SEMANA DIAGNÓSTICO", "EXAMEN INTERMEDIO", "EXAMEN FINAL",
+  "DÍA DEL EMPRENDIMIENTO", "BIENESTAR ESTUDIANTIL", "DÍA DEL PROFESOR",
+  "RACE / PLAN DE MEJORAMIENTO", "GRADOS", "MATRÍCULAS",
+];
 
 function sumarDias(fechaIso: string, dias: number): string {
   const d = new Date(fechaIso + "T00:00:00");
@@ -41,17 +51,19 @@ export default function Horarios() {
   const [autoCursoId, setAutoCursoId] = useState("");
   const [autoFechaInicio, setAutoFechaInicio] = useState("");
   const [autoSemanaInicial, setAutoSemanaInicial] = useState(1);
-  const [autoGuiaInicial, setAutoGuiaInicial] = useState(1);
+  const [autoGuiaInicial, setAutoGuiaInicial] = useState(0);
   const [autoCantidad, setAutoCantidad] = useState(10);
+  const [autoTipoSemana, setAutoTipoSemana] = useState("CLASES");
 
   // Modo manual
   const [filasManual, setFilasManual] = useState<FilaNueva[]>([
-    { cursoId: "", semana: 1, guia: 1, fecha: "" },
+    { cursoId: "", semana: 1, guia: 0, fecha: "", tipoSemana: "CLASES" },
   ]);
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+  const [conflictos, setConflictos] = useState<Conflicto[] | null>(null);
 
   useEffect(() => {
     fetch("/api/catalogo")
@@ -82,10 +94,14 @@ export default function Horarios() {
         semana: autoSemanaInicial + i,
         guia: autoGuiaInicial + i,
         fecha: sumarDias(autoFechaInicio, i * 7),
+        tipoSemana: autoTipoSemana,
       }));
 
   function agregarFilaManual() {
-    setFilasManual((prev) => [...prev, { cursoId: "", semana: (prev.at(-1)?.semana ?? 0) + 1, guia: (prev.at(-1)?.guia ?? 0) + 1, fecha: "" }]);
+    setFilasManual((prev) => [...prev, {
+      cursoId: "", semana: (prev.at(-1)?.semana ?? 0) + 1, guia: (prev.at(-1)?.guia ?? 0) + 1,
+      fecha: "", tipoSemana: "CLASES",
+    }]);
   }
   function quitarFilaManual(i: number) {
     setFilasManual((prev) => prev.filter((_, idx) => idx !== i));
@@ -94,16 +110,17 @@ export default function Horarios() {
     setFilasManual((prev) => prev.map((f, idx) => (idx === i ? { ...f, [campo]: valor } : f)));
   }
 
-  async function guardar() {
+  async function guardar(confirmar = false) {
     setError(null);
     setExito(null);
+    if (!confirmar) setConflictos(null);
     if (!cicloId || !jornadaId) {
       setError("Elige ciclo y jornada primero.");
       return;
     }
     const filas = modoAutomatico ? previewAuto : filasManual;
-    if (filas.length === 0 || filas.some((f) => !f.cursoId || !f.fecha)) {
-      setError("Completa curso y fecha en todas las filas antes de guardar.");
+    if (filas.length === 0 || filas.some((f) => !f.fecha)) {
+      setError("Completa al menos la fecha en todas las filas antes de guardar.");
       return;
     }
     setGuardando(true);
@@ -111,13 +128,21 @@ export default function Horarios() {
       const res = await fetch("/api/calendario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cicloId, jornadaId, filas }),
+        body: JSON.stringify({
+          cicloId, jornadaId, confirmar,
+          filas: filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, tipoSemana: f.tipoSemana })),
+        }),
       });
       const data = await res.json();
+      if (res.status === 409) {
+        setConflictos(data.conflictos);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "Error guardando el horario.");
       setExito(`${data.filasGuardadas} semanas guardadas.`);
+      setConflictos(null);
       cargarExistentes();
-      setFilasManual([{ cursoId: "", semana: 1, guia: 1, fecha: "" }]);
+      setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", tipoSemana: "CLASES" }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -137,6 +162,10 @@ export default function Horarios() {
         Carga las fechas que entrega rectoría por ciclo y jornada. Semanal 1 suele ser regular
         (cada 7 días); Sábado 1/2 rota entre cursos, así que normalmente necesita carga manual.
       </p>
+
+      <datalist id="tipos-semana">
+        {TIPOS_SEMANA_SUGERIDOS.map((t) => <option key={t} value={t} />)}
+      </datalist>
 
       <div className="mt-8 grid grid-cols-2 gap-4">
         <label className="block">
@@ -183,11 +212,16 @@ export default function Horarios() {
                 </label>
                 <label className="block">
                   <span className="text-sm">Guía inicial No</span>
-                  <input type="number" min={1} className="mt-1 w-full rounded border px-3 py-2" value={autoGuiaInicial} onChange={(e) => setAutoGuiaInicial(Number(e.target.value))} />
+                  <input type="number" min={0} className="mt-1 w-full rounded border px-3 py-2" value={autoGuiaInicial} onChange={(e) => setAutoGuiaInicial(Number(e.target.value))} />
+                  <span className="text-xs text-gray-400">0 si la primera semana es de inducción/diagnóstico, sin guía.</span>
                 </label>
                 <label className="block col-span-2">
                   <span className="text-sm">Cantidad de semanas</span>
                   <input type="number" min={1} max={40} className="mt-1 w-full rounded border px-3 py-2" value={autoCantidad} onChange={(e) => setAutoCantidad(Number(e.target.value))} />
+                </label>
+                <label className="block col-span-2">
+                  <span className="text-sm">Tipo de semana (aplica a todo el lote)</span>
+                  <input list="tipos-semana" className="mt-1 w-full rounded border px-3 py-2" value={autoTipoSemana} onChange={(e) => setAutoTipoSemana(e.target.value)} />
                 </label>
               </div>
 
@@ -210,13 +244,14 @@ export default function Horarios() {
               <div className="space-y-2">
                 {filasManual.map((f, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2">
-                    <select className="col-span-5 rounded border px-2 py-1 text-sm" value={f.cursoId} onChange={(e) => actualizarFilaManual(i, "cursoId", e.target.value)}>
-                      <option value="" disabled>Curso…</option>
+                    <select className="col-span-3 rounded border px-2 py-1 text-sm" value={f.cursoId} onChange={(e) => actualizarFilaManual(i, "cursoId", e.target.value)}>
+                      <option value="">Curso (opcional)…</option>
                       {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
-                    <input type="number" className="col-span-2 rounded border px-2 py-1 text-sm" value={f.semana} onChange={(e) => actualizarFilaManual(i, "semana", Number(e.target.value))} placeholder="Semana" />
-                    <input type="number" className="col-span-2 rounded border px-2 py-1 text-sm" value={f.guia} onChange={(e) => actualizarFilaManual(i, "guia", Number(e.target.value))} placeholder="Guía" />
+                    <input type="number" className="col-span-1 rounded border px-2 py-1 text-sm" value={f.semana} onChange={(e) => actualizarFilaManual(i, "semana", Number(e.target.value))} placeholder="Semana" />
+                    <input type="number" className="col-span-1 rounded border px-2 py-1 text-sm" value={f.guia} onChange={(e) => actualizarFilaManual(i, "guia", Number(e.target.value))} placeholder="Guía" />
                     <input type="date" className="col-span-2 rounded border px-2 py-1 text-sm" value={f.fecha} onChange={(e) => actualizarFilaManual(i, "fecha", e.target.value)} />
+                    <input list="tipos-semana" className="col-span-4 rounded border px-2 py-1 text-sm" value={f.tipoSemana} onChange={(e) => actualizarFilaManual(i, "tipoSemana", e.target.value)} placeholder="Tipo de semana" />
                     <button type="button" className="col-span-1 text-red-600" onClick={() => quitarFilaManual(i)}>✕</button>
                   </div>
                 ))}
@@ -228,10 +263,25 @@ export default function Horarios() {
           {error && <p className="mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           {exito && <p className="mt-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700">{exito}</p>}
 
+          {conflictos && (
+            <div className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <p className="font-medium">
+                Estas semanas ya tienen una clase creada manualmente desde el generador de guías
+                (sin horario oficial todavía). Si guardas, se reemplaza con estos datos nuevos:
+              </p>
+              <ul className="mt-1 list-disc pl-5">
+                {conflictos.map((c) => <li key={c.semana}>Semana {c.semana} — Guía {c.guia} — {c.fecha.slice(0, 10)}</li>)}
+              </ul>
+              <button type="button" onClick={() => guardar(true)} className="mt-2 rounded bg-amber-700 px-3 py-1 text-white">
+                Sí, reemplazar y guardar
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             disabled={guardando}
-            onClick={guardar}
+            onClick={() => guardar(false)}
             className="mt-4 w-full rounded bg-emerald-700 px-4 py-3 font-medium text-white disabled:opacity-50"
           >
             {guardando ? "Guardando…" : "Guardar horario"}
@@ -243,7 +293,7 @@ export default function Horarios() {
           ) : (
             <table className="mt-2 w-full text-sm">
               <thead className="bg-gray-50">
-                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th></th></tr>
+                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th></th></tr>
               </thead>
               <tbody>
                 {filasExistentes.map((f) => (
@@ -251,8 +301,12 @@ export default function Horarios() {
                     <td className="p-2">{f.semana}</td>
                     <td className="p-2">{f.guia}</td>
                     <td className="p-2">{f.fecha.slice(0, 10)}</td>
-                    <td className="p-2">{f.curso_nombre}</td>
-                    <td className="p-2">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-amber-600">sin tema</span>}</td>
+                    <td className="p-2">
+                      {f.tipo_semana}
+                      {f.origen === "ad_hoc" && <span className="ml-1 text-xs text-amber-600">(manual)</span>}
+                    </td>
+                    <td className="p-2">{f.curso_nombre ?? "—"}</td>
+                    <td className="p-2">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-gray-400">—</span>}</td>
                     <td className="p-2"><button className="text-red-600" onClick={() => borrarFila(f.id)}>✕</button></td>
                   </tr>
                 ))}

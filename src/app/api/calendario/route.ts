@@ -4,10 +4,11 @@ import { sql } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 interface FilaHorario {
-  cursoId: string;
+  cursoId: string | null;
   semana: number;
   guia: number;
   fecha: string; // yyyy-mm-dd
+  tipoSemana: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -18,9 +19,9 @@ export async function GET(request: NextRequest) {
   }
   const filas = await sql`
     select cc.id, cc.semana_academica as semana, cc.guia_numero as guia, cc.fecha_clase as fecha,
-           c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
+           cc.tipo_semana, cc.origen, c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
     from calendario_clases cc
-    join cursos c on c.id = cc.curso_id
+    left join cursos c on c.id = cc.curso_id
     left join temas t on t.id = cc.tema_id
     where cc.ciclo_id = ${cicloId} and cc.jornada_id = ${jornadaId}
     order by cc.semana_academica
@@ -38,24 +39,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Faltan cicloId, jornadaId o filas." }, { status: 400 });
   }
 
+  const confirmar = body?.confirmar === true;
+
   try {
+    // Si alguna semana del lote ya tiene una fila 'ad_hoc' (creada al vuelo
+    // desde el generador de guías), no la sobrescribimos en silencio —
+    // avisamos primero y esperamos confirmación explícita.
+    if (!confirmar) {
+      const semanas = filas.map((f) => f.semana);
+      const conflictos = await sql`
+        select semana_academica as semana, fecha_clase as fecha, guia_numero as guia
+        from calendario_clases
+        where ciclo_id = ${cicloId} and jornada_id = ${jornadaId}
+          and origen = 'ad_hoc' and semana_academica in ${sql(semanas)}
+      `;
+      if (conflictos.length > 0) {
+        return NextResponse.json({ conflictos }, { status: 409 });
+      }
+    }
+
     // Posición dentro del lote, por curso, para resolver el tema en orden de malla.
     const contadorPorCurso = new Map<string, number>();
 
     for (const fila of filas) {
-      const posicion = (contadorPorCurso.get(fila.cursoId) ?? 0) + 1;
-      contadorPorCurso.set(fila.cursoId, posicion);
-
-      const [tema] = await sql`
-        select id from temas where curso_id = ${fila.cursoId} and numero = ${posicion} and activo
-      `;
+      let temaId: string | null = null;
+      if (fila.cursoId) {
+        const posicion = (contadorPorCurso.get(fila.cursoId) ?? 0) + 1;
+        contadorPorCurso.set(fila.cursoId, posicion);
+        const [tema] = await sql`
+          select id from temas where curso_id = ${fila.cursoId} and numero = ${posicion} and activo
+        `;
+        temaId = tema?.id ?? null;
+      }
 
       await sql`
-        insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id)
-        values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${tema?.id ?? null})
+        insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, tipo_semana, origen)
+        values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.tipoSemana || "CLASES"}, 'horario')
         on conflict (ciclo_id, jornada_id, semana_academica) do update set
           fecha_clase = excluded.fecha_clase, guia_numero = excluded.guia_numero,
-          curso_id = excluded.curso_id, tema_id = excluded.tema_id
+          curso_id = excluded.curso_id, tema_id = excluded.tema_id, tipo_semana = excluded.tipo_semana,
+          origen = 'horario'
       `;
     }
     return NextResponse.json({ ok: true, filasGuardadas: filas.length });

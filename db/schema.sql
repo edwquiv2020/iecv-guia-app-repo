@@ -80,11 +80,23 @@ create table calendario_clases (
   guia_numero int not null,
   ciclo_id uuid not null references ciclos(id),
   jornada_id uuid not null references jornadas(id),
-  curso_id uuid not null references cursos(id),
+  -- Nullable: semanas administrativas (MATRÍCULAS, DÍA DEL PROFESOR, etc.)
+  -- no tienen curso asociado.
+  curso_id uuid references cursos(id),
   -- Nullable: al cargar el horario se resuelve automáticamente por orden
   -- dentro del lote según temas.numero; si el curso no tiene más temas que
   -- semanas cargadas, queda en null para asignarlo después.
   tema_id uuid references temas(id),
+  -- CLASES (normal) | SEMANA DIAGNÓSTICO | EXAMEN INTERMEDIO | EXAMEN FINAL |
+  -- DÍA DEL EMPRENDIMIENTO | BIENESTAR ESTUDIANTIL | DÍA DEL PROFESOR |
+  -- RACE / PLAN DE MEJORAMIENTO | GRADOS | MATRÍCULAS | ... (abierto, se
+  -- amplía con el tiempo — por eso es texto libre, no un enum cerrado).
+  tipo_semana text not null default 'CLASES',
+  -- 'horario' = cargada desde /horarios (auto o manual). 'ad_hoc' = creada
+  -- al vuelo desde la pantalla de generar guía, para un caso puntual sin
+  -- horario oficial todavía. Sirve para avisar antes de sobrescribir una
+  -- fila 'ad_hoc' cuando después se carga el horario oficial real.
+  origen text not null default 'horario' check (origen in ('horario', 'ad_hoc')),
   created_at timestamptz not null default now(),
   unique (ciclo_id, jornada_id, semana_academica)
 );
