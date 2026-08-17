@@ -1,0 +1,107 @@
+[
+  {
+    "numero": 1,
+    "tema": "Introducción al entorno de Word",
+    "subtemas": "Pantalla inicial, cinta de opciones, barra de acceso rápido; crear, abrir y guardar archivos (.docx/.pdf).",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Gestión de texto básico",
+    "subtemas": "Selección de texto y funciones de portapapeles: cortar, copiar, pegar y pegado especial.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Formato de fuente",
+    "subtemas": "Tipografías, tamaños, efectos (negrita, cursiva, subrayado), colores y borrado de formato.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Alineación y espaciados",
+    "subtemas": "Alineación de texto, interlineado, espacio entre párrafos y sangrías.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Listas y viñetas",
+    "subtemas": "Listas con viñetas personalizadas, listas numeradas y listas multinivel.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Configuración de página",
+    "subtemas": "Márgenes, orientación, tamaño de papel, saltos de página, bordes y fondo del documento.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "Trabajo con tablas",
+    "subtemas": "Insertar y modificar tablas: combinar/dividir celdas, estilos, bordes y sombreados.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "Imágenes, formas y SmartArt",
+    "subtemas": "Insertar imágenes, ajuste de texto alrededor, formas básicas y organigramas con SmartArt.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Encabezados, pies y numeración",
+    "subtemas": "Insertar encabezados, pies de página, números de página y portada diferenciada.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Herramientas de revisión",
+    "subtemas": "Corrección ortográfica y gramatical, sinónimos, contador de palabras y buscar/reemplazar.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "Combinación de correspondencia básica",
+    "subtemas": "Preparación del documento base, lista de destinatarios y generación de cartas personalizadas.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Impresión",
+    "subtemas": "Vista previa, ajuste de escala, rango de páginas y exportación a PDF antes de imprimir.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "Plantillas de Word y proyecto final",
+    "subtemas": "Uso y personalización de plantillas prediseñadas; elaboración de una hoja de vida.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "Estilos y tabla de contenido automática",
+    "subtemas": "Aplicación de estilos de título y generación automática de un índice/tabla de contenido.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "Guardar y compartir documentos en la nube",
+    "subtemas": "Guardar un documento de Word en OneDrive y compartirlo con otra persona.",
+    "url_video": "https://www.youtube.com/watch?v=2jvEaBEJinI",
+    "archivo_kahoot": "kahoot it"
+  }
+]
