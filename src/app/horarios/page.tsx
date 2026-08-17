@@ -53,7 +53,9 @@ export default function Horarios() {
   const [autoSemanaInicial, setAutoSemanaInicial] = useState(1);
   const [autoGuiaInicial, setAutoGuiaInicial] = useState(0);
   const [autoCantidad, setAutoCantidad] = useState(10);
-  const [autoTipoSemana, setAutoTipoSemana] = useState("CLASES");
+  // Tipo de semana por fila (índice dentro del lote) — cada semana puede ser
+  // distinta (CLASES, GUÍA DE REPASO, EXAMEN...), no todas iguales.
+  const [autoTiposPorFila, setAutoTiposPorFila] = useState<Record<number, string>>({});
 
   // Modo manual
   const [filasManual, setFilasManual] = useState<FilaNueva[]>([
@@ -94,7 +96,7 @@ export default function Horarios() {
         semana: autoSemanaInicial + i,
         guia: autoGuiaInicial + i,
         fecha: sumarDias(autoFechaInicio, i * 7),
-        tipoSemana: autoTipoSemana,
+        tipoSemana: autoTiposPorFila[i] ?? "CLASES",
       }));
 
   function agregarFilaManual() {
@@ -219,19 +221,27 @@ export default function Horarios() {
                   <span className="text-sm">Cantidad de semanas</span>
                   <input type="number" min={1} max={40} className="mt-1 w-full rounded border px-3 py-2" value={autoCantidad} onChange={(e) => setAutoCantidad(Number(e.target.value))} />
                 </label>
-                <label className="block col-span-2">
-                  <span className="text-sm">Tipo de semana (aplica a todo el lote)</span>
-                  <input list="tipos-semana" className="mt-1 w-full rounded border px-3 py-2" value={autoTipoSemana} onChange={(e) => setAutoTipoSemana(e.target.value)} />
-                </label>
               </div>
 
               {previewAuto.length > 0 && (
-                <div className="mt-4 max-h-60 overflow-y-auto rounded border">
+                <div className="mt-4 max-h-72 overflow-y-auto rounded border">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50"><tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th></tr></thead>
+                    <thead className="bg-gray-50"><tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Tipo (edítalo por semana)</th></tr></thead>
                     <tbody>
                       {previewAuto.map((f, i) => (
-                        <tr key={i} className="border-t"><td className="p-2">{f.semana}</td><td className="p-2">{f.guia}</td><td className="p-2">{f.fecha}</td></tr>
+                        <tr key={i} className="border-t">
+                          <td className="p-2">{f.semana}</td>
+                          <td className="p-2">{f.guia}</td>
+                          <td className="p-2">{f.fecha}</td>
+                          <td className="p-2">
+                            <input
+                              list="tipos-semana"
+                              className="w-full rounded border px-2 py-1"
+                              value={f.tipoSemana}
+                              onChange={(e) => setAutoTiposPorFila((prev) => ({ ...prev, [i]: e.target.value }))}
+                            />
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
