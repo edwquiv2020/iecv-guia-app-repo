@@ -1,0 +1,107 @@
+[
+  {
+    "numero": 1,
+    "tema": "Pensamiento computacional: algoritmos y diagramas de flujo",
+    "subtemas": "Qué es un algoritmo, redacción en pseudocódigo y representación con diagramas de flujo.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Variables, constantes y tipos de datos en Python",
+    "subtemas": "Qué es una variable y una constante; tipos de datos básicos (entero, decimal, texto, booleano).",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Entrada y salida de datos en Python",
+    "subtemas": "Función print() para mostrar resultados y function input() para capturar datos del usuario.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Operadores aritméticos, relacionales y lógicos",
+    "subtemas": "Operadores aritméticos, comparadores relacionales y operadores lógicos (and, or, not).",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Estructuras condicionales (if, elif, else)",
+    "subtemas": "Sintaxis de la condición if, condiciones múltiples con elif y condición por defecto con else.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Bucle while",
+    "subtemas": "Concepto de repetición, condición de parada y uso de contadores.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "Bucle for",
+    "subtemas": "Sintaxis del bucle for, uso de range() y recorrido de secuencias.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "Listas en Python",
+    "subtemas": "Creación, indexación y modificación de listas; métodos básicos (append, remove, len, sort).",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Funciones en Python",
+    "subtemas": "Definición de una función con def, uso de parámetros y valor de retorno (return).",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Manejo de errores (try/except)",
+    "subtemas": "Qué es un error en tiempo de ejecución y estructura try/except para controlarlo.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "Módulos y librerías básicas de Python",
+    "subtemas": "Qué es un módulo, cómo importarlo y uso básico de librerías comunes (math, random).",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Diccionarios en Python",
+    "subtemas": "Concepto de clave-valor; creación, acceso, modificación y recorrido de un diccionario.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "Buenas prácticas de programación",
+    "subtemas": "Escritura de código legible, nombres claros de variables y uso de comentarios.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "Depuración básica de un programa",
+    "subtemas": "Identificar y corregir errores comunes en un programa sencillo.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "Proyecto final: programa sencillo en Python",
+    "subtemas": "Integración de variables, condicionales, bucles y funciones en un programa completo.",
+    "url_video": "https://www.youtube.com/watch?v=IimBRwHhW54",
+    "archivo_kahoot": "kahoot it"
+  }
+]
