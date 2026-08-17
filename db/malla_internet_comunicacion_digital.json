@@ -1,0 +1,107 @@
+[
+  {
+    "numero": 1,
+    "tema": "Qué es Internet y cómo funciona",
+    "subtemas": "Concepto general de Internet y su funcionamiento básico.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Navegadores web",
+    "subtemas": "Uso de Chrome, Edge y Firefox para navegar en Internet.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Página web, buscador y URL",
+    "subtemas": "Diferencia entre una página web, un buscador y una dirección URL.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Búsqueda efectiva de información",
+    "subtemas": "Uso de palabras clave y operadores básicos en un buscador.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Identificar fuentes confiables",
+    "subtemas": "Cómo reconocer si una fuente de información en línea es confiable.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Correo electrónico: qué es y para qué sirve",
+    "subtemas": "Concepto de correo electrónico y sus usos personales y laborales.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "Creación de una cuenta de correo",
+    "subtemas": "Pasos para crear una cuenta de correo electrónico.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "Uso del correo electrónico",
+    "subtemas": "Redactar, enviar, responder correos y adjuntar/descargar archivos.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Redes sociales y comunicación digital",
+    "subtemas": "Principales redes sociales y su uso personal o laboral.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Netiqueta: buenas prácticas en línea",
+    "subtemas": "Diferencia entre comunicación formal e informal y buenas prácticas digitales.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "Contraseñas seguras y verificación en dos pasos",
+    "subtemas": "Cómo crear contraseñas seguras y activar la verificación en dos pasos.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Qué es el phishing",
+    "subtemas": "Cómo identificar correos o mensajes sospechosos de phishing.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "Huella digital y derechos de autor",
+    "subtemas": "Qué es la huella digital y uso responsable de contenido en línea.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "Internet de las Cosas (IoT)",
+    "subtemas": "Qué es el IoT y ejemplos cotidianos de dispositivos conectados.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "Taller: uso responsable y seguro de Internet",
+    "subtemas": "Reflexión y práctica guiada sobre navegación segura y responsable.",
+    "url_video": "https://www.youtube.com/watch?v=el9VvVtH7io",
+    "archivo_kahoot": "kahoot it"
+  }
+]
