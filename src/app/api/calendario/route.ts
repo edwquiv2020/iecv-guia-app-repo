@@ -9,6 +9,8 @@ interface FilaHorario {
   guia: number;
   fecha: string; // yyyy-mm-dd
   actividadId: string;
+  /** Si se pasa, se usa directo (ya se sabe qué tema se generó) en vez de resolverlo por posición en el lote. */
+  temaId?: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -19,7 +21,8 @@ export async function GET(request: NextRequest) {
   }
   const filas = await sql`
     select cc.id, cc.semana_academica as semana, cc.guia_numero as guia, cc.fecha_clase as fecha,
-           cc.origen, a.nombre as actividad_nombre, c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
+           cc.origen, cc.curso_id, cc.tema_id, a.nombre as actividad_nombre,
+           c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
     from calendario_clases cc
     join actividades a on a.id = cc.actividad_id
     left join cursos c on c.id = cc.curso_id
@@ -41,12 +44,17 @@ export async function POST(request: NextRequest) {
   }
 
   const confirmar = body?.confirmar === true;
+  // 'ad_hoc' = creación al vuelo desde el generador de guías: nunca pisa una
+  // fila existente (cualquiera sea su origen), solo inserta si esa semana
+  // todavía no existe. No pasa por el flujo de conflictos (ese es solo para
+  // cargas oficiales desde /horarios).
+  const origen = body?.origen === "ad_hoc" ? "ad_hoc" : "horario";
 
   try {
-    // Si alguna semana del lote ya tiene una fila 'ad_hoc' (creada al vuelo
-    // desde el generador de guías), no la sobrescribimos en silencio —
-    // avisamos primero y esperamos confirmación explícita.
-    if (!confirmar) {
+    if (origen === "horario" && !confirmar) {
+      // Si alguna semana del lote ya tiene una fila 'ad_hoc' (creada al vuelo
+      // desde el generador de guías), no la sobrescribimos en silencio —
+      // avisamos primero y esperamos confirmación explícita.
       const semanas = filas.map((f) => f.semana);
       const conflictos = await sql`
         select semana_academica as semana, fecha_clase as fecha, guia_numero as guia
@@ -59,12 +67,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Posición dentro del lote, por curso, para resolver el tema en orden de malla.
+    // Posición dentro del lote, por curso, para resolver el tema en orden de
+    // malla — solo cuando la fila no trae ya su temaId resuelto.
     const contadorPorCurso = new Map<string, number>();
+    let filasInsertadas = 0;
 
     for (const fila of filas) {
-      let temaId: string | null = null;
-      if (fila.cursoId) {
+      let temaId: string | null = fila.temaId ?? null;
+      if (temaId === null && fila.cursoId) {
         const posicion = (contadorPorCurso.get(fila.cursoId) ?? 0) + 1;
         contadorPorCurso.set(fila.cursoId, posicion);
         const [tema] = await sql`
@@ -73,16 +83,27 @@ export async function POST(request: NextRequest) {
         temaId = tema?.id ?? null;
       }
 
-      await sql`
-        insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
-        values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'horario')
-        on conflict (ciclo_id, jornada_id, semana_academica) do update set
-          fecha_clase = excluded.fecha_clase, guia_numero = excluded.guia_numero,
-          curso_id = excluded.curso_id, tema_id = excluded.tema_id, actividad_id = excluded.actividad_id,
-          origen = 'horario'
-      `;
+      if (origen === "ad_hoc") {
+        const insertados = await sql`
+          insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
+          values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'ad_hoc')
+          on conflict (ciclo_id, jornada_id, semana_academica) do nothing
+          returning id
+        `;
+        filasInsertadas += insertados.length;
+      } else {
+        await sql`
+          insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
+          values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'horario')
+          on conflict (ciclo_id, jornada_id, semana_academica) do update set
+            fecha_clase = excluded.fecha_clase, guia_numero = excluded.guia_numero,
+            curso_id = excluded.curso_id, tema_id = excluded.tema_id, actividad_id = excluded.actividad_id,
+            origen = 'horario'
+        `;
+        filasInsertadas += 1;
+      }
     }
-    return NextResponse.json({ ok: true, filasGuardadas: filas.length });
+    return NextResponse.json({ ok: true, filasGuardadas: filasInsertadas });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido guardando el horario.";
     return NextResponse.json({ error: message }, { status: 500 });

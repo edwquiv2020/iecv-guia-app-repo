@@ -28,6 +28,21 @@ interface Tema {
   url_video: string | null;
   archivo_kahoot: string | null;
 }
+interface Jornada { id: string; slug: string; nombre: string }
+interface Actividad { id: string; nombre: string }
+interface FilaCalendario {
+  id: string;
+  semana: number;
+  guia: number;
+  fecha: string;
+  origen: "horario" | "ad_hoc";
+  curso_id: string | null;
+  tema_id: string | null;
+  actividad_nombre: string;
+  curso_nombre: string | null;
+  tema_numero: number | null;
+  tema_nombre: string | null;
+}
 
 /** "Ciclo III" -> "III". Los ciclos que no calzan con el tipo Clei (hoy solo Ciclo II) se filtran fuera. */
 function cleiDesdeCiclo(nombreCiclo: string): Clei | null {
@@ -44,10 +59,18 @@ export default function Home() {
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [temas, setTemas] = useState<Tema[]>([]);
+  const [jornadas, setJornadas] = useState<Jornada[]>([]);
+  const [actividades, setActividades] = useState<Actividad[]>([]);
   const [cicloId, setCicloId] = useState("");
+  const [jornadaId, setJornadaId] = useState("");
   const [cursoId, setCursoId] = useState("");
   const [temaId, setTemaId] = useState("");
+  const [pendingTemaId, setPendingTemaId] = useState<string | null>(null);
   const [catalogoError, setCatalogoError] = useState<string | null>(null);
+
+  const [calendarioFilas, setCalendarioFilas] = useState<FilaCalendario[]>([]);
+  const [semanaProgramadaId, setSemanaProgramadaId] = useState("");
+  const [notaActividad, setNotaActividad] = useState<string | null>(null);
 
   const [clei, setClei] = useState<Clei>("III");
   const [jornada, setJornada] = useState("SEMANAL 1");
@@ -73,34 +96,100 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
 
-  // Catálogo: ciclos y cursos (curso_ciclos aún no tiene filas, así que los
-  // cursos no se filtran por ciclo todavía — se listan todos los activos).
+  // Catálogo: ciclos, cursos, jornadas, actividades (curso_ciclos aún no
+  // tiene filas, así que los cursos no se filtran por ciclo todavía).
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { ciclos: Ciclo[]; cursos: Curso[] }) => {
+      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[] }) => {
         setCiclos(data.ciclos.filter((c) => cleiDesdeCiclo(c.nombre) !== null));
         setCursos(data.cursos);
+        setJornadas(data.jornadas);
+        setActividades(data.actividades);
       })
-      .catch(() => setCatalogoError("No se pudo cargar el catálogo de ciclos/cursos desde la base de datos."));
+      .catch(() => setCatalogoError("No se pudo cargar el catálogo desde la base de datos."));
   }, []);
 
-  // Temas del curso elegido.
+  // Temas del curso elegido. Si veníamos de elegir una semana programada,
+  // aplicamos el tema pendiente apenas llega la malla de ese curso.
   useEffect(() => {
-    setTemaId("");
     setTemas([]);
-    if (!cursoId) return;
+    if (!cursoId) {
+      setTemaId("");
+      return;
+    }
     fetch(`/api/temas?cursoId=${cursoId}`)
       .then((r) => r.json())
       .then((data: { temas: Tema[] }) => setTemas(data.temas))
       .catch(() => setCatalogoError("No se pudo cargar la malla de temas de ese curso."));
   }, [cursoId]);
 
+  useEffect(() => {
+    if (!pendingTemaId || temas.length === 0) return;
+    if (temas.some((t) => t.id === pendingTemaId)) {
+      onTemaChange(pendingTemaId);
+    }
+    setPendingTemaId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temas, pendingTemaId]);
+
+  // Calendario ya cargado para el ciclo/jornada elegidos (ver /horarios).
+  useEffect(() => {
+    setCalendarioFilas([]);
+    setSemanaProgramadaId("");
+    if (!cicloId || !jornadaId) return;
+    fetch(`/api/calendario?cicloId=${cicloId}&jornadaId=${jornadaId}`)
+      .then((r) => r.json())
+      .then((data: { filas: FilaCalendario[] }) => setCalendarioFilas(data.filas ?? []));
+  }, [cicloId, jornadaId]);
+
   function onCicloChange(id: string) {
     setCicloId(id);
     const c = ciclos.find((x) => x.id === id);
     const codigo = c ? cleiDesdeCiclo(c.nombre) : null;
     if (codigo) setClei(codigo);
+  }
+
+  function onJornadaChange(id: string) {
+    setJornadaId(id);
+    const j = jornadas.find((x) => x.id === id);
+    if (j) setJornada(j.nombre.toUpperCase());
+  }
+
+  function onSemanaProgramadaChange(filaId: string) {
+    setSemanaProgramadaId(filaId);
+    setNotaActividad(null);
+    if (!filaId) return; // "crear una clase nueva"
+    const fila = calendarioFilas.find((f) => f.id === filaId);
+    if (!fila) return;
+
+    setSemana(fila.semana);
+    setGuia(fila.guia);
+    setFechaClaseIso(fila.fecha.slice(0, 10));
+
+    if (fila.actividad_nombre !== "CLASES") {
+      setNotaActividad(
+        `Esta semana está marcada como "${fila.actividad_nombre}" — la generación de ese tipo de documento todavía no está implementada. Puedes seguir y ajustar tema/subtemas a mano si de verdad quieres una guía estándar para esta semana.`
+      );
+    }
+    if (fila.curso_id) {
+      setCursoId(fila.curso_id);
+      setPendingTemaId(fila.tema_id);
+    }
+  }
+
+  /** "Información general": repite el patrón regular (+7 días, +1 semana/guía) desde la última clase cargada de este mismo curso, cuando la semana que necesitas no está en la lista. */
+  function usarPatronGeneral() {
+    const delMismoCurso = calendarioFilas
+      .filter((f) => f.curso_id === cursoId)
+      .sort((a, b) => b.semana - a.semana);
+    const ultima = delMismoCurso[0];
+    if (!ultima) return;
+    setSemana(ultima.semana + 1);
+    setGuia(ultima.guia + 1);
+    const d = new Date(ultima.fecha.slice(0, 10) + "T00:00:00");
+    d.setDate(d.getDate() + 7);
+    setFechaClaseIso(d.toISOString().slice(0, 10));
   }
 
   // "GRUPO/CLEI/JORNADA" tal como debe quedar dentro de la guía — se deriva
@@ -199,7 +288,30 @@ export default function Home() {
         URL.revokeObjectURL(url);
       }
 
-      setExito(`Guía(s) generada(s): ${archivos.map((a) => a.nombre).join(" · ")}`);
+      // Registra esta clase en el calendario (si esa semana ya existe, no la
+      // toca — nunca pisa una fila oficial ni otra manual ya guardada).
+      let mensajeCalendario = "";
+      if (cicloId && jornadaId) {
+        const actividadClasesId = actividades.find((a) => a.nombre === "CLASES")?.id;
+        if (actividadClasesId) {
+          try {
+            const resCal = await fetch("/api/calendario", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                cicloId, jornadaId, origen: "ad_hoc",
+                filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(guia), fecha: fechaClaseIso, actividadId: actividadClasesId, temaId: temaId || null }],
+              }),
+            });
+            const dataCal = await resCal.json().catch(() => null);
+            if (dataCal?.filasGuardadas > 0) mensajeCalendario = " (clase registrada en el calendario)";
+          } catch {
+            // No bloquea la generación si esto falla — es solo un registro adicional.
+          }
+        }
+      }
+
+      setExito(`Guía(s) generada(s): ${archivos.map((a) => a.nombre).join(" · ")}${mensajeCalendario}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -225,7 +337,7 @@ export default function Home() {
         {catalogoError && <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{catalogoError}</p>}
 
         <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Catálogo (ciclo → curso → tema)</legend>
+          <legend className="px-1 text-sm font-medium">Ciclo y jornada</legend>
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
               <span className="text-sm">Ciclo</span>
@@ -242,20 +354,70 @@ export default function Home() {
               </select>
             </label>
             <label className="block">
-              <span className="text-sm">Curso</span>
+              <span className="text-sm">Jornada</span>
               <select
                 className="mt-1 w-full rounded border px-3 py-2"
-                value={cursoId}
-                onChange={(e) => setCursoId(e.target.value)}
+                value={jornadaId}
+                onChange={(e) => onJornadaChange(e.target.value)}
                 required
               >
-                <option value="" disabled>Selecciona un curso…</option>
-                {cursos.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                <option value="" disabled>Selecciona una jornada…</option>
+                {jornadas.map((j) => (
+                  <option key={j.id} value={j.id}>{j.nombre}</option>
                 ))}
               </select>
             </label>
           </div>
+        </fieldset>
+
+        {cicloId && jornadaId && (
+          <fieldset className="rounded border p-4">
+            <legend className="px-1 text-sm font-medium">Semana programada</legend>
+            <select
+              className="w-full rounded border px-3 py-2"
+              value={semanaProgramadaId}
+              onChange={(e) => onSemanaProgramadaChange(e.target.value)}
+            >
+              <option value="">
+                {calendarioFilas.length === 0 ? "No hay horario cargado para este ciclo/jornada — crea la clase abajo" : "— Crear una clase nueva (no está en el horario) —"}
+              </option>
+              {calendarioFilas.map((f) => (
+                <option key={f.id} value={f.id}>
+                  Semana {f.semana} — {f.fecha.slice(0, 10)} — {f.actividad_nombre}
+                  {f.curso_nombre ? ` — ${f.curso_nombre}` : ""}
+                  {f.origen === "ad_hoc" ? " (manual)" : ""}
+                </option>
+              ))}
+            </select>
+            {notaActividad && <p className="mt-1 text-xs text-amber-600">{notaActividad}</p>}
+          </fieldset>
+        )}
+
+        <fieldset className="rounded border p-4">
+          <legend className="px-1 text-sm font-medium">Catálogo (curso → tema)</legend>
+          <label className="block">
+            <span className="text-sm">Curso</span>
+            <select
+              className="mt-1 w-full rounded border px-3 py-2"
+              value={cursoId}
+              onChange={(e) => setCursoId(e.target.value)}
+              required
+            >
+              <option value="" disabled>Selecciona un curso…</option>
+              {cursos.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+            {!semanaProgramadaId && cursoId && calendarioFilas.some((f) => f.curso_id === cursoId) && (
+              <button
+                type="button"
+                onClick={usarPatronGeneral}
+                className="mt-2 rounded border px-3 py-1 text-xs text-emerald-700"
+              >
+                Usar información general (+7 días desde la última clase de este curso)
+              </button>
+            )}
+          </label>
 
           <label className="mt-4 block">
             <span className="text-sm">Tema de la malla</span>
@@ -279,24 +441,10 @@ export default function Home() {
           </label>
         </fieldset>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">CLEI</span>
-            <input className="mt-1 w-full rounded border bg-gray-50 px-3 py-2" value={clei} disabled />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Jornada</span>
-            <select
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={jornada}
-              onChange={(e) => setJornada(e.target.value)}
-            >
-              <option value="SEMANAL 1">SEMANAL 1</option>
-              <option value="SABADO 1">SABADO 1</option>
-              <option value="SABADO 2">SABADO 2</option>
-            </select>
-          </label>
-        </div>
+        <label className="block">
+          <span className="text-sm font-medium">CLEI</span>
+          <input className="mt-1 w-full rounded border bg-gray-50 px-3 py-2" value={clei} disabled />
+        </label>
 
         <label className="block">
           <span className="text-sm font-medium">Grupo / CLEI / Jornada (como aparece en la tabla)</span>
