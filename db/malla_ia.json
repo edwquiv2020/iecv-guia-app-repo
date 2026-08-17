@@ -1,0 +1,142 @@
+[
+  {
+    "numero": 1,
+    "tema": "Introducción a la Inteligencia Artificial",
+    "subtemas": "• Qué es la IA y breve historia.\n• Ejemplos de IA en la vida cotidiana (asistentes, recomendaciones, mapas).\n• Diferencia entre IA, machine learning y deep learning (nivel conceptual).",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Tipos de IA y cómo funcionan",
+    "subtemas": "• IA débil (específica) vs. IA general.\n• Cómo aprende un modelo de IA a partir de datos, sin entrar en matemáticas.\n• Ejemplos de modelos que usamos a diario (traductores, correctores).",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Ética y uso responsable de la IA",
+    "subtemas": "• Sesgos en los resultados de la IA y por qué ocurren.\n• Privacidad de los datos al usar herramientas de IA.\n• Desinformación y contenido falso generado con IA.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Chatbots de IA: qué son y cómo funcionan",
+    "subtemas": "• Diferencia entre un chatbot tradicional y uno con IA generativa.\n• Herramientas disponibles (ChatGPT, Claude, Gemini) y sus usos.\n• Primeros pasos: crear una cuenta y hacer una primera consulta.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Prompt engineering básico",
+    "subtemas": "• Qué es un prompt y por qué su redacción importa.\n• Reglas de oro: ser claro, específico y dar contexto.\n• Práctica: escribir y comparar prompts vagos vs. prompts claros.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Prompt engineering intermedio",
+    "subtemas": "• Asignar un rol a la IA (\"actúa como...\").\n• Dar ejemplos dentro del prompt para guiar la respuesta.\n• Iterar: pedir ajustes sobre una respuesta ya generada.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "IA para redacción y resúmenes de texto",
+    "subtemas": "• Generar borradores de textos (correos, cartas, informes).\n• Resumir documentos largos con IA.\n• Revisar y editar críticamente lo que entrega la IA.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "IA para traducción y corrección de idioma",
+    "subtemas": "• Traducir textos manteniendo el sentido original.\n• Corrección ortográfica y gramatical asistida por IA.\n• Comparar una traducción de IA con una traducción humana.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Guía de Refuerzo y Mejoramiento",
+    "subtemas": "• Repaso de conceptos clave de las semanas 1 a 8.\n• Actividad integradora de prompt engineering.\n• Autoevaluación de dominio del tema.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Examen Intermedio",
+    "subtemas": "• Evaluación teórica de los conceptos vistos hasta la fecha.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "IA generativa de imágenes: conceptos",
+    "subtemas": "• Cómo funciona una IA que genera imágenes a partir de texto.\n• Herramientas disponibles y sus diferencias.\n• Usos éticos y derechos de autor sobre imágenes generadas.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Creación de imágenes con IA",
+    "subtemas": "• Redactar prompts efectivos para generar imágenes.\n• Ajustar estilo, composición y detalles de una imagen generada.\n• Práctica: crear una imagen para un proyecto personal.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "IA para audio y voz",
+    "subtemas": "• Conversión de texto a voz (text-to-speech).\n• Transcripción automática de audio a texto.\n• Casos de uso: notas de voz, podcasts, accesibilidad.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "IA para video",
+    "subtemas": "• Herramientas de generación y edición de video asistidas por IA.\n• Subtítulos automáticos con IA.\n• Práctica: mejorar un video corto con herramientas de IA.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "IA en el trabajo y el estudio",
+    "subtemas": "• Automatizar tareas repetitivas con IA.\n• Organizar información y tomar apuntes con apoyo de IA.\n• Límites: qué no debe delegarse completamente a la IA.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 16,
+    "tema": "Herramientas de IA para búsqueda e investigación",
+    "subtemas": "• Buscadores potenciados con IA vs. buscadores tradicionales.\n• Verificar la calidad y actualidad de una respuesta de IA.\n• Práctica: investigar un tema usando varias herramientas de IA.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 17,
+    "tema": "Detección de contenido generado por IA",
+    "subtemas": "• Señales de un texto o imagen generado por IA.\n• Herramientas de verificación de contenido.\n• Importancia de citar cuándo se usó IA en un trabajo.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 18,
+    "tema": "Proyecto integrador",
+    "subtemas": "• Elegir un problema cotidiano o académico real.\n• Resolverlo combinando al menos tres herramientas de IA vistas en el curso.\n• Presentar el proceso y el resultado final.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 19,
+    "tema": "Guía de Refuerzo y Mejoramiento final",
+    "subtemas": "• Repaso general de todo el curso.\n• Resolución de dudas antes del examen final.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 20,
+    "tema": "Examen Final",
+    "subtemas": "• Evaluación práctica: uso de herramientas de IA para resolver una consigna aplicada.",
+    "url_video": "https://www.youtube.com/watch?v=DjshEwI6pVk",
+    "archivo_kahoot": "kahoot it"
+  }
+]

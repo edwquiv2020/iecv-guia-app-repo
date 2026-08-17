@@ -1,0 +1,142 @@
+[
+  {
+    "numero": 1,
+    "tema": "Introducción a Power BI",
+    "subtemas": "• Qué es Power BI y para qué sirve.\n• Diferencia entre Power BI Desktop y Power BI Service.\n• Instalación y reconocimiento del entorno.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Conexión e importación de datos",
+    "subtemas": "• Conectar datos desde Excel y CSV.\n• Conectar datos desde una base de datos.\n• Vista previa y selección de tablas a importar.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Transformación de datos: limpieza básica",
+    "subtemas": "• Introducción a Power Query.\n• Eliminar filas y columnas innecesarias.\n• Quitar duplicados y corregir valores.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Transformación de datos: columnas y tipos",
+    "subtemas": "• Cambiar el tipo de dato de una columna.\n• Dividir y combinar columnas.\n• Crear columnas personalizadas simples.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Modelo de datos: relaciones entre tablas",
+    "subtemas": "• Qué es un modelo de datos relacional.\n• Crear relaciones entre tablas.\n• Cardinalidad de una relación (uno a muchos, etc.).",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Creación de medidas básicas con DAX",
+    "subtemas": "• Qué es DAX y para qué se usa.\n• Crear una medida simple.\n• Diferencia entre columna calculada y medida.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "Funciones DAX intermedias",
+    "subtemas": "• SUM, AVERAGE y COUNT.\n• Función CALCULATE para modificar contexto.\n• Práctica: construir medidas de negocio simples.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "Visualizaciones básicas",
+    "subtemas": "• Gráfico de barras y columnas.\n• Gráfico de líneas.\n• Gráfico circular y cuándo usarlo.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Guía de Refuerzo y Mejoramiento",
+    "subtemas": "• Repaso de importación, transformación y modelo de datos.\n• Taller integrador con un dataset de ejemplo.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Examen Intermedio",
+    "subtemas": "• Evaluación teórico-práctica de lo visto hasta la fecha.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "Visualizaciones avanzadas",
+    "subtemas": "• Mapas para datos geográficos.\n• Tablas y matrices.\n• Tarjetas (cards) para indicadores clave.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Filtros y segmentadores de datos",
+    "subtemas": "• Filtros a nivel de visual, página e informe.\n• Segmentadores de datos (slicers).\n• Interacción entre visuales de un informe.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "Diseño de dashboards",
+    "subtemas": "• Organización visual de un informe.\n• Jerarquía de información en un dashboard.\n• Buenas prácticas de color y legibilidad.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "Interactividad: marcadores y navegación",
+    "subtemas": "• Crear marcadores (bookmarks).\n• Botones de navegación entre páginas.\n• Informes tipo aplicación (app report).",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "Formato condicional y KPIs",
+    "subtemas": "• Formato condicional en tablas y matrices.\n• Indicadores clave de desempeño (KPI).\n• Alertas visuales según umbrales.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 16,
+    "tema": "Publicación de informes en Power BI Service",
+    "subtemas": "• Publicar un informe desde Desktop a Service.\n• Organización en espacios de trabajo.\n• Compartir un informe publicado.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 17,
+    "tema": "Actualización de datos",
+    "subtemas": "• Actualización manual de un informe.\n• Programar la actualización automática de datos.\n• Solución de errores comunes de actualización.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 18,
+    "tema": "Compartir informes y colaboración",
+    "subtemas": "• Permisos de acceso a un informe.\n• Trabajo colaborativo en un espacio compartido.\n• Exportar un informe a PDF o PowerPoint.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 19,
+    "tema": "Guía de Refuerzo y Mejoramiento final",
+    "subtemas": "• Repaso general de todo el curso.\n• Resolución de dudas antes del examen final.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 20,
+    "tema": "Examen Final / Proyecto integrador",
+    "subtemas": "• Construir un dashboard completo a partir de un dataset real.",
+    "url_video": "https://www.youtube.com/watch?v=pwJuFbyhZFE",
+    "archivo_kahoot": "kahoot it"
+  }
+]

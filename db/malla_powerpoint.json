@@ -1,0 +1,142 @@
+[
+  {
+    "numero": 1,
+    "tema": "Introducción a PowerPoint",
+    "subtemas": "• Reconocimiento de la pantalla inicial y la cinta de opciones.\n• Vistas del documento: normal, clasificador de diapositivas, presentación.\n• Crear, guardar y abrir una presentación.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 2,
+    "tema": "Creación y gestión de diapositivas",
+    "subtemas": "• Insertar, duplicar y eliminar diapositivas.\n• Reorganizar el orden de las diapositivas.\n• Diseños de diapositiva predefinidos (layouts).",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 3,
+    "tema": "Diseño de diapositivas: temas y fondo",
+    "subtemas": "• Aplicar temas y variantes de color.\n• Personalizar el fondo de una diapositiva.\n• Paletas de colores institucionales o personales.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 4,
+    "tema": "Trabajo con texto",
+    "subtemas": "• Cuadros de texto: insertar y organizar.\n• Formato de fuente: tipografía, tamaño, color, efectos.\n• Alineación y jerarquía visual del texto.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 5,
+    "tema": "Formas y SmartArt",
+    "subtemas": "• Insertar formas básicas y personalizarlas.\n• Uso de SmartArt para organigramas y diagramas de flujo.\n• Combinar formas y texto para esquemas visuales.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 6,
+    "tema": "Tablas y gráficos en PowerPoint",
+    "subtemas": "• Insertar y dar formato a una tabla.\n• Insertar un gráfico y vincularlo a datos.\n• Cuándo usar tabla vs. gráfico según el contenido.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 7,
+    "tema": "Insertar imágenes y elementos multimedia",
+    "subtemas": "• Insertar imágenes desde el dispositivo y en línea.\n• Ajuste de texto e imagen (ajustar, recortar, estilos).\n• Insertar íconos y elementos gráficos.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 8,
+    "tema": "Animaciones de texto y objetos",
+    "subtemas": "• Tipos de animación: entrada, énfasis, salida.\n• Configurar orden y tiempo de las animaciones.\n• Uso moderado de animaciones para no saturar la diapositiva.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 9,
+    "tema": "Guía de Refuerzo y Mejoramiento",
+    "subtemas": "• Repaso de diseño, texto, formas y animaciones.\n• Taller integrador de una diapositiva completa.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 10,
+    "tema": "Examen Intermedio",
+    "subtemas": "• Evaluación teórico-práctica de lo visto hasta la fecha.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 11,
+    "tema": "Transiciones entre diapositivas",
+    "subtemas": "• Tipos de transición y cuándo usarlas.\n• Configurar duración y forma de avance.\n• Transiciones consistentes en toda la presentación.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 12,
+    "tema": "Insertar audio y video",
+    "subtemas": "• Insertar un archivo de audio y configurarlo.\n• Insertar un video (archivo local o en línea).\n• Recortar y ajustar la reproducción de un video.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 13,
+    "tema": "Hipervínculos y botones de acción",
+    "subtemas": "• Crear hipervínculos a otras diapositivas o páginas web.\n• Insertar botones de acción para navegación.\n• Presentaciones no lineales (menús de navegación).",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 14,
+    "tema": "Patrón de diapositivas (Slide Master)",
+    "subtemas": "• Qué es el patrón de diapositivas y para qué sirve.\n• Editar el patrón para aplicar un estilo uniforme.\n• Crear diseños personalizados reutilizables.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 15,
+    "tema": "Diseño de presentaciones efectivas",
+    "subtemas": "• Principio de una idea por diapositiva.\n• Contraste, legibilidad y jerarquía visual.\n• Errores comunes de diseño a evitar.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 16,
+    "tema": "Vista Presentador y notas del orador",
+    "subtemas": "• Agregar notas del orador a cada diapositiva.\n• Usar la Vista Presentador al exponer.\n• Practicar el tiempo de exposición con el temporizador.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 17,
+    "tema": "Exportar e imprimir presentaciones",
+    "subtemas": "• Exportar a PDF y a video.\n• Configurar impresión de diapositivas y notas.\n• Compartir la presentación en distintos formatos.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 18,
+    "tema": "Presentaciones colaborativas y comentarios",
+    "subtemas": "• Insertar y responder comentarios.\n• Compartir una presentación para trabajo en equipo.\n• Control de cambios básico.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 19,
+    "tema": "Guía de Refuerzo y Mejoramiento final",
+    "subtemas": "• Repaso general de todo el curso.\n• Resolución de dudas antes del examen final.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  },
+  {
+    "numero": 20,
+    "tema": "Examen Final / Proyecto integrador",
+    "subtemas": "• Diseñar una presentación completa aplicando todo lo aprendido.",
+    "url_video": "https://www.youtube.com/watch?v=vZTPOsVzGWs",
+    "archivo_kahoot": "kahoot it"
+  }
+]
