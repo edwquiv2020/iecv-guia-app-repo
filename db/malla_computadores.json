@@ -1,0 +1,107 @@
+[
+  {
+    "numero": 1,
+    "tema": "Partes del computador y periféricos",
+    "subtemas": "Componentes principales (CPU, monitor, teclado, mouse) y periféricos de entrada/salida comunes.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 1.xlsx"
+  },
+  {
+    "numero": 2,
+    "tema": "El mouse y el teclado: técnicas básicas",
+    "subtemas": "Clic, doble clic, clic derecho, arrastrar; partes del teclado y atajos básicos (copiar, pegar, deshacer).",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 2.xlsx"
+  },
+  {
+    "numero": 3,
+    "tema": "Encendido y apagado seguro del equipo",
+    "subtemas": "Secuencia correcta de encendido y apagado para evitar daños o pérdida de información.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 3.xlsx"
+  },
+  {
+    "numero": 4,
+    "tema": "Tipos de computador",
+    "subtemas": "Diferencias entre computador de escritorio, portátil y tablet, y cuándo usar cada uno.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 4.xlsx"
+  },
+  {
+    "numero": 5,
+    "tema": "Conexión de periféricos",
+    "subtemas": "Conectar USB, HDMI, audífonos y otros periféricos de forma correcta.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 5.xlsx"
+  },
+  {
+    "numero": 6,
+    "tema": "Copias de seguridad y unidades USB",
+    "subtemas": "Qué es una copia de seguridad y uso de una memoria USB para guardar y transportar archivos.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 6.xlsx"
+  },
+  {
+    "numero": 7,
+    "tema": "Mantenimiento básico y limpieza del equipo",
+    "subtemas": "Buenas prácticas de cuidado físico del computador y liberación de espacio en disco.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 7.xlsx"
+  },
+  {
+    "numero": 8,
+    "tema": "Seguridad básica del computador",
+    "subtemas": "Qué es un antivirus, reconocimiento de archivos sospechosos y navegación segura.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 8.xlsx"
+  },
+  {
+    "numero": 9,
+    "tema": "Impresoras: conexión e impresión básica",
+    "subtemas": "Conectar una impresora y realizar una impresión sencilla desde un documento.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 9.xlsx"
+  },
+  {
+    "numero": 10,
+    "tema": "Resolución de problemas comunes",
+    "subtemas": "Qué hacer cuando el equipo está lento, no enciende o un programa no responde.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 10.xlsx"
+  },
+  {
+    "numero": 11,
+    "tema": "Actualizaciones de software",
+    "subtemas": "Por qué es importante mantener actualizado el sistema y los programas.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 11.xlsx"
+  },
+  {
+    "numero": 12,
+    "tema": "Baterías y ahorro de energía",
+    "subtemas": "Cuidado de la batería en equipos portátiles y configuración de ahorro de energía.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 12.xlsx"
+  },
+  {
+    "numero": 13,
+    "tema": "Ergonomía y postura frente al computador",
+    "subtemas": "Cómo organizar el puesto de trabajo para evitar molestias físicas.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 13.xlsx"
+  },
+  {
+    "numero": 14,
+    "tema": "Accesibilidad física del equipo",
+    "subtemas": "Adaptar el uso del computador a necesidades visuales, motrices o auditivas del usuario.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 14.xlsx"
+  },
+  {
+    "numero": 15,
+    "tema": "Buenas prácticas de uso responsable",
+    "subtemas": "Cuidado del equipo compartido y hábitos responsables de uso diario.",
+    "url_video": "https://www.youtube.com/watch?v=Laz2jhik9KE&list=PLBTcJetyW9aJNonBucM_mKnfM9d7DMM4-",
+    "archivo_kahoot": "Cuestionario_ConceptosBasicos_Kahoot 15.xlsx"
+  }
+]
