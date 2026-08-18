@@ -195,7 +195,7 @@ export async function generarContenidoGuia(params: ParametrosGuia, talleresRecie
   for (let intento = 1; intento <= 2; intento++) {
     const message = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: systemPrompt(),
       messages: [{ role: "user", content: userPrompt(params, talleresRecientes) }],
       tools: [CONTENIDO_TOOL],
@@ -360,7 +360,7 @@ export async function generarContenidoDua(params: ParametrosGuia, contenidoEstan
   for (let intento = 1; intento <= 2; intento++) {
     const message = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 4096,
+      max_tokens: 6144,
       system: systemPromptDua(),
       messages: [{ role: "user", content: userPromptDua(params, contenidoEstandar) }],
       tools: [CONTENIDO_DUA_TOOL],

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import JSZip from "jszip";
 import type { Clei } from "@/lib/types";
 
 function formatearFechas(iso: string): { corta: string; larga: string } {
@@ -285,20 +286,35 @@ export default function Home() {
       }
 
       const archivos: Array<{ nombre: string; contenidoBase64: string }> = data.archivos;
-      for (const archivo of archivos) {
-        const bytes = Uint8Array.from(atob(archivo.contenidoBase64), (c) => c.charCodeAt(0));
-        const mime = archivo.nombre.endsWith(".xlsx")
-          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        const blob = new Blob([bytes], { type: mime });
+
+      function descargar(nombre: string, blob: Blob) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = archivo.nombre;
+        a.download = nombre;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+      }
+
+      // El navegador bloquea descargas múltiples disparadas por JavaScript
+      // (solo deja pasar la primera) — con 2+ archivos, se empaquetan en un
+      // solo .zip para que sea una única descarga.
+      if (archivos.length === 1) {
+        const archivo = archivos[0];
+        const bytes = Uint8Array.from(atob(archivo.contenidoBase64), (c) => c.charCodeAt(0));
+        const mime = archivo.nombre.endsWith(".xlsx")
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        descargar(archivo.nombre, new Blob([bytes], { type: mime }));
+      } else if (archivos.length > 1) {
+        const zip = new JSZip();
+        for (const archivo of archivos) {
+          zip.file(archivo.nombre, archivo.contenidoBase64, { base64: true });
+        }
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        descargar(`Guia_Semana${semana}_CLEI${clei}.zip`, zipBlob);
       }
 
       // Registra esta clase en el calendario (si esa semana ya existe, no la
