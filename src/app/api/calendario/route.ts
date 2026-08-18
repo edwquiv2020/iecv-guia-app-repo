@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
   const filas = await sql`
     select cc.id, cc.semana_academica as semana, cc.guia_numero as guia, cc.fecha_clase as fecha,
            cc.origen, cc.curso_id, cc.tema_id, a.nombre as actividad_nombre,
-           c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre
+           c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre,
+           exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'estandar' and g.estado = 'generada') as guia_estandar_generada,
+           exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'dua' and g.estado = 'generada') as guia_dua_generada
     from calendario_clases cc
     join actividades a on a.id = cc.actividad_id
     left join cursos c on c.id = cc.curso_id
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
     // malla — solo cuando la fila no trae ya su temaId resuelto.
     const contadorPorCurso = new Map<string, number>();
     let filasInsertadas = 0;
+    const idsPorSemana: Record<number, string> = {};
 
     for (const fila of filas) {
       let temaId: string | null = fila.temaId ?? null;
@@ -91,19 +94,26 @@ export async function POST(request: NextRequest) {
           returning id
         `;
         filasInsertadas += insertados.length;
+        // Tanto si se insertó como si ya existía, resolvemos el id definitivo.
+        const [fila_db] = await sql`
+          select id from calendario_clases where ciclo_id = ${cicloId} and jornada_id = ${jornadaId} and semana_academica = ${fila.semana}
+        `;
+        if (fila_db) idsPorSemana[fila.semana] = fila_db.id;
       } else {
-        await sql`
+        const [fila_db] = await sql`
           insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
           values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'horario')
           on conflict (ciclo_id, jornada_id, semana_academica) do update set
             fecha_clase = excluded.fecha_clase, guia_numero = excluded.guia_numero,
             curso_id = excluded.curso_id, tema_id = excluded.tema_id, actividad_id = excluded.actividad_id,
             origen = 'horario'
+          returning id
         `;
         filasInsertadas += 1;
+        if (fila_db) idsPorSemana[fila.semana] = fila_db.id;
       }
     }
-    return NextResponse.json({ ok: true, filasGuardadas: filasInsertadas });
+    return NextResponse.json({ ok: true, filasGuardadas: filasInsertadas, idsPorSemana });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido guardando el horario.";
     return NextResponse.json({ error: message }, { status: 500 });

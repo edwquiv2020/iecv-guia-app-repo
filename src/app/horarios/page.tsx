@@ -16,6 +16,8 @@ interface FilaExistente {
   curso_nombre: string | null;
   tema_numero: number | null;
   tema_nombre: string | null;
+  guia_estandar_generada: boolean;
+  guia_dua_generada: boolean;
 }
 interface FilaNueva {
   cursoId: string;
@@ -157,6 +159,20 @@ export default function Horarios() {
 
   async function borrarFila(id: string) {
     await fetch(`/api/calendario?id=${id}`, { method: "DELETE" });
+    cargarExistentes();
+  }
+
+  /** Marca/desmarca manualmente que una guía Estándar/DUA ya existe para esta semana — para las guías hechas antes de esta app. */
+  async function alternarGuia(calendarioClaseId: string, tipo: "estandar" | "dua", generada: boolean) {
+    if (generada) {
+      await fetch(`/api/guias?calendarioClaseId=${calendarioClaseId}&tipo=${tipo}`, { method: "DELETE" });
+    } else {
+      await fetch("/api/guias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ calendarioClaseId, tipo }),
+      });
+    }
     cargarExistentes();
   }
 
@@ -306,7 +322,7 @@ export default function Horarios() {
           ) : (
             <table className="mt-2 w-full text-sm">
               <thead className="bg-gray-50">
-                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Actividad</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th></th></tr>
+                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Actividad</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th className="p-2 text-left">Guías</th><th></th></tr>
               </thead>
               <tbody>
                 {filasExistentes.map((f) => (
@@ -320,6 +336,26 @@ export default function Horarios() {
                     </td>
                     <td className="p-2">{f.curso_nombre ?? "—"}</td>
                     <td className="p-2">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-gray-400">—</span>}</td>
+                    <td className="p-2">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          className={f.guia_estandar_generada ? "text-left text-emerald-700" : "text-left text-gray-400"}
+                          onClick={() => alternarGuia(f.id, "estandar", f.guia_estandar_generada)}
+                          title="Clic para marcar/desmarcar"
+                        >
+                          {f.guia_estandar_generada ? "✅" : "⏳"} Estándar
+                        </button>
+                        <button
+                          type="button"
+                          className={f.guia_dua_generada ? "text-left text-emerald-700" : "text-left text-gray-400"}
+                          onClick={() => alternarGuia(f.id, "dua", f.guia_dua_generada)}
+                          title="Clic para marcar/desmarcar"
+                        >
+                          {f.guia_dua_generada ? "✅" : "⏳"} DUA
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-2"><button className="text-red-600" onClick={() => borrarFila(f.id)}>✕</button></td>
                   </tr>
                 ))}

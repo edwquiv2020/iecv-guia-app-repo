@@ -42,6 +42,8 @@ interface FilaCalendario {
   curso_nombre: string | null;
   tema_numero: number | null;
   tema_nombre: string | null;
+  guia_estandar_generada: boolean;
+  guia_dua_generada: boolean;
 }
 
 /** "Ciclo III" -> "III". Los ciclos que no calzan con el tipo Clei (hoy solo Ciclo II) se filtran fuera. */
@@ -71,6 +73,7 @@ export default function Home() {
   const [calendarioFilas, setCalendarioFilas] = useState<FilaCalendario[]>([]);
   const [semanaProgramadaId, setSemanaProgramadaId] = useState("");
   const [notaActividad, setNotaActividad] = useState<string | null>(null);
+  const [confirmarRegenerar, setConfirmarRegenerar] = useState(false);
 
   const [clei, setClei] = useState<Clei>("III");
   const [jornada, setJornada] = useState("SEMANAL 1");
@@ -159,6 +162,7 @@ export default function Home() {
   function onSemanaProgramadaChange(filaId: string) {
     setSemanaProgramadaId(filaId);
     setNotaActividad(null);
+    setConfirmarRegenerar(false);
     if (!filaId) return; // "crear una clase nueva"
     const fila = calendarioFilas.find((f) => f.id === filaId);
     if (!fila) return;
@@ -226,6 +230,11 @@ export default function Home() {
       return;
     }
 
+    if (hayQueConfirmarRegeneracion && !confirmarRegenerar) {
+      setError(`La guía ${tiposYaGenerados.join(" y ")} de esta semana ya se generó antes — marca "sí, generar de nuevo" si de verdad quieres reemplazarla.`);
+      return;
+    }
+
     const subtemas = subtemasTexto
       .split("\n")
       .map((s) => s.trim())
@@ -289,29 +298,53 @@ export default function Home() {
       }
 
       // Registra esta clase en el calendario (si esa semana ya existe, no la
-      // toca — nunca pisa una fila oficial ni otra manual ya guardada).
+      // toca — nunca pisa una fila oficial ni otra manual ya guardada) y
+      // marca en `guias` qué se acaba de generar, para no perder el rastro.
       let mensajeCalendario = "";
       if (cicloId && jornadaId) {
-        const actividadClasesId = actividades.find((a) => a.nombre === "CLASES")?.id;
-        if (actividadClasesId) {
-          try {
-            const resCal = await fetch("/api/calendario", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                cicloId, jornadaId, origen: "ad_hoc",
-                filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(guia), fecha: fechaClaseIso, actividadId: actividadClasesId, temaId: temaId || null }],
-              }),
-            });
-            const dataCal = await resCal.json().catch(() => null);
-            if (dataCal?.filasGuardadas > 0) mensajeCalendario = " (clase registrada en el calendario)";
-          } catch {
-            // No bloquea la generación si esto falla — es solo un registro adicional.
+        try {
+          let calendarioClaseId = filaSeleccionada?.id ?? null;
+
+          if (!calendarioClaseId) {
+            const actividadClasesId = actividades.find((a) => a.nombre === "CLASES")?.id;
+            if (actividadClasesId) {
+              const resCal = await fetch("/api/calendario", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  cicloId, jornadaId, origen: "ad_hoc",
+                  filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(guia), fecha: fechaClaseIso, actividadId: actividadClasesId, temaId: temaId || null }],
+                }),
+              });
+              const dataCal = await resCal.json().catch(() => null);
+              calendarioClaseId = dataCal?.idsPorSemana?.[Number(semana)] ?? null;
+              if (dataCal?.filasGuardadas > 0) mensajeCalendario = " (clase registrada en el calendario)";
+            }
           }
+
+          if (calendarioClaseId) {
+            const archivoEstandar = archivos.find((a) => !a.nombre.includes("_ADAPTADA"));
+            const archivoDua = archivos.find((a) => a.nombre.includes("_ADAPTADA"));
+            if (quiereEstandar && archivoEstandar) {
+              await fetch("/api/guias", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ calendarioClaseId, tipo: "estandar", archivoPath: archivoEstandar.nombre }),
+              });
+            }
+            if (quiereDua && archivoDua) {
+              await fetch("/api/guias", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ calendarioClaseId, tipo: "dua", archivoPath: archivoDua.nombre }),
+              });
+            }
+          }
+        } catch {
+          // No bloquea la generación si esto falla — es solo un registro adicional.
         }
       }
 
       setExito(`Guía(s) generada(s): ${archivos.map((a) => a.nombre).join(" · ")}${mensajeCalendario}`);
+      setConfirmarRegenerar(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -320,6 +353,12 @@ export default function Home() {
   }
 
   const subtemasList = subtemasTexto.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  const filaSeleccionada = semanaProgramadaId ? calendarioFilas.find((f) => f.id === semanaProgramadaId) : undefined;
+  const tiposYaGenerados: string[] = [];
+  if (filaSeleccionada?.guia_estandar_generada && quiereEstandar) tiposYaGenerados.push("Estándar");
+  if (filaSeleccionada?.guia_dua_generada && quiereDua) tiposYaGenerados.push("DUA");
+  const hayQueConfirmarRegeneracion = tiposYaGenerados.length > 0;
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -386,10 +425,22 @@ export default function Home() {
                   Semana {f.semana} — {f.fecha.slice(0, 10)} — {f.actividad_nombre}
                   {f.curso_nombre ? ` — ${f.curso_nombre}` : ""}
                   {f.origen === "ad_hoc" ? " (manual)" : ""}
+                  {f.guia_estandar_generada ? " · Estándar ✅" : ""}
+                  {f.guia_dua_generada ? " · DUA ✅" : ""}
                 </option>
               ))}
             </select>
             {notaActividad && <p className="mt-1 text-xs text-amber-600">{notaActividad}</p>}
+
+            {hayQueConfirmarRegeneracion && (
+              <div className="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <p>La guía {tiposYaGenerados.join(" y ")} de esta semana ya se generó antes.</p>
+                <label className="mt-1 flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={confirmarRegenerar} onChange={(e) => setConfirmarRegenerar(e.target.checked)} />
+                  Sí, generar de nuevo (reemplaza el registro anterior)
+                </label>
+              </div>
+            )}
           </fieldset>
         )}
 
