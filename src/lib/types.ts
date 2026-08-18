@@ -160,3 +160,22 @@ export interface ImagenSubtema {
   tipo: "png" | "jpg";
   esCapturaOffice: boolean;
 }
+
+/** Tiempos permitidos por Kahoot (segundos) — cualquier otro valor cae a 20s automáticamente al importar. */
+export const TIEMPOS_KAHOOT = [5, 10, 20, 30, 60, 120] as const;
+
+/**
+ * Cuestionario Kahoot de 10 preguntas — generado en una llamada encadenada
+ * a partir del contenido ya generado de la Estándar, para que las preguntas
+ * salgan solo de lo que trae la guía de esa semana (nunca temas inventados).
+ * 7 preguntas de selección múltiple (4 opciones) + 3 de Verdadero/Falso.
+ */
+export interface ContenidoKahoot {
+  preguntas: Array<{
+    pregunta: string; // máx 95 caracteres
+    respuestas: string[]; // 4 para selección múltiple, 2 ("Verdadero","Falso") para V/F — máx 60 caracteres c/u
+    tiempoSeg: (typeof TIEMPOS_KAHOOT)[number];
+    /** Índices (1-indexado) de la(s) respuesta(s) correcta(s), ej. [2] o [1,3]. */
+    correctas: number[];
+  }>;
+}

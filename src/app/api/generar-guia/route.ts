@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ParametrosGuia, ImagenSubtema } from "@/lib/types";
-import { generarContenidoGuia, generarContenidoDua } from "@/lib/anthropic";
+import { generarContenidoGuia, generarContenidoDua, generarCuestionarioKahoot } from "@/lib/anthropic";
 import { generarImagenMotivacional } from "@/lib/images";
 import { buildGuiaDocx, buildGuiaDuaDocx } from "@/lib/buildGuia";
+import { buildKahootXlsx } from "@/lib/buildKahoot";
+import { buildKitSubidaDocx } from "@/lib/buildKit";
 import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -109,12 +111,24 @@ export async function POST(request: NextRequest) {
     let talleresTipos: string[] | undefined;
 
     if (params.tipos.includes("estandar")) {
+      const nombreGuia = `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`;
+      const nombreKahoot = `Cuestionario_Semana${params.semana}_CLEI${params.clei}_Kahoot.xlsx`;
+
       const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas });
-      archivos.push({
-        nombre: `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`,
-        contenidoBase64: docxBuf.toString("base64"),
-      });
+      archivos.push({ nombre: nombreGuia, contenidoBase64: docxBuf.toString("base64") });
       talleresTipos = contenido.talleres.map((t) => t.tipo);
+
+      // El cuestionario Kahoot se genera siempre junto con la guía Estándar
+      // (no hay que pedirlo aparte) — nunca se sube automáticamente, ver kit.
+      const cuestionarioKahoot = await generarCuestionarioKahoot(params, contenido);
+      const kahootBuf = await buildKahootXlsx(params, cuestionarioKahoot);
+      archivos.push({ nombre: nombreKahoot, contenidoBase64: kahootBuf.toString("base64") });
+
+      const kitBuf = await buildKitSubidaDocx(params, { nombreArchivoGuia: nombreGuia, nombreArchivoKahoot: nombreKahoot });
+      archivos.push({
+        nombre: `KIT_SUBIDA_Semana${params.semana}_CLEI${params.clei}.docx`,
+        contenidoBase64: kitBuf.toString("base64"),
+      });
     }
 
     if (params.tipos.includes("dua")) {

@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ParametrosGuia, ContenidoGuia, ContenidoDua } from "./types";
-import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS } from "./types";
+import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ContenidoKahoot } from "./types";
+import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS, TIEMPOS_KAHOOT } from "./types";
 
 const BANCO_KEYS = [
   "tortuga", "buho", "leon", "elefante", "aguila", "delfin", "lobo",
@@ -373,4 +373,127 @@ function validarContenidoDua(data: Omit<ContenidoDua, "subtemaTitulo">): string[
   if (!Array.isArray(data.listaVerificacion) || data.listaVerificacion.length === 0) faltantes.push("listaVerificacion");
   if (!Array.isArray(data.bibliografia) || data.bibliografia.length === 0) faltantes.push("bibliografia");
   return faltantes;
+}
+
+// ---------- Cuestionario Kahoot: llamada encadenada a partir del contenido Estándar ----------
+
+const CONTENIDO_KAHOOT_TOOL = {
+  name: "entregar_cuestionario_kahoot",
+  description: "Entrega el cuestionario Kahoot de 10 preguntas basado en el contenido de la guía.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      preguntas: {
+        type: "array",
+        description: "Exactamente 10 preguntas: las primeras 7 de selección múltiple (4 respuestas), las últimas 3 de Verdadero/Falso (respuestas EXACTAMENTE ['Verdadero','Falso']).",
+        items: {
+          type: "object",
+          properties: {
+            pregunta: { type: "string", description: "Máximo 95 caracteres." },
+            respuestas: {
+              type: "array", items: { type: "string" },
+              description: "4 respuestas (máx 60 caracteres c/u) para selección múltiple, o exactamente ['Verdadero','Falso'] para V/F.",
+            },
+            tiempoSeg: { type: "integer", enum: [...TIEMPOS_KAHOOT] },
+            correctas: {
+              type: "array", items: { type: "integer" },
+              description: "Índices 1-indexados de la(s) respuesta(s) correcta(s) dentro de 'respuestas' — normalmente un solo número, ej. [2].",
+            },
+          },
+          required: ["pregunta", "respuestas", "tiempoSeg", "correctas"],
+        },
+      },
+    },
+    required: ["preguntas"],
+  },
+};
+
+function systemPromptKahoot(): string {
+  return `Actúas como docente de Tecnología e Informática del IECV creando un
+cuestionario Kahoot de repaso para la guía de esta semana.
+
+Regla central: las 10 preguntas deben salir EXCLUSIVAMENTE de los conceptos
+que trae la guía (subtemas, definiciones, pasos de los talleres) — nunca
+inventes temas que no estén en el contenido que te paso.
+
+Estructura obligatoria: exactamente 10 preguntas — las primeras 7 de
+selección múltiple con única respuesta correcta (4 opciones), las últimas 3
+de Verdadero/Falso (respuestas literalmente "Verdadero" y "Falso", en ese
+orden).
+
+Límites estrictos de Kahoot (no los excedas nunca):
+- Pregunta: máximo 95 caracteres.
+- Cada respuesta: máximo 60 caracteres.
+- Tiempo permitido: solo 5, 10, 20, 30, 60 o 120 segundos.
+
+No uses markdown en los textos. Entrega el resultado exclusivamente llamando
+a la herramienta entregar_cuestionario_kahoot.`;
+}
+
+function userPromptKahoot(params: ParametrosGuia, contenido: ContenidoGuia): string {
+  const subtemasTexto = contenido.subtemas.map((s) => `${s.titulo}: ${s.funcion}`).join("\n");
+  const talleresTexto = contenido.talleres.map((t) => `${t.tipo}: ${t.items.join(" / ")}`).join("\n");
+  return `Genera el cuestionario Kahoot de esta guía:
+
+- Tema: ${params.tema}
+- Subtemas y su explicación:\n${subtemasTexto}
+- Talleres (para referencia, no repitas las preguntas literales):\n${talleresTexto}`;
+}
+
+function validarContenidoKahoot(data: ContenidoKahoot): string[] {
+  const faltantes: string[] = [];
+  if (!Array.isArray(data.preguntas) || data.preguntas.length !== 10) {
+    faltantes.push("preguntas (deben ser exactamente 10)");
+    return faltantes;
+  }
+  data.preguntas.forEach((p, i) => {
+    const n = i + 1;
+    if (!p.pregunta || p.pregunta.length > 95) faltantes.push(`pregunta ${n} (texto o longitud)`);
+    if (!Array.isArray(p.respuestas) || p.respuestas.length < 2) faltantes.push(`pregunta ${n} (respuestas)`);
+    else if (p.respuestas.some((r) => !r || r.length > 60)) faltantes.push(`pregunta ${n} (longitud de respuesta)`);
+    if (!TIEMPOS_KAHOOT.includes(p.tiempoSeg)) faltantes.push(`pregunta ${n} (tiempoSeg inválido)`);
+    if (!Array.isArray(p.correctas) || p.correctas.length === 0) faltantes.push(`pregunta ${n} (correctas)`);
+  });
+  return faltantes;
+}
+
+/**
+ * Segunda llamada encadenada (igual patrón que DUA): genera el cuestionario
+ * Kahoot a partir del contenido ya generado de la Estándar, para que las
+ * preguntas salgan solo de lo que trae esa guía puntual.
+ */
+export async function generarCuestionarioKahoot(params: ParametrosGuia, contenidoEstandar: ContenidoGuia): Promise<ContenidoKahoot> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("Falta ANTHROPIC_API_KEY en el entorno.");
+
+  const client = new Anthropic({ apiKey });
+
+  let ultimoError: Error | null = null;
+  for (let intento = 1; intento <= 2; intento++) {
+    const message = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 3072,
+      system: systemPromptKahoot(),
+      messages: [{ role: "user", content: userPromptKahoot(params, contenidoEstandar) }],
+      tools: [CONTENIDO_KAHOOT_TOOL],
+      tool_choice: { type: "tool", name: "entregar_cuestionario_kahoot" },
+    });
+
+    const toolUse = message.content.find((b) => b.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      ultimoError = new Error("El modelo no devolvió el cuestionario Kahoot esperado (sin tool_use en la respuesta).");
+      continue;
+    }
+
+    const data = toolUse.input as ContenidoKahoot;
+    const faltantes = validarContenidoKahoot(data);
+    if (faltantes.length > 0) {
+      ultimoError = new Error(`El cuestionario Kahoot quedó incompleto o fuera de los límites de Kahoot: ${faltantes.join(", ")}.`);
+      continue;
+    }
+
+    return data;
+  }
+
+  throw ultimoError ?? new Error("No se pudo generar el cuestionario Kahoot.");
 }
