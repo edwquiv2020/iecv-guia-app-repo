@@ -5,6 +5,7 @@ import type { ParametrosGuia, ImagenSubtema } from "@/lib/types";
 import { generarContenidoGuia, generarContenidoDua } from "@/lib/anthropic";
 import { generarImagenMotivacional } from "@/lib/images";
 import { buildGuiaDocx, buildGuiaDuaDocx } from "@/lib/buildGuia";
+import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -79,17 +80,33 @@ export async function POST(request: NextRequest) {
   const params = validado.data;
 
   try {
+    // Tipos de taller usados en las últimas guías Estándar de este mismo
+    // curso, para pedirle a la IA que no repita siempre la misma combinación.
+    let talleresRecientes: string[] = [];
+    if (params.cursoId) {
+      const filas = await sql`
+        select g.talleres_tipos
+        from guias g
+        join calendario_clases cc on cc.id = g.calendario_clase_id
+        where cc.curso_id = ${params.cursoId} and g.tipo = 'estandar' and g.talleres_tipos is not null
+        order by g.generado_en desc
+        limit 3
+      `;
+      talleresRecientes = [...new Set(filas.flatMap((f) => f.talleres_tipos as string[]))];
+    }
+
     // 1) Contenido pedagógico (IA) + 2) Imagen motivacional (Python) en paralelo
     // no es posible porque la imagen depende de la clave elegida dentro del
     // contenido (rotación por semana) — pero la clave hoy solo depende de
     // `semana`, así que sí podemos lanzarlas en paralelo.
     const [contenido, ilustracionBuf, logoBuf] = await Promise.all([
-      generarContenidoGuia(params),
+      generarContenidoGuia(params, talleresRecientes),
       generarImagenMotivacional(claveBancoParaSemana(params.semana)),
       fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg")),
     ]);
 
     const archivos: Array<{ nombre: string; contenidoBase64: string }> = [];
+    let talleresTipos: string[] | undefined;
 
     if (params.tipos.includes("estandar")) {
       const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas });
@@ -97,6 +114,7 @@ export async function POST(request: NextRequest) {
         nombre: `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`,
         contenidoBase64: docxBuf.toString("base64"),
       });
+      talleresTipos = contenido.talleres.map((t) => t.tipo);
     }
 
     if (params.tipos.includes("dua")) {
@@ -111,7 +129,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ archivos });
+    return NextResponse.json({ archivos, talleresTipos });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido generando la guía.";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -128,6 +128,7 @@ Reglas de contenido:
 - parteDeLoQueYaSabes: conecta con una situación real de un adulto (gastos de casa, un negocio propio, un trámite laboral), nunca con experiencia escolar previa.
 - Los subtemas deben cubrir exactamente los subtemas indicados por el docente, en el mismo orden.
 - Los talleres deben basarse en los conceptos exactos del tema/subtemas de esta semana, no inventes temas nuevos.
+- Rota el tipo de taller entre guías — si el usuario te indica tipos usados recientemente en este curso, no los repitas, elige uno distinto de la lista de tipos disponibles.
 - La rúbrica específica debe tener un criterio por subtema (3-4 criterios), con descripciones de desempeño reales y verificables, no genéricas ("hace bien el ejercicio" no sirve).
 - listaVerificacion: en primera persona ("Guardé...", "Escribí..."), específica de las acciones de esta guía, no genérica.
 - fichaResumen: mismo orden y cantidad que subtemas, resumen de una frase corta cada uno, pensado como referencia rápida sin releer la guía.
@@ -138,8 +139,13 @@ Reglas de contenido:
 Entrega el resultado exclusivamente llamando a la herramienta entregar_contenido_guia.`;
 }
 
-function userPrompt(params: ParametrosGuia): string {
+const TIPOS_TALLER_DISPONIBLES = ["cuestionario", "emparejamiento", "caso de estudio", "ejercicio guiado", "producto entregable"];
+
+function userPrompt(params: ParametrosGuia, talleresRecientes: string[]): string {
   const { duracion, numTalleres } = duracionPorClei(params.clei);
+  const lineaRotacion = talleresRecientes.length > 0
+    ? `\n- Tipos de taller usados en las últimas guías de este mismo curso (EVITA repetirlos, elige tipos distintos de esta lista si es posible): ${talleresRecientes.join(", ")}. Tipos disponibles: ${TIPOS_TALLER_DISPONIBLES.join(", ")}.`
+    : "";
   return `Genera el contenido para la guía de esta semana:
 
 - CLEI: ${params.clei}
@@ -149,14 +155,17 @@ function userPrompt(params: ParametrosGuia): string {
 - Subtemas a desarrollar (en este orden): ${params.subtemas.join(", ")}
 - Duración de la guía: ${duracion}
 - Número de talleres requeridos: ${numTalleres}
-- Fecha de la clase: ${params.fechaClaseLarga}`;
+- Fecha de la clase: ${params.fechaClaseLarga}${lineaRotacion}`;
 }
 
 /**
  * Llama a la API de Anthropic para generar el contenido pedagógico de la guía.
  * Requiere ANTHROPIC_API_KEY en el entorno (ver .env.example).
+ *
+ * @param talleresRecientes tipos de taller usados en las últimas guías del
+ * mismo curso (ver Fase 1 del roadmap) — se le pide al modelo no repetirlos.
  */
-export async function generarContenidoGuia(params: ParametrosGuia): Promise<ContenidoGuia> {
+export async function generarContenidoGuia(params: ParametrosGuia, talleresRecientes: string[] = []): Promise<ContenidoGuia> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error(
@@ -170,7 +179,7 @@ export async function generarContenidoGuia(params: ParametrosGuia): Promise<Cont
     model: "claude-sonnet-5",
     max_tokens: 4096,
     system: systemPrompt(),
-    messages: [{ role: "user", content: userPrompt(params) }],
+    messages: [{ role: "user", content: userPrompt(params, talleresRecientes) }],
     tools: [CONTENIDO_TOOL],
     tool_choice: { type: "tool", name: "entregar_contenido_guia" },
   });

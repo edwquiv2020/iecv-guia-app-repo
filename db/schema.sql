@@ -114,6 +114,10 @@ create table guias (
   tipo text not null check (tipo in ('estandar','dua')),
   estado text not null default 'pendiente' check (estado in ('pendiente','generada','publicada')),
   archivo_path text,
+  -- Tipos de taller usados (solo tipo='estandar') — permite pedirle a la IA
+  -- que no repita siempre la misma combinación en guías consecutivas del
+  -- mismo curso.
+  talleres_tipos text[],
   generado_en timestamptz,
   created_at timestamptz not null default now(),
   unique (calendario_clase_id, tipo)

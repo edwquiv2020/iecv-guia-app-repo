@@ -9,16 +9,18 @@ export async function POST(request: NextRequest) {
   const calendarioClaseId = body?.calendarioClaseId as string | undefined;
   const tipo = body?.tipo as "estandar" | "dua" | undefined;
   const archivoPath = (body?.archivoPath as string | undefined) ?? null;
+  const talleresTipos = (body?.talleresTipos as string[] | undefined) ?? null;
 
   if (!calendarioClaseId || (tipo !== "estandar" && tipo !== "dua")) {
     return NextResponse.json({ error: "Faltan calendarioClaseId o tipo." }, { status: 400 });
   }
 
   await sql`
-    insert into guias (calendario_clase_id, tipo, estado, archivo_path, generado_en)
-    values (${calendarioClaseId}, ${tipo}, 'generada', ${archivoPath}, now())
+    insert into guias (calendario_clase_id, tipo, estado, archivo_path, talleres_tipos, generado_en)
+    values (${calendarioClaseId}, ${tipo}, 'generada', ${archivoPath}, ${talleresTipos}, now())
     on conflict (calendario_clase_id, tipo) do update set
-      estado = 'generada', archivo_path = excluded.archivo_path, generado_en = now()
+      estado = 'generada', archivo_path = excluded.archivo_path,
+      talleres_tipos = excluded.talleres_tipos, generado_en = now()
   `;
   return NextResponse.json({ ok: true });
 }

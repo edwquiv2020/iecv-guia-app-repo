@@ -16,6 +16,8 @@ export interface ParametrosGuia {
   subtemas: string[]; // lista de subtemas (A, B, C…) a desarrollar
   fechaCargue: string; // dd/mm/aaaa
   horaMaxima: string; // "23:59"
+  /** Id del curso en el catálogo (Supabase) — si viene, se usa para consultar los tipos de taller usados recientemente y no repetirlos. Opcional por compatibilidad. */
+  cursoId?: string;
   // Video de apoyo: el docente lo aporta manualmente (verificar que exista y
   // sea apropiado es responsabilidad humana — ver nota en SKILL.md original).
   videoApoyo: {

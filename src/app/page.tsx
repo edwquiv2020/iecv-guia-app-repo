@@ -270,6 +270,7 @@ export default function Home() {
         horaMaxima,
         videoApoyo: { titulo: videoTitulo, canal: videoCanal, duracion: videoDuracion, url: videoUrl },
         tipos,
+        cursoId: cursoId || undefined,
       }));
       subtemas.forEach((_, i) => {
         (subtemaImagenes[i] ?? []).forEach((file) => formData.append(`subtemaImg_${i}`, file));
@@ -328,7 +329,7 @@ export default function Home() {
             if (quiereEstandar && archivoEstandar) {
               await fetch("/api/guias", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ calendarioClaseId, tipo: "estandar", archivoPath: archivoEstandar.nombre }),
+                body: JSON.stringify({ calendarioClaseId, tipo: "estandar", archivoPath: archivoEstandar.nombre, talleresTipos: data.talleresTipos }),
               });
             }
             if (quiereDua && archivoDua) {
