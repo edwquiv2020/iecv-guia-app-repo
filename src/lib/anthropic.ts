@@ -188,27 +188,63 @@ export async function generarContenidoGuia(params: ParametrosGuia, talleresRecie
 
   const client = new Anthropic({ apiKey });
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-5",
-    max_tokens: 4096,
-    system: systemPrompt(),
-    messages: [{ role: "user", content: userPrompt(params, talleresRecientes) }],
-    tools: [CONTENIDO_TOOL],
-    tool_choice: { type: "tool", name: "entregar_contenido_guia" },
-  });
+  // El modelo a veces omite algún campo cuando la llamada tiene muchos
+  // requeridos a la vez (mismo hallazgo real que en DUA/Kahoot) — un
+  // reintento resuelve la gran mayoría de casos.
+  let ultimoError: Error | null = null;
+  for (let intento = 1; intento <= 2; intento++) {
+    const message = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 4096,
+      system: systemPrompt(),
+      messages: [{ role: "user", content: userPrompt(params, talleresRecientes) }],
+      tools: [CONTENIDO_TOOL],
+      tool_choice: { type: "tool", name: "entregar_contenido_guia" },
+    });
 
-  const toolUse = message.content.find((b) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("El modelo no devolvió el contenido esperado (sin tool_use en la respuesta).");
+    const toolUse = message.content.find((b) => b.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      ultimoError = new Error("El modelo no devolvió el contenido esperado (sin tool_use en la respuesta).");
+      continue;
+    }
+
+    const data = toolUse.input as Omit<ContenidoGuia, "fotoMotivacionalClave">;
+    const faltantes = validarContenidoGuia(data);
+    if (faltantes.length > 0) {
+      ultimoError = new Error(`El modelo devolvió contenido incompleto (faltan o están vacíos: ${faltantes.join(", ")}).`);
+      continue;
+    }
+
+    return {
+      ...data,
+      bibliografia: [...data.bibliografia, ...BIBLIOGRAFIA_TEORICA_ESTANDAR],
+      fotoMotivacionalClave: fotoParaSemana(params.semana),
+    };
   }
 
-  const data = toolUse.input as Omit<ContenidoGuia, "fotoMotivacionalClave">;
+  throw ultimoError ?? new Error("No se pudo generar el contenido de la guía.");
+}
 
-  return {
-    ...data,
-    bibliografia: [...data.bibliografia, ...BIBLIOGRAFIA_TEORICA_ESTANDAR],
-    fotoMotivacionalClave: fotoParaSemana(params.semana),
-  };
+/** Valida que el modelo haya llenado todos los campos requeridos (a veces omite alguno en llamadas con muchos campos). Devuelve la lista de campos faltantes/vacíos. */
+function validarContenidoGuia(data: Omit<ContenidoGuia, "fotoMotivacionalClave">): string[] {
+  const faltantes: string[] = [];
+  const textos: Array<[string, unknown]> = [
+    ["saludoMotivacion", data.saludoMotivacion], ["introduccion", data.introduccion],
+    ["competencia", data.competencia], ["desempeno", data.desempeno],
+    ["reflexionInicial", data.reflexionInicial], ["parteDeLoQueYaSabes", data.parteDeLoQueYaSabes],
+    ["antesDeCerrarPregunta", data.antesDeCerrarPregunta],
+  ];
+  for (const [campo, valor] of textos) {
+    if (typeof valor !== "string" || valor.trim() === "") faltantes.push(campo);
+  }
+  if (!Array.isArray(data.objetivoGuia) || data.objetivoGuia.length === 0) faltantes.push("objetivoGuia");
+  if (!Array.isArray(data.subtemas) || data.subtemas.length === 0) faltantes.push("subtemas");
+  if (!Array.isArray(data.talleres) || data.talleres.length === 0) faltantes.push("talleres");
+  if (!Array.isArray(data.rubricaCriteriosEspecificos) || data.rubricaCriteriosEspecificos.length === 0) faltantes.push("rubricaCriteriosEspecificos");
+  if (!Array.isArray(data.listaVerificacion) || data.listaVerificacion.length === 0) faltantes.push("listaVerificacion");
+  if (!Array.isArray(data.fichaResumen) || data.fichaResumen.length === 0) faltantes.push("fichaResumen");
+  if (!Array.isArray(data.bibliografia) || data.bibliografia.length === 0) faltantes.push("bibliografia");
+  return faltantes;
 }
 
 // ---------- Guía DUA: segunda llamada encadenada a partir del contenido Estándar ----------
