@@ -43,7 +43,15 @@ const contenido: ContenidoGuia = {
   subtemas: [
     { titulo: "Navegadores web", funcion: "Programa que permite acceder a páginas de Internet." },
     { titulo: "Buscadores", funcion: "Herramienta para encontrar información mediante palabras clave." },
-    { titulo: "Correo electrónico", funcion: "Servicio para enviar y recibir mensajes digitales." },
+    {
+      titulo: "Correo electrónico", funcion: "Servicio para enviar y recibir mensajes digitales.",
+      pasos: [
+        { texto: "Abra el navegador y escriba gmail.com.", icono: "ninguno" },
+        { texto: "Escriba el mensaje y aplique negrita al asunto.", icono: "negrita" },
+        { texto: "Guarde el borrador antes de enviarlo.", icono: "guardar" },
+        { texto: "Copie el texto y péguelo en el campo de asunto.", icono: "copiar" },
+      ],
+    },
   ],
   talleres: [
     { tipo: "cuestionario", instrucciones: "Responde las siguientes preguntas.", items: ["¿Qué es un navegador?", "Nombra dos buscadores."] },

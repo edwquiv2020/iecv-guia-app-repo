@@ -3,6 +3,21 @@
 
 export type Clei = "III" | "IV" | "V" | "VI";
 
+/**
+ * Íconos reales de Microsoft (Fluent UI System Icons) disponibles para
+ * insertar al frente de un paso numerado que hace una acción concreta de
+ * Windows/Office — ver assets/iconos/. Lista cerrada: si un paso no
+ * corresponde a ninguno, se entrega "ninguno" y el paso queda sin ícono
+ * (nunca bloquea la generación por un ícono faltante).
+ */
+export const ICONOS_PASOS = [
+  "guardar", "negrita", "cursiva", "subrayado",
+  "alinear_izquierda", "alinear_centro", "alinear_derecha",
+  "cortar", "copiar", "pegar", "deshacer", "rehacer",
+  "imprimir", "insertar_tabla", "insertar_imagen", "lista_vinetas",
+] as const;
+export type IconoPaso = (typeof ICONOS_PASOS)[number];
+
 /** Datos que el docente llena en el formulario para UNA guía semanal. */
 export interface ParametrosGuia {
   clei: Clei;
@@ -50,6 +65,8 @@ export interface ContenidoGuia {
   subtemas: Array<{
     titulo: string;
     funcion: string; // explicación técnica del subtema
+    /** Solo cuando el subtema es un procedimiento de Windows/Office: pasos numerados, cada uno con su ícono si corresponde a una acción conocida. */
+    pasos?: Array<{ texto: string; icono: IconoPaso | "ninguno" }>;
   }>;
   talleres: Array<{
     tipo: string; // "cuestionario", "emparejamiento", "caso de estudio", "ejercicio guiado", "producto entregable"

@@ -3,8 +3,36 @@ import {
   Header, Footer, ImageRun, AlignmentType, WidthType,
   VerticalAlign, ShadingType, ExternalHyperlink,
 } from "docx";
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ImagenSubtema } from "./types";
 import { duracionPorClei, CRITERIO_PARTICIPACION_DUA } from "./types";
+
+// ---------- Íconos de pasos (assets/iconos/) ----------
+const cacheIconos = new Map<string, Buffer | null>();
+async function cargarIcono(clave: string): Promise<Buffer | null> {
+  if (clave === "ninguno") return null;
+  if (cacheIconos.has(clave)) return cacheIconos.get(clave)!;
+  try {
+    const buf = await fs.readFile(path.join(process.cwd(), "assets", "iconos", `${clave}.png`));
+    cacheIconos.set(clave, buf);
+    return buf;
+  } catch {
+    cacheIconos.set(clave, null); // ícono no disponible todavía — el paso queda sin ícono, no falla la generación
+    return null;
+  }
+}
+
+/** Un paso numerado, con su ícono real inline al frente si está disponible. */
+async function pasoParagraph(n: number, texto: string, iconoBuf: Buffer | null) {
+  const runs: (TextRun | ImageRun)[] = [];
+  if (iconoBuf) {
+    runs.push(new ImageRun({ data: iconoBuf, type: "png", transformation: { width: 16, height: 16 } }));
+    runs.push(new TextRun({ text: " ", font: FONT, size: 24 }));
+  }
+  runs.push(new TextRun({ text: `${n}. ${texto}`, font: FONT, size: 24 }));
+  return new Paragraph({ spacing: { after: 100 }, indent: { left: 400, hanging: iconoBuf ? 0 : 300 }, children: runs });
+}
 
 // Puerto a TypeScript de scripts/build_guia.js (skill iecv-guia-formacion),
 // parametrizado: en vez de un CONFIG hardcodeado editado a mano por guía,
@@ -342,12 +370,20 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
 
   const letras = "ABCDEFGH";
   const imagenesPorSubtema = assets.imagenesSubtemas ?? [];
-  contenido.subtemas.forEach((st, i) => {
+  for (let i = 0; i < contenido.subtemas.length; i++) {
+    const st = contenido.subtemas[i];
     children.push(heading(`${letras[i] || i + 1}. ${st.titulo}`, { size: 12, before: 200, italics: true }));
     children.push(pRuns([{ text: "Función: ", bold: true }, { text: st.funcion }], { indent: { left: 400 } }));
+    if (st.pasos?.length) {
+      for (let j = 0; j < st.pasos.length; j++) {
+        const paso = st.pasos[j];
+        const iconoBuf = await cargarIcono(paso.icono);
+        children.push(await pasoParagraph(j + 1, paso.texto, iconoBuf));
+      }
+    }
     const imgs = imagenesPorSubtema.filter((img) => img.subtemaIndex === i);
     if (imgs.length) children.push(...imagenesDeSubtema(imgs));
-  });
+  }
 
   children.push(heading("3. Asignación de Actividades Formativas:", { size: 13, before: 300 }));
   contenido.talleres.forEach((taller, i) => {

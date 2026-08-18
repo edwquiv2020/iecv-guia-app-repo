@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParametrosGuia, ContenidoGuia, ContenidoDua } from "./types";
-import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA } from "./types";
+import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS } from "./types";
 
 const BANCO_KEYS = [
   "tortuga", "buho", "leon", "elefante", "aguila", "delfin", "lobo",
@@ -41,6 +41,18 @@ const CONTENIDO_TOOL = {
           properties: {
             titulo: { type: "string" },
             funcion: { type: "string", description: "Explicación técnica del subtema." },
+            pasos: {
+              type: "array",
+              description: `SOLO si el subtema es un procedimiento concreto de Windows/Office (ej. "Guardar un documento", "Aplicar negrita") — omite este campo por completo si el subtema es conceptual/explicativo. Cada paso lleva su ícono si corresponde a una de estas acciones: ${ICONOS_PASOS.join(", ")}. Si el paso no corresponde a ninguna, usa "ninguno" — nunca inventes un ícono fuera de esta lista.`,
+              items: {
+                type: "object",
+                properties: {
+                  texto: { type: "string" },
+                  icono: { type: "string", enum: [...ICONOS_PASOS, "ninguno"] },
+                },
+                required: ["texto", "icono"],
+              },
+            },
           },
           required: ["titulo", "funcion"],
         },
@@ -127,6 +139,7 @@ Reglas de contenido:
 - objetivoGuia: 3 logros de acción verificables, en segunda persona ("vas a poder..."), no genéricos ni copiados del estándar.
 - parteDeLoQueYaSabes: conecta con una situación real de un adulto (gastos de casa, un negocio propio, un trámite laboral), nunca con experiencia escolar previa.
 - Los subtemas deben cubrir exactamente los subtemas indicados por el docente, en el mismo orden.
+- pasos: solo agrégalo cuando el subtema sea un procedimiento concreto de Windows/Office con acciones que el estudiante ejecuta en orden (ej. "1. Abra el menú Archivo. 2. Haga clic en Guardar."). No lo agregues para subtemas conceptuales/explicativos — en esos casos deja el subtema solo con "función", como antes. Antes de asignar un ícono, confirma que de verdad corresponda a esa acción exacta — es mejor "ninguno" que un ícono equivocado.
 - Los talleres deben basarse en los conceptos exactos del tema/subtemas de esta semana, no inventes temas nuevos.
 - Rota el tipo de taller entre guías — si el usuario te indica tipos usados recientemente en este curso, no los repitas, elige uno distinto de la lista de tipos disponibles.
 - La rúbrica específica debe tener un criterio por subtema (3-4 criterios), con descripciones de desempeño reales y verificables, no genéricas ("hace bien el ejercicio" no sirve).
