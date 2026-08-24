@@ -23,14 +23,21 @@ jobs:
       AUTH_GOOGLE_SECRET: dummy
       AUTH_SECRET: dummy-secret-for-ci-build-only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+
+      # tsconfig.json incluye .next/types/**/*.ts (ahí vive el tipo
+      # LayoutProps que usa layout.tsx) — en un checkout limpio ese archivo
+      # todavía no existe, así que el typecheck falla si no se genera antes.
+      # `next typegen` lo genera sin correr un build completo.
+      - name: Generate Next.js types
+        run: npx next typegen
 
       - name: Lint
         run: npm run lint
