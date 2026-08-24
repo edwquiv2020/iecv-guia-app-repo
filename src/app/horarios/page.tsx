@@ -30,7 +30,7 @@ interface FilaNueva {
 }
 interface Conflicto { semana: number; fecha: string; guia: number }
 
-function sumarDias(fechaIso: string, dias: number): string {
+export function sumarDias(fechaIso: string, dias: number): string {
   const d = new Date(fechaIso + "T00:00:00");
   d.setDate(d.getDate() + dias);
   return d.toISOString().slice(0, 10);
