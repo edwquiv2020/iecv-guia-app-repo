@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 
 interface Ciclo { id: string; nombre: string; grados: string[] }
-interface Jornada { id: string; nombre: string }
+interface Jornada { id: string; nombre: string; dias: string }
 interface Curso { id: string; nombre: string }
 interface Actividad { id: string; nombre: string }
+interface ArchivoGuia { id: string; nombre: string }
 interface FilaExistente {
   id: string;
   semana: number;
@@ -18,6 +19,7 @@ interface FilaExistente {
   tema_nombre: string | null;
   guia_estandar_generada: boolean;
   guia_dua_generada: boolean;
+  archivos: { estandar: ArchivoGuia[]; dua: ArchivoGuia[] };
 }
 interface FilaNueva {
   cursoId: string;
@@ -34,6 +36,46 @@ function sumarDias(fechaIso: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Celda de la columna "Guías" — si ya hay archivos reales guardados, los
+ * lista como links de descarga directa; si no (guías marcadas a mano, de
+ * antes de esta persistencia, o todavía pendientes), mantiene el botón
+ * ✅/⏳ de marcar/desmarcar de siempre.
+ */
+function GuiaCelda({
+  etiqueta, generada, archivos, onAlternar,
+}: { etiqueta: string; generada: boolean; archivos: ArchivoGuia[]; onAlternar: () => void }) {
+  if (generada && archivos.length > 0) {
+    return (
+      <div>
+        <div className="flex items-center gap-1 text-emerald-700">
+          <span>✅ {etiqueta}</span>
+          <button type="button" className="text-gray-400 hover:text-red-600" onClick={onAlternar} title="Quitar registro y archivos guardados">
+            ✕
+          </button>
+        </div>
+        <div className="ml-4 flex flex-col">
+          {archivos.map((a) => (
+            <a key={a.id} href={`/api/guias/archivos/${a.id}`} className="text-xs text-blue-600 underline" target="_blank" rel="noreferrer">
+              {a.nombre}
+            </a>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={generada ? "text-left text-emerald-700" : "text-left text-gray-400"}
+      onClick={onAlternar}
+      title="Clic para marcar/desmarcar"
+    >
+      {generada ? "✅" : "⏳"} {etiqueta}
+    </button>
+  );
+}
+
 export default function Horarios() {
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
@@ -42,6 +84,10 @@ export default function Horarios() {
   const [cicloId, setCicloId] = useState("");
   const [jornadaId, setJornadaId] = useState("");
   const [filasExistentes, setFilasExistentes] = useState<FilaExistente[]>([]);
+  // Jornadas "gemelas" (mismo día, ej. Sábado 1/Sábado 2) donde el mismo
+  // ciclo también se dicta — se ofrece copiar el horario que se está
+  // cargando aquí también a esas jornadas, en vez de repetir la carga.
+  const [copiarAJornadas, setCopiarAJornadas] = useState<string[]>([]);
 
   const [modoAutomatico, setModoAutomatico] = useState(true);
 
@@ -51,6 +97,9 @@ export default function Horarios() {
   const [autoSemanaInicial, setAutoSemanaInicial] = useState(1);
   const [autoGuiaInicial, setAutoGuiaInicial] = useState(0);
   const [autoCantidad, setAutoCantidad] = useState(10);
+  // Cada cuántos días se repite la clase — normalmente 7 (semanal), pero
+  // algunos ciclos/cursos rotan cada 15 días, así que queda editable.
+  const [autoIntervaloDias, setAutoIntervaloDias] = useState(7);
   // Actividad por fila (índice dentro del lote) — cada semana puede ser
   // distinta (CLASES, GUÍA DE REPASO, EXAMEN...), no todas iguales.
   const [autoActividadesPorFila, setAutoActividadesPorFila] = useState<Record<number, string>>({});
@@ -63,7 +112,9 @@ export default function Horarios() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
-  const [conflictos, setConflictos] = useState<Conflicto[] | null>(null);
+  // Conflictos por jornada destino (la principal + las copiadas) — cada una
+  // puede tener sus propias filas 'ad_hoc' chocando o ninguna.
+  const [conflictos, setConflictos] = useState<Record<string, Conflicto[]> | null>(null);
 
   useEffect(() => {
     fetch("/api/catalogo")
@@ -82,11 +133,19 @@ export default function Horarios() {
 
   const actividadClasesId = actividades.find((a) => a.nombre === "CLASES")?.id ?? "";
 
+  // Al cambiar de ciclo/jornada, la selección de "copiar también a" ya no
+  // aplica (las gemelas cambian) y la tabla de abajo queda obsoleta — se
+  // limpian ambas en el mismo render en que cambia la clave, no en un
+  // efecto, para no arrastrar datos del contexto anterior.
+  const [filasKey, setFilasKey] = useState(`${cicloId}|${jornadaId}`);
+  if (`${cicloId}|${jornadaId}` !== filasKey) {
+    setFilasKey(`${cicloId}|${jornadaId}`);
+    setCopiarAJornadas([]);
+    setFilasExistentes([]);
+  }
+
   function cargarExistentes() {
-    if (!cicloId || !jornadaId) {
-      setFilasExistentes([]);
-      return;
-    }
+    if (!cicloId || !jornadaId) return;
     fetch(`/api/calendario?cicloId=${cicloId}&jornadaId=${jornadaId}`)
       .then((r) => r.json())
       .then((data: { filas: FilaExistente[] }) => setFilasExistentes(data.filas ?? []));
@@ -94,13 +153,22 @@ export default function Horarios() {
 
   useEffect(cargarExistentes, [cicloId, jornadaId]);
 
+  const jornadaActual = jornadas.find((j) => j.id === jornadaId);
+  const jornadasGemelas = jornadaActual
+    ? jornadas.filter((j) => j.id !== jornadaId && j.dias === jornadaActual.dias)
+    : [];
+
+  function alternarCopiarAJornada(id: string) {
+    setCopiarAJornadas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
   const previewAuto: FilaNueva[] = !modoAutomatico || !autoCursoId || !autoFechaInicio || !actividadClasesId
     ? []
     : Array.from({ length: autoCantidad }, (_, i) => ({
         cursoId: autoCursoId,
         semana: autoSemanaInicial + i,
         guia: autoGuiaInicial + i,
-        fecha: sumarDias(autoFechaInicio, i * 7),
+        fecha: sumarDias(autoFechaInicio, i * autoIntervaloDias),
         actividadId: autoActividadesPorFila[i] ?? actividadClasesId,
       }));
 
@@ -130,23 +198,47 @@ export default function Horarios() {
       setError("Completa la fecha y el tipo de actividad en todas las filas antes de guardar.");
       return;
     }
+    const filasFmt = filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, actividadId: f.actividadId }));
+    // Jornada principal + las gemelas marcadas para copiar el mismo horario.
+    // Se reintenta con confirmar=true en TODAS por igual — para las que ya
+    // se guardaron bien en un intento previo, reenviar los mismos datos es
+    // un upsert sin efecto, no hay riesgo de duplicar ni perder nada.
+    const jornadasDestino = [jornadaId, ...copiarAJornadas];
     setGuardando(true);
     try {
-      const res = await fetch("/api/calendario", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cicloId, jornadaId, confirmar,
-          filas: filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, actividadId: f.actividadId })),
-        }),
-      });
-      const data = await res.json();
-      if (res.status === 409) {
-        setConflictos(data.conflictos);
+      const conflictosNuevos: Record<string, Conflicto[]> = {};
+      const guardadasPorJornada: Record<string, number> = {};
+      let errorApi: string | null = null;
+
+      for (const destinoId of jornadasDestino) {
+        const res = await fetch("/api/calendario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cicloId, jornadaId: destinoId, confirmar, filas: filasFmt }),
+        });
+        const data = await res.json();
+        if (res.status === 409) {
+          conflictosNuevos[destinoId] = data.conflictos;
+        } else if (!res.ok) {
+          errorApi = data.error || "Error guardando el horario.";
+          break;
+        } else {
+          guardadasPorJornada[destinoId] = data.filasGuardadas;
+        }
+      }
+
+      if (errorApi) throw new Error(errorApi);
+
+      if (Object.keys(conflictosNuevos).length > 0) {
+        setConflictos(conflictosNuevos);
         return;
       }
-      if (!res.ok) throw new Error(data.error || "Error guardando el horario.");
-      setExito(`${data.filasGuardadas} semanas guardadas.`);
+
+      const nombreJornada = (id: string) => jornadas.find((j) => j.id === id)?.nombre ?? id;
+      const [principal, ...copias] = jornadasDestino;
+      let mensaje = `${guardadasPorJornada[principal] ?? 0} semanas guardadas en ${nombreJornada(principal)}`;
+      if (copias.length > 0) mensaje += ` y copiadas a ${copias.map(nombreJornada).join(", ")}`;
+      setExito(`${mensaje}.`);
       setConflictos(null);
       cargarExistentes();
       setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: actividadClasesId }]);
@@ -180,8 +272,9 @@ export default function Horarios() {
     <main className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="text-2xl font-bold">Horarios — carga de calendario académico</h1>
       <p className="mt-1 text-sm text-gray-500">
-        Carga las fechas que entrega rectoría por ciclo y jornada. Semanal 1 suele ser regular
-        (cada 7 días); Sábado 1/2 rota entre cursos, así que normalmente necesita carga manual.
+        Carga las fechas que entrega rectoría por ciclo y jornada. La generación automática
+        repite cada N días (7 para semanal, 15 para algunos ciclos que rotan quincenal) — ajusta
+        el intervalo según lo que entregue rectoría. Si no sigue un patrón fijo, usa carga manual.
       </p>
 
       <div className="mt-8 grid grid-cols-2 gap-4">
@@ -205,8 +298,32 @@ export default function Horarios() {
         <>
           <label className="mt-8 flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" checked={modoAutomatico} onChange={(e) => setModoAutomatico(e.target.checked)} />
-            Generar automático (secuencia regular cada 7 días)
+            Generar automático (secuencia regular)
           </label>
+
+          {jornadasGemelas.length > 0 && (
+            <fieldset className="mt-4 rounded border border-blue-200 bg-blue-50 p-4">
+              <legend className="px-1 text-sm font-medium">
+                Este ciclo también se dicta en {jornadaActual?.dias} en otra jornada
+              </legend>
+              <p className="text-xs text-gray-500">
+                Si el horario es el mismo, marca la(s) jornada(s) donde también quieres cargarlo —
+                se guarda ahí una copia idéntica, sin tener que repetir la carga.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-4">
+                {jornadasGemelas.map((j) => (
+                  <label key={j.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={copiarAJornadas.includes(j.id)}
+                      onChange={() => alternarCopiarAJornada(j.id)}
+                    />
+                    Copiar también a {j.nombre}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           {modoAutomatico ? (
             <fieldset className="mt-4 rounded border p-4">
@@ -232,9 +349,14 @@ export default function Horarios() {
                   <input type="number" min={0} className="mt-1 w-full rounded border px-3 py-2" value={autoGuiaInicial} onChange={(e) => setAutoGuiaInicial(Number(e.target.value))} />
                   <span className="text-xs text-gray-400">0 si la primera semana es de inducción/diagnóstico, sin guía.</span>
                 </label>
-                <label className="block col-span-2">
+                <label className="block">
                   <span className="text-sm">Cantidad de semanas</span>
                   <input type="number" min={1} max={40} className="mt-1 w-full rounded border px-3 py-2" value={autoCantidad} onChange={(e) => setAutoCantidad(Number(e.target.value))} />
+                </label>
+                <label className="block">
+                  <span className="text-sm">Repetir cada (días)</span>
+                  <input type="number" min={1} max={60} className="mt-1 w-full rounded border px-3 py-2" value={autoIntervaloDias} onChange={(e) => setAutoIntervaloDias(Number(e.target.value))} />
+                  <span className="text-xs text-gray-400">7 = semanal, 15 = quincenal.</span>
                 </label>
               </div>
 
@@ -298,9 +420,16 @@ export default function Horarios() {
                 Estas semanas ya tienen una clase creada manualmente desde el generador de guías
                 (sin horario oficial todavía). Si guardas, se reemplaza con estos datos nuevos:
               </p>
-              <ul className="mt-1 list-disc pl-5">
-                {conflictos.map((c) => <li key={c.semana}>Semana {c.semana} — Guía {c.guia} — {c.fecha.slice(0, 10)}</li>)}
-              </ul>
+              {Object.entries(conflictos).map(([destinoId, filas]) => (
+                <div key={destinoId} className="mt-2">
+                  <p className="text-xs font-medium uppercase text-amber-700">
+                    {jornadas.find((j) => j.id === destinoId)?.nombre ?? destinoId}
+                  </p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {filas.map((c) => <li key={c.semana}>Semana {c.semana} — Guía {c.guia} — {c.fecha.slice(0, 10)}</li>)}
+                  </ul>
+                </div>
+              ))}
               <button type="button" onClick={() => guardar(true)} className="mt-2 rounded bg-amber-700 px-3 py-1 text-white">
                 Sí, reemplazar y guardar
               </button>
@@ -337,23 +466,19 @@ export default function Horarios() {
                     <td className="p-2">{f.curso_nombre ?? "—"}</td>
                     <td className="p-2">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-gray-400">—</span>}</td>
                     <td className="p-2">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          type="button"
-                          className={f.guia_estandar_generada ? "text-left text-emerald-700" : "text-left text-gray-400"}
-                          onClick={() => alternarGuia(f.id, "estandar", f.guia_estandar_generada)}
-                          title="Clic para marcar/desmarcar"
-                        >
-                          {f.guia_estandar_generada ? "✅" : "⏳"} Estándar
-                        </button>
-                        <button
-                          type="button"
-                          className={f.guia_dua_generada ? "text-left text-emerald-700" : "text-left text-gray-400"}
-                          onClick={() => alternarGuia(f.id, "dua", f.guia_dua_generada)}
-                          title="Clic para marcar/desmarcar"
-                        >
-                          {f.guia_dua_generada ? "✅" : "⏳"} DUA
-                        </button>
+                      <div className="flex flex-col gap-1.5">
+                        <GuiaCelda
+                          etiqueta="Estándar"
+                          generada={f.guia_estandar_generada}
+                          archivos={f.archivos.estandar}
+                          onAlternar={() => alternarGuia(f.id, "estandar", f.guia_estandar_generada)}
+                        />
+                        <GuiaCelda
+                          etiqueta="DUA"
+                          generada={f.guia_dua_generada}
+                          archivos={f.archivos.dua}
+                          onAlternar={() => alternarGuia(f.id, "dua", f.guia_dua_generada)}
+                        />
                       </div>
                     </td>
                     <td className="p-2"><button className="text-red-600" onClick={() => borrarFila(f.id)}>✕</button></td>
