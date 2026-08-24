@@ -99,7 +99,7 @@ const SHADE_AMARILLO = "FFF2CC";
 const SHADE_AZUL = "DDEBF7";
 const SHADE_VERDE = "E2EFDA";
 
-function box(titulo: string, cuerpo: string[], shade: string, opts: { before?: number; after?: number } = {}) {
+function box(titulo: string, cuerpo: string[], shade: string) {
   return new Table({
     width: { size: 10500, type: WidthType.DXA },
     rows: [
@@ -123,7 +123,7 @@ function box(titulo: string, cuerpo: string[], shade: string, opts: { before?: n
 /** "MAPA DE LO QUE VAS A APRENDER HOY" — secuencia de los subtemas en orden, unidos con flechas. */
 function mapaAprendizaje(titulosSubtemas: string[]) {
   const texto = titulosSubtemas.map((t, i) => `${i + 1}. ${t}`).join("   →   ");
-  return box("MAPA DE LO QUE VAS A APRENDER HOY", [texto], SHADE_VERDE, { before: 200, after: 200 });
+  return box("MAPA DE LO QUE VAS A APRENDER HOY", [texto], SHADE_VERDE);
 }
 
 /** "FICHA RESUMEN" — tabla de 2 a 4 columnas, una por concepto clave. */
