@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,11 @@ interface TemaInput {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (session?.user?.rol !== "admin") {
+    return NextResponse.json({ error: "No autorizado — se requiere rol admin." }, { status: 403 });
+  }
+
   const body = (await request.json()) as TemaInput;
   const { cursoId, numero, tema, subtemas } = body;
 

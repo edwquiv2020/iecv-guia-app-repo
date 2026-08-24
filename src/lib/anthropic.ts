@@ -53,6 +53,27 @@ const CONTENIDO_TOOL = {
                 required: ["texto", "icono"],
               },
             },
+            rutaVisual: {
+              type: "object",
+              description: "Resumen visual del procedimiento como tira 'pestaña > grupo > opciones' de la cinta real de Word/Excel/PowerPoint (reemplaza la Imagen Representativa en texto). Mismo criterio que 'pasos': agrégalo solo si el subtema es un procedimiento concreto con pasos, y omítelo por completo si es conceptual. Usa los nombres REALES de pestaña y grupo del programa que corresponda al tema (ej. Word: 'Inicio'>'Fuente'/'Párrafo'; Excel: 'Inicio'>'Alineación'; Insertar>'Ilustraciones'/'Tablas'). Las opciones deben ser un subconjunto (2 a 4) de los íconos ya usados en 'pasos' de este mismo subtema, en el orden real en que aparecen en la cinta.",
+              properties: {
+                tab: { type: "string", description: "Nombre real de la pestaña de la cinta, ej. 'Inicio', 'Insertar'." },
+                grupo: { type: "string", description: "Nombre real del grupo dentro de esa pestaña, ej. 'Fuente', 'Párrafo', 'Ilustraciones'." },
+                opciones: {
+                  type: "array",
+                  description: "2 a 4 opciones, en el orden real en que aparecen en la cinta.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      icono: { type: "string", enum: ICONOS_PASOS },
+                      etiqueta: { type: "string", description: "Etiqueta corta tal como aparece en la cinta, ej. 'Negrita', 'Centrar'." },
+                    },
+                    required: ["icono", "etiqueta"],
+                  },
+                },
+              },
+              required: ["tab", "grupo", "opciones"],
+            },
           },
           required: ["titulo", "funcion"],
         },
@@ -140,6 +161,7 @@ Reglas de contenido:
 - parteDeLoQueYaSabes: conecta con una situación real de un adulto (gastos de casa, un negocio propio, un trámite laboral), nunca con experiencia escolar previa.
 - Los subtemas deben cubrir exactamente los subtemas indicados por el docente, en el mismo orden.
 - pasos: solo agrégalo cuando el subtema sea un procedimiento concreto de Windows/Office con acciones que el estudiante ejecuta en orden (ej. "1. Abra el menú Archivo. 2. Haga clic en Guardar."). No lo agregues para subtemas conceptuales/explicativos — en esos casos deja el subtema solo con "función", como antes. Antes de asignar un ícono, confirma que de verdad corresponda a esa acción exacta — es mejor "ninguno" que un ícono equivocado.
+- rutaVisual: mismo criterio que pasos (solo procedimientos concretos). Tab y grupo deben ser los nombres REALES de la cinta del programa exacto del tema (no inventes ni mezcles Word/Excel/PowerPoint), y las opciones deben salir de los íconos que ya usaste en "pasos" de ese subtema — nunca agregues un ícono ahí que no hayas usado en algún paso.
 - Los talleres deben basarse en los conceptos exactos del tema/subtemas de esta semana, no inventes temas nuevos.
 - Rota el tipo de taller entre guías — si el usuario te indica tipos usados recientemente en este curso, no los repitas, elige uno distinto de la lista de tipos disponibles.
 - La rúbrica específica debe tener un criterio por subtema (3-4 criterios), con descripciones de desempeño reales y verificables, no genéricas ("hace bien el ejercicio" no sirve).

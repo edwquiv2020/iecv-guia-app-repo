@@ -3,24 +3,40 @@
 Genera una imagen original "ruta visual" que reemplaza el esquema en texto
 (Courier New) de "Imagen Representativa:" en las guías. Muestra la ruta de
 pestaña > grupo > opciones como una tira tipo cinta de opciones, usando los
-mismos íconos-insignia institucionales ya generados — nunca una captura real
-de Word/Excel/PowerPoint (evita marca registrada).
+mismos íconos reales de Microsoft ya usados en los pasos numerados (ver
+assets/iconos/ y src/lib/buildGuia.ts) — nunca una captura real de
+Word/Excel/PowerPoint (evita marca registrada).
 
-Uso:
+Uso (llamado desde Node vía src/lib/rutaVisual.ts, mismo contrato que
+gen_imagen_motivacional_v2.py):
+    python3 gen_ruta_visual.py '{"tab":"Inicio","grupo":"Alineación",
+        "opciones":[{"icono":"alinear_izquierda","etiqueta":"Izquierda"},
+                    {"icono":"alinear_centro","etiqueta":"Centrar"}],
+        "out_path":"/tmp/x.png"}'
+
+Uso directo en Python:
     from gen_ruta_visual import build_ruta_visual
     build_ruta_visual(
         tab="Inicio", grupo="Alineación",
-        opciones=[("alinear_izquierda", "Izquierda"), ("alinear_centro", "Centrar"),
-                  ("combinar_centrar", "Combinar y centrar")],
+        opciones=[("alinear_izquierda", "Izquierda"), ("alinear_centro", "Centrar")],
         out_path="...png",
     )
 """
 import os
+import sys
+import json
 from PIL import Image, ImageDraw, ImageFont
 
-ICONOS_DIR = "/sessions/determined-sharp-johnson/mnt/GUIAS IECV 2026 CLAUDE/00_PLANTILLAS_REFERENCIA/iconos_pasos_institucionales"
-ICONOS_NATIVOS_DIR = "/sessions/determined-sharp-johnson/mnt/GUIAS IECV 2026 CLAUDE/00_PLANTILLAS_REFERENCIA/iconos_pasos_nativos_ms"
-FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+# ICONOS_DIR apunta por defecto a assets/iconos dentro del proyecto — el
+# mismo set de íconos reales de Microsoft que usan los pasos numerados de la
+# guía (src/lib/buildGuia.ts). A diferencia de la versión original de la
+# skill, acá no existe una distinción institucional/nativo: todo el set ya
+# es real, así que la "ruta visual" siempre usa estos mismos archivos.
+ICONOS_DIR = os.environ.get(
+    "ICONOS_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "iconos"),
+)
+FONT_DIR = os.environ.get("FONT_DIR", "/usr/share/fonts/truetype/dejavu")
 
 PALETTE = {
     "verde_oscuro": (27, 91, 42),
@@ -36,18 +52,20 @@ def font(path, size):
 
 
 def build_ruta_visual(tab, grupo, opciones, out_path, height=190):
-    """opciones: lista de (nombre_icono_sin_ext, etiqueta) o (nombre_icono_sin_ext, etiqueta, native)
-    donde native=True usa el ícono real de Microsoft (iconos_pasos_nativos_ms) sin recolorear, en vez
-    del badge institucional propio."""
-    opciones = [(o[0], o[1], o[2] if len(o) > 2 else False) for o in opciones]
+    """opciones: lista de (nombre_icono_sin_ext, etiqueta), tomados del mismo
+    set cerrado que usan los pasos numerados (ver types.ts: ICONOS_PASOS)."""
     icon_size = 64
     pad = 24
     chip_gap = 14
 
-    f_tab = font("DejaVuSans-Bold.ttf", 22)
+    # Solo DejaVuSans.ttf regular — a diferencia de gen_imagen_motivacional_v2.py,
+    # este set de fuentes (assets/fonts/dejavu/) no trae la variante Bold, así
+    # que no se usa acá (evita depender de un archivo de fuente que no está en
+    # el repo).
+    f_tab = font("DejaVuSans.ttf", 22)
     f_grupo = font("DejaVuSans.ttf", 18)
     f_label = font("DejaVuSans.ttf", 16)
-    f_chevron = font("DejaVuSans-Bold.ttf", 22)
+    f_chevron = font("DejaVuSans.ttf", 22)
 
     tmp = Image.new("RGB", (10, 10))
     d = ImageDraw.Draw(tmp)
@@ -56,7 +74,7 @@ def build_ruta_visual(tab, grupo, opciones, out_path, height=190):
     grupo_w = d.textbbox((0, 0), grupo, font=f_grupo)[2] + 20
     chevron_w = 30
 
-    opt_widths = [max(icon_size + 20, d.textbbox((0, 0), label, font=f_label)[2] + 16) for _, label, _ in opciones]
+    opt_widths = [max(icon_size + 20, d.textbbox((0, 0), label, font=f_label)[2] + 16) for _, label in opciones]
     opts_total_w = sum(opt_widths) + (len(opciones) - 1) * chip_gap
 
     W = pad * 2 + tab_w + chevron_w + grupo_w + chevron_w + opts_total_w
@@ -86,9 +104,8 @@ def build_ruta_visual(tab, grupo, opciones, out_path, height=190):
     x += chevron_w
 
     # íconos de opciones con etiqueta debajo
-    for (name, label, native), opt_w in zip(opciones, opt_widths):
-        base_dir = ICONOS_NATIVOS_DIR if native else ICONOS_DIR
-        icon_path = os.path.join(base_dir, f"{name}.png")
+    for (name, label), opt_w in zip(opciones, opt_widths):
+        icon_path = os.path.join(ICONOS_DIR, f"{name}.png")
         icon = Image.open(icon_path).convert("RGBA").resize((icon_size, icon_size), Image.LANCZOS)
         img.paste(icon, (x + (opt_w - icon_size) // 2, y_mid - icon_size // 2), icon)
         lw = d.textbbox((0, 0), label, font=f_label)[2]
@@ -101,10 +118,23 @@ def build_ruta_visual(tab, grupo, opciones, out_path, height=190):
 
 
 if __name__ == "__main__":
-    OUT_DIR = "/sessions/determined-sharp-johnson/mnt/outputs/rutas_visuales"
-    os.makedirs(OUT_DIR, exist_ok=True)
-    build_ruta_visual(
-        "Inicio", "Alineación",
-        [("alinear_izquierda", "Izquierda"), ("alinear_centro", "Centrar"), ("combinar_centrar", "Combinar y centrar")],
-        os.path.join(OUT_DIR, "muestra_alineacion.png"),
-    )
+    # CLI para uso desde el backend Node (child_process), mismo contrato que
+    # gen_imagen_motivacional_v2.py — un solo argumento JSON, salida JSON en
+    # stdout con {"ok": true, "out_path": ...} o {"ok": false, "error": ...}.
+    if len(sys.argv) > 1:
+        try:
+            args = json.loads(sys.argv[1])
+            opciones = [(o["icono"], o["etiqueta"]) for o in args["opciones"]]
+            out_path = build_ruta_visual(args["tab"], args["grupo"], opciones, args["out_path"])
+            print(json.dumps({"ok": True, "out_path": out_path}))
+        except Exception as e:
+            print(json.dumps({"ok": False, "error": str(e)}))
+            sys.exit(1)
+    else:
+        OUT_DIR = "/tmp/rutas_visuales"
+        os.makedirs(OUT_DIR, exist_ok=True)
+        build_ruta_visual(
+            "Inicio", "Alineación",
+            [("alinear_izquierda", "Izquierda"), ("alinear_centro", "Centrar"), ("alinear_derecha", "Derecha")],
+            os.path.join(OUT_DIR, "muestra_alineacion.png"),
+        )

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,11 @@ export async function PUT(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (session?.user?.rol !== "admin") {
+    return NextResponse.json({ error: "No autorizado — se requiere rol admin." }, { status: 403 });
+  }
+
   const { id } = await ctx.params;
   const body = (await request.json()) as TemaUpdateInput;
   const { numero, tema, subtemas } = body;
@@ -57,6 +63,11 @@ export async function DELETE(
   _request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (session?.user?.rol !== "admin") {
+    return NextResponse.json({ error: "No autorizado — se requiere rol admin." }, { status: 403 });
+  }
+
   const { id } = await ctx.params;
   const [eliminado] = await sql`
     update temas set activo = false where id = ${id} and activo

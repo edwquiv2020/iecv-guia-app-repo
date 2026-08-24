@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ParametrosGuia, ImagenSubtema } from "@/lib/types";
+import type { ParametrosGuia, ImagenSubtema, ContenidoGuia } from "@/lib/types";
 import { generarContenidoGuia, generarContenidoDua, generarCuestionarioKahoot } from "@/lib/anthropic";
 import { generarImagenMotivacional } from "@/lib/images";
-import { buildGuiaDocx, buildGuiaDuaDocx } from "@/lib/buildGuia";
+import { generarRutaVisual } from "@/lib/rutaVisual";
+import { buildGuiaDocx, buildGuiaDuaDocx, type RutaVisualSubtema } from "@/lib/buildGuia";
 import { buildKahootXlsx } from "@/lib/buildKahoot";
 import { buildKitSubidaDocx } from "@/lib/buildKit";
 import { sql } from "@/lib/db";
@@ -116,7 +117,8 @@ export async function POST(request: NextRequest) {
       const nombreGuia = `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`;
       const nombreKahoot = `Cuestionario_Semana${params.semana}_CLEI${params.clei}_Kahoot.xlsx`;
 
-      const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas });
+      const rutasVisuales = await generarRutasVisuales(contenido.subtemas);
+      const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf, imagenesSubtemas, rutasVisuales });
       archivos.push({ nombre: nombreGuia, contenidoBase64: docxBuf.toString("base64") });
       talleresTipos = contenido.talleres.map((t) => t.tipo);
 
@@ -156,6 +158,28 @@ export async function POST(request: NextRequest) {
     const message = err instanceof Error ? err.message : "Error desconocido generando la guía.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * Genera en paralelo la ruta visual de cada subtema que la trae. Nunca
+ * bloquea la guía completa: si una falla (script Python, ícono faltante),
+ * esa tira simplemente no aparece — mismo criterio de tolerancia que
+ * cargarIcono() en buildGuia.ts para los íconos de los pasos.
+ */
+async function generarRutasVisuales(subtemas: ContenidoGuia["subtemas"]): Promise<RutaVisualSubtema[]> {
+  const resultados = await Promise.all(
+    subtemas.map(async (st, subtemaIndex) => {
+      if (!st.rutaVisual) return null;
+      try {
+        const buffer = await generarRutaVisual(st.rutaVisual.tab, st.rutaVisual.grupo, st.rutaVisual.opciones);
+        return { subtemaIndex, buffer };
+      } catch (err) {
+        console.error(`No se pudo generar la ruta visual del subtema ${subtemaIndex}:`, err);
+        return null;
+      }
+    })
+  );
+  return resultados.filter((r): r is RutaVisualSubtema => r !== null);
 }
 
 // Debe coincidir con la rotación usada en lib/anthropic.ts (fotoParaSemana).

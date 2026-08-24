@@ -25,6 +25,10 @@ create table usuarios_autorizados (
   email text primary key,
   nombre text,
   activo boolean not null default true,
+  -- 'admin' puede administrar mallas (crear/editar/borrar temas del
+  -- catálogo); 'docente' solo puede leerlas. Todo lo demás (generar guías,
+  -- exámenes, cargar horarios) es igual para ambos roles.
+  rol text not null default 'docente' check (rol in ('docente', 'admin')),
   created_at timestamptz not null default now()
 );
 

@@ -67,6 +67,18 @@ export interface ContenidoGuia {
     funcion: string; // explicación técnica del subtema
     /** Solo cuando el subtema es un procedimiento de Windows/Office: pasos numerados, cada uno con su ícono si corresponde a una acción conocida. */
     pasos?: Array<{ texto: string; icono: IconoPaso | "ninguno" }>;
+    /**
+     * Resumen visual (pestaña > grupo > 2-4 opciones de la cinta) del
+     * procedimiento — reemplaza la "Imagen Representativa" en texto plano de
+     * la skill original con una tira generada (ver py_scripts/gen_ruta_visual.py
+     * y src/lib/rutaVisual.ts). Opcional, igual que `pasos`: solo cuando el
+     * subtema es un procedimiento concreto de Windows/Office.
+     */
+    rutaVisual?: {
+      tab: string; // ej. "Inicio"
+      grupo: string; // ej. "Fuente"
+      opciones: Array<{ icono: IconoPaso; etiqueta: string }>;
+    };
   }>;
   talleres: Array<{
     tipo: string; // "cuestionario", "emparejamiento", "caso de estudio", "ejercicio guiado", "producto entregable"

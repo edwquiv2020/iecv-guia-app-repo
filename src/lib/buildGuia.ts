@@ -23,6 +23,11 @@ async function cargarIcono(clave: string): Promise<Buffer | null> {
   }
 }
 
+/** Ancho/alto reales de un PNG, leídos del chunk IHDR (bytes 16-23) — la ruta visual tiene ancho variable según el texto, así que hace falta esto para insertarla sin deformarla. */
+function dimensionesPng(buf: Buffer): { width: number; height: number } {
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
 /** Un paso numerado, con su ícono real inline al frente si está disponible. */
 async function pasoParagraph(n: number, texto: string, iconoBuf: Buffer | null) {
   const runs: (TextRun | ImageRun)[] = [];
@@ -309,10 +314,17 @@ function buildCargueTable(params: ParametrosGuia, maxPaginas: string) {
   });
 }
 
+/** Ruta visual (tira pestaña > grupo > íconos) ya generada para un subtema — ver src/lib/rutaVisual.ts. */
+export interface RutaVisualSubtema {
+  subtemaIndex: number;
+  buffer: Buffer;
+}
+
 export interface BuildGuiaAssets {
   logoBuf: Buffer;
   ilustracionBuf: Buffer;
   imagenesSubtemas?: ImagenSubtema[];
+  rutasVisuales?: RutaVisualSubtema[];
 }
 
 /** Arma el .docx completo y devuelve el Buffer listo para descargar. */
@@ -370,10 +382,26 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
 
   const letras = "ABCDEFGH";
   const imagenesPorSubtema = assets.imagenesSubtemas ?? [];
+  const rutasVisualesPorSubtema = assets.rutasVisuales ?? [];
   for (let i = 0; i < contenido.subtemas.length; i++) {
     const st = contenido.subtemas[i];
     children.push(heading(`${letras[i] || i + 1}. ${st.titulo}`, { size: 12, before: 200, italics: true }));
     children.push(pRuns([{ text: "Función: ", bold: true }, { text: st.funcion }], { indent: { left: 400 } }));
+    const rutaVisualBuf = rutasVisualesPorSubtema.find((rv) => rv.subtemaIndex === i)?.buffer;
+    if (rutaVisualBuf) {
+      // Alto fijo (~el mismo porte visual que la ilustración de INICIO),
+      // ancho proporcional real — el PNG generado varía de ancho según el
+      // texto de pestaña/grupo/opciones, así que estirarlo a un tamaño fijo
+      // lo deformaría.
+      const { width, height } = dimensionesPng(rutaVisualBuf);
+      const alto = 70;
+      const ancho = Math.round(alto * (width / height));
+      children.push(new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 100, after: 160 },
+        children: [new ImageRun({ data: rutaVisualBuf, type: "png", transformation: { width: ancho, height: alto } })],
+      }));
+    }
     if (st.pasos?.length) {
       for (let j = 0; j < st.pasos.length; j++) {
         const paso = st.pasos[j];

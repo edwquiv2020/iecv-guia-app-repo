@@ -22,6 +22,8 @@ jobs:
       AUTH_GOOGLE_ID: dummy
       AUTH_GOOGLE_SECRET: dummy
       AUTH_SECRET: dummy-secret-for-ci-build-only
+      GOOGLE_SERVICE_ACCOUNT_KEY: "{}"
+      GOOGLE_DRIVE_MALLAS_FOLDER_ID: dummy
     steps:
       - uses: actions/checkout@v7
 

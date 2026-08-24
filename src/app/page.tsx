@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
+import { useSession } from "next-auth/react";
 import type { Clei } from "@/lib/types";
 
 function formatearFechas(iso: string): { corta: string; larga: string } {
@@ -59,6 +60,7 @@ function gradosATexto(grados: string[]): string {
 }
 
 export default function Home() {
+  const { data: session } = useSession();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [temas, setTemas] = useState<Tema[]>([]);
@@ -411,7 +413,12 @@ export default function Home() {
         <div className="flex flex-col items-end gap-1">
           <a href="/examenes" className="text-sm text-emerald-700 underline">Generar exámenes →</a>
           <a href="/horarios" className="text-sm text-emerald-700 underline">Cargar horarios →</a>
-          <a href="/admin/mallas" className="text-sm text-emerald-700 underline">Administrar mallas →</a>
+          {session?.user?.rol === "admin" && (
+            <>
+              <a href="/admin/mallas" className="text-sm text-emerald-700 underline">Administrar mallas →</a>
+              <a href="/admin/usuarios" className="text-sm text-emerald-700 underline">Gestionar docentes →</a>
+            </>
+          )}
         </div>
       </div>
 
