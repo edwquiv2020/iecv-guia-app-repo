@@ -32,7 +32,30 @@ export async function GET(request: NextRequest) {
     where cc.ciclo_id = ${cicloId} and cc.jornada_id = ${jornadaId}
     order by cc.semana_academica
   `;
-  return NextResponse.json({ filas });
+
+  // Archivos guardados (Estándar/DUA) de estas filas, para ofrecer descarga
+  // directa en vez de solo el check ✅ — una segunda consulta y se agrupa en
+  // memoria, más simple que un lateral join para esta cantidad de filas.
+  const calendarioIds = filas.map((f) => f.id);
+  const archivosPorFila: Record<string, { estandar: Array<{ id: string; nombre: string }>; dua: Array<{ id: string; nombre: string }> }> = {};
+  if (calendarioIds.length > 0) {
+    const archivos = await sql`
+      select g.calendario_clase_id, g.tipo, ga.id, ga.nombre_archivo as nombre
+      from guias g
+      join guia_archivos ga on ga.guia_id = g.id
+      where g.calendario_clase_id in ${sql(calendarioIds)} and g.tipo in ('estandar', 'dua')
+      order by ga.created_at
+    `;
+    for (const a of archivos) {
+      const entry = archivosPorFila[a.calendario_clase_id] ?? { estandar: [], dua: [] };
+      entry[a.tipo as "estandar" | "dua"].push({ id: a.id, nombre: a.nombre });
+      archivosPorFila[a.calendario_clase_id] = entry;
+    }
+  }
+
+  return NextResponse.json({
+    filas: filas.map((f) => ({ ...f, archivos: archivosPorFila[f.id] ?? { estandar: [], dua: [] } })),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -69,21 +92,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Posición dentro del lote, por curso, para resolver el tema en orden de
-    // malla — solo cuando la fila no trae ya su temaId resuelto.
+    // Solo las filas de actividad CLASES consumen una posición de la malla —
+    // exámenes, diagnóstico, descansos, etc. nunca tienen tema, aunque
+    // traigan un cursoId asociado (ej. EXAMEN INTERMEDIO sí guarda curso,
+    // pero no debe "robarle" una posición de malla a la siguiente clase).
+    const [actividadClases] = await sql`select id from actividades where nombre = 'CLASES'`;
+    const actividadClasesId = actividadClases?.id as string | undefined;
+
+    // Posición dentro de la malla de cada curso — arranca donde ya haya
+    // quedado en la base de datos (no en 0), para que cargar el horario en
+    // varias sesiones (ej. por semestre) siga la numeración correcta en vez
+    // de reasignar temas ya usados.
     const contadorPorCurso = new Map<string, number>();
+    async function siguienteTemaId(cursoId: string): Promise<string | null> {
+      if (!contadorPorCurso.has(cursoId)) {
+        const [fila] = await sql`
+          select coalesce(max(t.numero), 0) as maximo
+          from calendario_clases cc
+          join temas t on t.id = cc.tema_id
+          where cc.ciclo_id = ${cicloId!} and cc.jornada_id = ${jornadaId!} and cc.curso_id = ${cursoId}
+        `;
+        contadorPorCurso.set(cursoId, Number(fila?.maximo ?? 0));
+      }
+      const posicion = (contadorPorCurso.get(cursoId) ?? 0) + 1;
+      contadorPorCurso.set(cursoId, posicion);
+      const [tema] = await sql`select id from temas where curso_id = ${cursoId} and numero = ${posicion} and activo`;
+      return tema?.id ?? null;
+    }
+
     let filasInsertadas = 0;
     const idsPorSemana: Record<number, string> = {};
 
     for (const fila of filas) {
       let temaId: string | null = fila.temaId ?? null;
-      if (temaId === null && fila.cursoId) {
-        const posicion = (contadorPorCurso.get(fila.cursoId) ?? 0) + 1;
-        contadorPorCurso.set(fila.cursoId, posicion);
-        const [tema] = await sql`
-          select id from temas where curso_id = ${fila.cursoId} and numero = ${posicion} and activo
-        `;
-        temaId = tema?.id ?? null;
+      const esClase = fila.actividadId === actividadClasesId;
+      if (temaId === null && fila.cursoId && esClase) {
+        temaId = await siguienteTemaId(fila.cursoId);
       }
 
       if (origen === "ad_hoc") {

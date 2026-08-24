@@ -78,7 +78,6 @@ export default function Home() {
 
   const [clei, setClei] = useState<Clei>("III");
   const [jornada, setJornada] = useState("SEMANAL 1");
-  const [grupoCleiJornada, setGrupoCleiJornada] = useState("");
   const [semana, setSemana] = useState(1);
   const [guia, setGuia] = useState(1);
   const [fechaClaseIso, setFechaClaseIso] = useState("");
@@ -114,14 +113,20 @@ export default function Home() {
       .catch(() => setCatalogoError("No se pudo cargar el catálogo desde la base de datos."));
   }, []);
 
-  // Temas del curso elegido. Si veníamos de elegir una semana programada,
-  // aplicamos el tema pendiente apenas llega la malla de ese curso.
-  useEffect(() => {
+  // Temas del curso elegido — se resetean en el mismo render en que cambia
+  // cursoId (no en un efecto) para no mostrar de refilón la malla del curso
+  // anterior mientras llega la nueva.
+  const [temasCursoId, setTemasCursoId] = useState(cursoId);
+  if (cursoId !== temasCursoId) {
+    setTemasCursoId(cursoId);
     setTemas([]);
-    if (!cursoId) {
-      setTemaId("");
-      return;
-    }
+    if (!cursoId) setTemaId("");
+  }
+
+  // Si veníamos de elegir una semana programada, aplicamos el tema
+  // pendiente apenas llega la malla de ese curso.
+  useEffect(() => {
+    if (!cursoId) return;
     fetch(`/api/temas?cursoId=${cursoId}`)
       .then((r) => r.json())
       .then((data: { temas: Tema[] }) => setTemas(data.temas))
@@ -133,14 +138,24 @@ export default function Home() {
     if (temas.some((t) => t.id === pendingTemaId)) {
       onTemaChange(pendingTemaId);
     }
+    // Consume-y-limpia un valor de un solo uso una vez aplicado — no es un
+    // reset derivado de props, así que no encaja en el patrón de "ajustar
+    // estado durante el render"; se queda en el efecto a propósito.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingTemaId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [temas, pendingTemaId]);
 
-  // Calendario ya cargado para el ciclo/jornada elegidos (ver /horarios).
-  useEffect(() => {
+  // Calendario ya cargado para el ciclo/jornada elegidos (ver /horarios) —
+  // mismo patrón que los temas: el reset va en el render, el fetch en el efecto.
+  const [calendarioKey, setCalendarioKey] = useState(`${cicloId}|${jornadaId}`);
+  if (`${cicloId}|${jornadaId}` !== calendarioKey) {
+    setCalendarioKey(`${cicloId}|${jornadaId}`);
     setCalendarioFilas([]);
     setSemanaProgramadaId("");
+  }
+
+  useEffect(() => {
     if (!cicloId || !jornadaId) return;
     fetch(`/api/calendario?cicloId=${cicloId}&jornadaId=${jornadaId}`)
       .then((r) => r.json())
@@ -200,15 +215,10 @@ export default function Home() {
   // "GRUPO/CLEI/JORNADA" tal como debe quedar dentro de la guía — se deriva
   // siempre del ciclo y la jornada elegidos, nunca se escribe a mano (define
   // qué guía es, tiene que ser exacto).
-  useEffect(() => {
-    const c = ciclos.find((x) => x.id === cicloId);
-    if (!c) {
-      setGrupoCleiJornada("");
-      return;
-    }
-    const codigo = cleiDesdeCiclo(c.nombre);
-    setGrupoCleiJornada(`${gradosATexto(c.grados)}/${codigo}/${jornada}`);
-  }, [cicloId, jornada, ciclos]);
+  const cicloElegido = ciclos.find((x) => x.id === cicloId);
+  const grupoCleiJornada = cicloElegido
+    ? `${gradosATexto(cicloElegido.grados)}/${cleiDesdeCiclo(cicloElegido.nombre)}/${jornada}`
+    : "";
 
   function onTemaChange(id: string) {
     setTemaId(id);
@@ -343,18 +353,27 @@ export default function Home() {
           }
 
           if (calendarioClaseId) {
-            const archivoEstandar = archivos.find((a) => !a.nombre.includes("_ADAPTADA"));
-            const archivoDua = archivos.find((a) => a.nombre.includes("_ADAPTADA"));
-            if (quiereEstandar && archivoEstandar) {
+            // Todo lo de la Estándar (guía + kahoot + kit) va bajo tipo
+            // 'estandar' — solo el archivo de la DUA lleva "_ADAPTADA".
+            const archivosEstandar = archivos.filter((a) => !a.nombre.includes("_ADAPTADA"));
+            const archivosDua = archivos.filter((a) => a.nombre.includes("_ADAPTADA"));
+            if (quiereEstandar && archivosEstandar.length > 0) {
               await fetch("/api/guias", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ calendarioClaseId, tipo: "estandar", archivoPath: archivoEstandar.nombre, talleresTipos: data.talleresTipos }),
+                body: JSON.stringify({
+                  calendarioClaseId, tipo: "estandar",
+                  archivoPath: archivosEstandar[0].nombre, talleresTipos: data.talleresTipos,
+                  archivos: archivosEstandar, contenido: data.contenido, kahootContenido: data.cuestionarioKahoot,
+                }),
               });
             }
-            if (quiereDua && archivoDua) {
+            if (quiereDua && archivosDua.length > 0) {
               await fetch("/api/guias", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ calendarioClaseId, tipo: "dua", archivoPath: archivoDua.nombre }),
+                body: JSON.stringify({
+                  calendarioClaseId, tipo: "dua",
+                  archivoPath: archivosDua[0].nombre, archivos: archivosDua, contenido: data.contenidoDua,
+                }),
               });
             }
           }
@@ -389,7 +408,11 @@ export default function Home() {
             Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
           </p>
         </div>
-        <a href="/horarios" className="text-sm text-emerald-700 underline">Cargar horarios →</a>
+        <div className="flex flex-col items-end gap-1">
+          <a href="/examenes" className="text-sm text-emerald-700 underline">Generar exámenes →</a>
+          <a href="/horarios" className="text-sm text-emerald-700 underline">Cargar horarios →</a>
+          <a href="/admin/mallas" className="text-sm text-emerald-700 underline">Administrar mallas →</a>
+        </div>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">

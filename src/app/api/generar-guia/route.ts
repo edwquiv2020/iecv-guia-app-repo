@@ -109,6 +109,8 @@ export async function POST(request: NextRequest) {
 
     const archivos: Array<{ nombre: string; contenidoBase64: string }> = [];
     let talleresTipos: string[] | undefined;
+    let cuestionarioKahoot: Awaited<ReturnType<typeof generarCuestionarioKahoot>> | undefined;
+    let contenidoDua: Awaited<ReturnType<typeof generarContenidoDua>> | undefined;
 
     if (params.tipos.includes("estandar")) {
       const nombreGuia = `FTO-EDU-FOR-96_V3_Guia_Semana${params.semana}_Guia${params.guia}_CLEI${params.clei}.docx`;
@@ -120,7 +122,7 @@ export async function POST(request: NextRequest) {
 
       // El cuestionario Kahoot se genera siempre junto con la guía Estándar
       // (no hay que pedirlo aparte) — nunca se sube automáticamente, ver kit.
-      const cuestionarioKahoot = await generarCuestionarioKahoot(params, contenido);
+      cuestionarioKahoot = await generarCuestionarioKahoot(params, contenido);
       const kahootBuf = await buildKahootXlsx(params, cuestionarioKahoot);
       archivos.push({ nombre: nombreKahoot, contenidoBase64: kahootBuf.toString("base64") });
 
@@ -134,7 +136,7 @@ export async function POST(request: NextRequest) {
     if (params.tipos.includes("dua")) {
       // Encadenada: usa el contenido de la Estándar (subtema A) como base,
       // para que ambas versiones queden consistentes en el fondo.
-      const contenidoDua = await generarContenidoDua(params, contenido);
+      contenidoDua = await generarContenidoDua(params, contenido);
       const imagenesSubtemaA = imagenesSubtemas.filter((img) => img.subtemaIndex === 0);
       const docxDuaBuf = await buildGuiaDuaDocx(params, contenidoDua, { logoBuf, ilustracionBuf, imagenesSubtemaA });
       archivos.push({
@@ -143,7 +145,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ archivos, talleresTipos });
+    return NextResponse.json({
+      archivos,
+      talleresTipos,
+      contenido: params.tipos.includes("estandar") ? contenido : undefined,
+      cuestionarioKahoot,
+      contenidoDua,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido generando la guía.";
     return NextResponse.json({ error: message }, { status: 500 });

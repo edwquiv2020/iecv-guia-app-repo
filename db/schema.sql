@@ -3,6 +3,7 @@
 -- igual que la malla real en Excel del docente), y la capa de programación
 -- (calendario_clases) que asigna un tema a una fecha/ciclo/jornada concretos.
 
+drop table if exists guia_archivos cascade;
 drop table if exists guias cascade;
 drop table if exists calendario_clases cascade;
 drop table if exists horario_bloques cascade;
@@ -111,17 +112,36 @@ create table calendario_clases (
 create table guias (
   id uuid primary key default gen_random_uuid(),
   calendario_clase_id uuid not null references calendario_clases(id) on delete cascade,
-  tipo text not null check (tipo in ('estandar','dua')),
+  tipo text not null check (tipo in ('estandar','dua','diagnostico','intermedio','final')),
   estado text not null default 'pendiente' check (estado in ('pendiente','generada','publicada')),
   archivo_path text,
   -- Tipos de taller usados (solo tipo='estandar') — permite pedirle a la IA
   -- que no repita siempre la misma combinación en guías consecutivas del
   -- mismo curso.
   talleres_tipos text[],
+  -- Contenido pedagógico generado por la IA (ContenidoGuia/ContenidoDua/
+  -- ContenidoExamen según `tipo`) — queda auditable y reusable sin volver a
+  -- llamar la IA. kahoot_contenido solo aplica a tipo='estandar'.
+  contenido jsonb,
+  kahoot_contenido jsonb,
   generado_en timestamptz,
   created_at timestamptz not null default now(),
   unique (calendario_clase_id, tipo)
 );
 
+-- Binarios reales (.docx/.xlsx) generados para una guía — guardados en
+-- Supabase Storage (bucket privado 'guia-archivos'), aquí solo la ruta.
+-- Una guía tipo 'estandar' produce 3 (guía + kahoot + kit), 'dua' 1,
+-- exámenes/diagnóstico 2 (examen + kit).
+create table guia_archivos (
+  id uuid primary key default gen_random_uuid(),
+  guia_id uuid not null references guias(id) on delete cascade,
+  nombre_archivo text not null,
+  mime_type text not null,
+  storage_path text not null,
+  created_at timestamptz not null default now()
+);
+
 create index temas_curso_idx on temas (curso_id, numero);
 create index calendario_clases_lookup_idx on calendario_clases (ciclo_id, jornada_id, semana_academica);
+create index guia_archivos_guia_idx on guia_archivos (guia_id);
