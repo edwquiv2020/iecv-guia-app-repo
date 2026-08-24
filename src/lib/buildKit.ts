@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, WidthType, VerticalAlign, ShadingType, ExternalHyperlink,
 } from "docx";
-import type { ParametrosGuia } from "./types";
+import type { ParametrosGuia, ParametrosExamen, ContenidoExamen } from "./types";
 
 // Kit de subida manual: desde agosto 2026 la skill decidió no automatizar
 // la subida a Kahoot/Moodle (era la parte más cara del flujo) — en su lugar
@@ -92,4 +92,70 @@ export async function buildKitSubidaDocx(
   });
 
   return Packer.toBuffer(doc);
+}
+
+// Kit de subida para exámenes: el examen se aplica y califica en papel (hoja
+// de respuestas tipo óvalos), así que no hay Kahoot — solo se sube el
+// archivo a Moodle como evidencia/registro. La clave de respuestas va SOLO
+// aquí (documento de uso del docente), nunca en el examen que ve el
+// estudiante.
+
+const LETRAS_KIT = ["A", "B", "C", "D"] as const;
+
+export async function buildKitSubidaExamenDocx(
+  params: ParametrosExamen,
+  contenido: ContenidoExamen,
+  opts: { nombreArchivoExamen: string }
+): Promise<Buffer> {
+  const etiquetaTipo = params.tipo === "diagnostico" ? "DIAGNÓSTICO DE PRESABERES" : params.tipo === "intermedio" ? "EXAMEN INTERMEDIO" : "EXAMEN FINAL";
+  const nombreSeccion = params.cursoNombre
+    ? `${etiquetaTipo} ${params.cursoNombre.toUpperCase()} — ${params.grupoCleiJornada}`
+    : `${etiquetaTipo} — ${params.grupoCleiJornada}`;
+
+  const children: (Paragraph | Table)[] = [
+    p("KIT DE SUBIDA MANUAL A MOODLE", { bold: true, size: 16, after: 60 }),
+    p(`${etiquetaTipo} — CLEI ${params.clei} — ${params.grupoCleiJornada} — ${params.fechaAplicacion}`, { after: 200 }),
+    p(
+      "Este examen se aplica y califica en papel (hoja de respuestas). Sube el archivo a Moodle solo como evidencia/registro — no hay Kahoot para exámenes.",
+      { after: 300 }
+    ),
+    p("Nombre de sección sugerido en Moodle:", { bold: true, after: 60 }),
+    p(nombreSeccion, { after: 300 }),
+    new Table({
+      width: { size: 10500, type: WidthType.DXA },
+      rows: [
+        new TableRow({ children: [labelCell("Recurso EXAMEN (Archivo)"), valueCell(textoValor(opts.nombreArchivoExamen))] }),
+      ],
+    }),
+    p("", { after: 300 }),
+    p("CLAVE DE RESPUESTAS (uso exclusivo del docente — no compartir con estudiantes)", { bold: true, after: 100 }),
+    claveRespuestasTable(contenido),
+  ];
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1000, bottom: 900, left: 1100, right: 1100 } } },
+        children,
+      },
+    ],
+  });
+
+  return Packer.toBuffer(doc);
+}
+
+function claveRespuestasTable(contenido: ContenidoExamen) {
+  const filas = contenido.preguntas.map((preg, i) => new TableRow({
+    children: [
+      new TableCell({ width: { size: 1500, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "F2F2F2" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(i + 1), font: "Arial", size: 20, bold: true })] })] }),
+      new TableCell({ width: { size: 1500, type: WidthType.DXA }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: LETRAS_KIT[preg.correcta] ?? "?", font: "Arial", size: 20, bold: true })] })] }),
+    ],
+  }));
+  return new Table({ width: { size: 3000, type: WidthType.DXA }, rows: [
+    new TableRow({ children: [
+      new TableCell({ width: { size: 1500, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E1F2" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Pregunta", font: "Arial", size: 20, bold: true })] })] }),
+      new TableCell({ width: { size: 1500, type: WidthType.DXA }, shading: { type: ShadingType.CLEAR, fill: "D9E1F2" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Correcta", font: "Arial", size: 20, bold: true })] })] }),
+    ] }),
+    ...filas,
+  ] });
 }

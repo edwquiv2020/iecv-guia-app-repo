@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ContenidoKahoot } from "./types";
+import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ContenidoKahoot, ParametrosExamen, ContenidoExamen, PreguntaExamenInput } from "./types";
 import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS, TIEMPOS_KAHOOT } from "./types";
 
 const BANCO_KEYS = [
@@ -532,4 +532,238 @@ export async function generarCuestionarioKahoot(params: ParametrosGuia, contenid
   }
 
   throw ultimoError ?? new Error("No se pudo generar el cuestionario Kahoot.");
+}
+
+// ---------- Exámenes: Diagnóstico, Intermedio y Final ----------
+
+function contenidoExamenTool(nombre: string, cantidadPreguntas: number, descripcionHerramienta: string) {
+  return {
+    name: nombre,
+    description: descripcionHerramienta,
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        preguntas: {
+          type: "array",
+          minItems: cantidadPreguntas,
+          maxItems: cantidadPreguntas,
+          description: `Exactamente ${cantidadPreguntas} preguntas de selección múltiple con única respuesta, EN ORDEN (la pregunta N de este arreglo es la pregunta número N del examen).`,
+          items: {
+            type: "object",
+            properties: {
+              enunciado: {
+                type: "string",
+                description: "Situación/contexto breve seguido de la pregunta puntual, como un párrafo fluido (ej. 'Carlos está elaborando una hoja de cálculo... ¿Con cuál símbolo debe comenzar la fórmula?'). Sin markdown.",
+              },
+              opciones: {
+                type: "array",
+                minItems: 4,
+                maxItems: 4,
+                description: "Exactamente 4 opciones de respuesta (A, B, C, D en ese orden), solo una correcta. Nunca incluyas una opción tipo 'ninguna de las anteriores'.",
+                items: { type: "string" },
+              },
+              correcta: { type: "integer", minimum: 0, maximum: 3, description: "Índice (0=A, 1=B, 2=C, 3=D) de la opción correcta." },
+            },
+            required: ["enunciado", "opciones", "correcta"],
+          },
+        },
+      },
+      required: ["preguntas"],
+    },
+  };
+}
+
+function lineaImagenesPreguntas(preguntasInput: PreguntaExamenInput[], cantidadPreguntas: number): string {
+  const conImagen = preguntasInput.filter((p) => p.imagen);
+  if (conImagen.length === 0) {
+    return "Ninguna pregunta lleva imagen de apoyo — redacta las preguntas de forma autocontenida, sin referirte a ninguna imagen.";
+  }
+  const lineas = conImagen
+    .filter((p) => p.index >= 1 && p.index <= cantidadPreguntas)
+    .map((p) => `- Pregunta ${p.index}: el docente adjuntó una imagen de apoyo que muestra: "${p.descripcionImagen || "una captura de pantalla relacionada con el tema"}". Redacta el enunciado de ESA pregunta a partir exactamente de lo que describe esa imagen (ej. si describe una tabla de Excel con columnas y valores concretos, la pregunta debe referirse a esos datos concretos), y menciona en el texto que hay una imagen de referencia (ej. "Observa la siguiente imagen:").`);
+  return `Estas preguntas llevan imagen de apoyo — redáctalas alrededor de lo que describe cada imagen:\n${lineas.join("\n")}\nLas demás preguntas (sin mención arriba) no llevan imagen — redáctalas de forma autocontenida.`;
+}
+
+function validarContenidoExamen(data: ContenidoExamen, cantidadPreguntas: number): string[] {
+  const faltantes: string[] = [];
+  if (!Array.isArray(data.preguntas) || data.preguntas.length !== cantidadPreguntas) {
+    faltantes.push(`preguntas (deben ser exactamente ${cantidadPreguntas})`);
+    return faltantes;
+  }
+  data.preguntas.forEach((p, i) => {
+    const n = i + 1;
+    if (!p.enunciado || p.enunciado.trim() === "") faltantes.push(`pregunta ${n} (enunciado)`);
+    if (!Array.isArray(p.opciones) || p.opciones.length !== 4 || p.opciones.some((o) => !o || o.trim() === "")) faltantes.push(`pregunta ${n} (opciones)`);
+    if (typeof p.correcta !== "number" || p.correcta < 0 || p.correcta > 3) faltantes.push(`pregunta ${n} (correcta)`);
+  });
+  return faltantes;
+}
+
+function systemPromptDiagnostico(): string {
+  return `Actúas como docente experto en Tecnología e Informática del Instituto de
+Educación Comfenalco Valle (IECV), programa de Educación Básica y Media por
+Ciclos (CLEI) para jóvenes y adultos, sede Cali. Redactas el Diagnóstico de
+Presaberes (formato FTO-EDU-FOR-82), aplicado el primer día del período,
+ANTES de dictar cualquier contenido del curso.
+
+Regla central: NO evalúas un curso puntual (aún no se ha dictado nada) — evalúas
+conocimiento general y previo de Tecnología e Informática que un adulto
+podría ya tener por experiencia de vida o laboral: qué es la informática,
+componentes básicos de un computador (procesador, monitor, USB, etc.), qué
+hace un sistema operativo, y uso general (no técnico) de Word/Excel/PowerPoint.
+Preguntas de cultura general del área, no de procedimientos específicos de
+ningún programa.
+
+Tono: situaciones cotidianas o laborales de adultos, nunca escolares. Sin
+markdown en los textos. Exactamente 4 opciones por pregunta (A-D), sin
+"ninguna de las anteriores".
+
+Entrega el resultado exclusivamente llamando a la herramienta entregar_diagnostico.`;
+}
+
+function userPromptDiagnostico(params: ParametrosExamen, preguntasInput: PreguntaExamenInput[]): string {
+  return `Genera el Diagnóstico de Presaberes de Tecnología e Informática:
+
+- CLEI: ${params.clei}
+- Jornada: ${params.jornada}
+- Cantidad de preguntas: ${params.cantidadPreguntas}
+- Fecha de aplicación: ${params.fechaAplicacion}
+
+${lineaImagenesPreguntas(preguntasInput, params.cantidadPreguntas)}`;
+}
+
+/** Diagnóstico de Presaberes — sin curso específico, conocimiento general de Tecnología e Informática. */
+export async function generarContenidoDiagnostico(
+  params: ParametrosExamen,
+  preguntasInput: PreguntaExamenInput[] = []
+): Promise<ContenidoExamen> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("Falta ANTHROPIC_API_KEY en el entorno.");
+
+  const client = new Anthropic({ apiKey });
+  const tool = contenidoExamenTool(
+    "entregar_diagnostico",
+    params.cantidadPreguntas,
+    "Entrega las preguntas del Diagnóstico de Presaberes."
+  );
+
+  let ultimoError: Error | null = null;
+  for (let intento = 1; intento <= 2; intento++) {
+    const message = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 4096,
+      system: systemPromptDiagnostico(),
+      messages: [{ role: "user", content: userPromptDiagnostico(params, preguntasInput) }],
+      tools: [tool],
+      tool_choice: { type: "tool", name: "entregar_diagnostico" },
+    });
+
+    const toolUse = message.content.find((b) => b.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      ultimoError = new Error("El modelo no devolvió el diagnóstico esperado (sin tool_use en la respuesta).");
+      continue;
+    }
+
+    const data = toolUse.input as ContenidoExamen;
+    const faltantes = validarContenidoExamen(data, params.cantidadPreguntas);
+    if (faltantes.length > 0) {
+      ultimoError = new Error(`El diagnóstico quedó incompleto: ${faltantes.join(", ")}.`);
+      continue;
+    }
+
+    return data;
+  }
+
+  throw ultimoError ?? new Error("No se pudo generar el diagnóstico.");
+}
+
+function systemPromptExamen(tipo: "intermedio" | "final"): string {
+  const alcance = tipo === "intermedio"
+    ? "Cubre SOLO los temas ya vistos hasta la fecha de este examen (los que te paso abajo) — nunca temas del curso que aún no se han dictado."
+    : "Es el examen FINAL del curso — debe cubrir de forma equilibrada TODOS los temas vistos durante el curso completo (los que te paso abajo), sin concentrarse solo en los últimos.";
+
+  return `Actúas como docente experto en Tecnología e Informática del Instituto de
+Educación Comfenalco Valle (IECV), programa de Educación Básica y Media por
+Ciclos (CLEI) para jóvenes y adultos, sede Cali. Redactas el Instrumento de
+Evaluación (formato FTO-EDU-FOR-98, tipo de prueba "${tipo === "intermedio" ? "Intermedio" : "Final"}").
+
+Regla central: ${alcance} Nunca inventes contenido que no esté en la lista de
+temas — las preguntas deben poder responderse solo con lo que ya se enseñó.
+
+Estilo (igual al de los exámenes reales de este colegio): cada pregunta es
+una situación breve y concreta de un adulto en un contexto laboral o
+cotidiano (ej. "Carlos está elaborando una hoja de cálculo para registrar
+las ventas de una pequeña tienda..."), seguida de la pregunta puntual.
+Exactamente 4 opciones por pregunta (A-D), sin "ninguna de las anteriores".
+Sin markdown en los textos.
+
+Entrega el resultado exclusivamente llamando a la herramienta entregar_examen.`;
+}
+
+function userPromptExamen(params: ParametrosExamen, preguntasInput: PreguntaExamenInput[], temasCubiertos: string[]): string {
+  const temasTexto = temasCubiertos.length > 0
+    ? temasCubiertos.map((t, i) => `${i + 1}. ${t}`).join("\n")
+    : "(sin temas registrados en el catálogo — usa el nombre del curso como única referencia)";
+  return `Genera el examen ${params.tipo === "intermedio" ? "Intermedio" : "Final"} de ${params.cursoNombre ?? "este curso"}:
+
+- CLEI: ${params.clei}
+- Jornada: ${params.jornada}
+- Cantidad de preguntas: ${params.cantidadPreguntas}
+- Fecha de aplicación: ${params.fechaAplicacion}
+- Temas del curso a evaluar:\n${temasTexto}
+
+${lineaImagenesPreguntas(preguntasInput, params.cantidadPreguntas)}`;
+}
+
+/**
+ * Examen Intermedio o Final — grounded en los temas del curso realmente
+ * cubiertos hasta la fecha (calculados por quien llama, desde
+ * calendario_clases), para que nunca evalúe contenido no dictado.
+ */
+export async function generarContenidoExamen(
+  params: ParametrosExamen,
+  temasCubiertos: string[],
+  preguntasInput: PreguntaExamenInput[] = []
+): Promise<ContenidoExamen> {
+  if (params.tipo === "diagnostico") {
+    throw new Error("Usa generarContenidoDiagnostico() para el tipo 'diagnostico'.");
+  }
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("Falta ANTHROPIC_API_KEY en el entorno.");
+
+  const client = new Anthropic({ apiKey });
+  const tool = contenidoExamenTool(
+    "entregar_examen",
+    params.cantidadPreguntas,
+    `Entrega las preguntas del examen ${params.tipo}.`
+  );
+
+  let ultimoError: Error | null = null;
+  for (let intento = 1; intento <= 2; intento++) {
+    const message = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 4096,
+      system: systemPromptExamen(params.tipo),
+      messages: [{ role: "user", content: userPromptExamen(params, preguntasInput, temasCubiertos) }],
+      tools: [tool],
+      tool_choice: { type: "tool", name: "entregar_examen" },
+    });
+
+    const toolUse = message.content.find((b) => b.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      ultimoError = new Error("El modelo no devolvió el examen esperado (sin tool_use en la respuesta).");
+      continue;
+    }
+
+    const data = toolUse.input as ContenidoExamen;
+    const faltantes = validarContenidoExamen(data, params.cantidadPreguntas);
+    if (faltantes.length > 0) {
+      ultimoError = new Error(`El examen quedó incompleto: ${faltantes.join(", ")}.`);
+      continue;
+    }
+
+    return data;
+  }
+
+  throw ultimoError ?? new Error("No se pudo generar el examen.");
 }

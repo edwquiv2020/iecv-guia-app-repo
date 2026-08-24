@@ -179,3 +179,57 @@ export interface ContenidoKahoot {
     correctas: number[];
   }>;
 }
+
+// ---------------------------------------------------------------------------
+// Exámenes: Diagnóstico (FTO-EDU-FOR-82, al inicio del período, conocimiento
+// general de Tecnología e Informática, sin curso específico) e
+// Intermedio/Final (FTO-EDU-FOR-98, uno por curso, a mitad y al final de las
+// semanas de ese curso). Selección múltiple con única respuesta, 4 opciones,
+// calificados con la hoja de respuestas tipo óvalos del formato físico.
+// ---------------------------------------------------------------------------
+
+export type TipoExamen = "diagnostico" | "intermedio" | "final";
+
+/** Cantidad de preguntas por examen según la jornada — regla dada por el docente: 10 entre semana, 5 sábado. */
+export function cantidadPreguntasPorJornada(diasJornada: string): number {
+  return /s[áa]bado/i.test(diasJornada) ? 5 : 10;
+}
+
+/** Datos que el docente llena en el formulario para UN examen (Diagnóstico, Intermedio o Final). */
+export interface ParametrosExamen {
+  tipo: TipoExamen;
+  clei: Clei;
+  grupoCleiJornada: string; // ej. "6-7/III/SEMANAL 1"
+  jornada: string; // ej. "SEMANAL 1", "SABADO 1"
+  cantidadPreguntas: number; // derivada de la jornada
+  valoracionPregunta: number; // 5.0 / cantidadPreguntas
+  semana: number; // semana académica en que se aplica
+  fechaAplicacion: string; // dd/mm/aaaa
+  sede: string;
+  docente: string;
+  /** Solo intermedio/final — Diagnóstico no evalúa un curso específico. */
+  cursoId?: string;
+  cursoNombre?: string;
+}
+
+/** Imagen de apoyo subida por el docente para UNA pregunta, con su descripción (da el contexto exacto a la IA). */
+export interface PreguntaExamenInput {
+  index: number; // 1-indexado, coincide con el número de la pregunta
+  imagen?: { buffer: Buffer; tipo: "png" | "jpg" };
+  descripcionImagen?: string;
+}
+
+/**
+ * Contenido de un examen — mismo tipo para Diagnóstico, Intermedio y Final.
+ * Cuando el docente adjuntó una imagen de apoyo para una pregunta (ver
+ * PreguntaExamenInput), el enunciado se redacta a partir de la descripción
+ * que el docente dio de esa imagen, para que coincidan exactamente.
+ */
+export interface ContenidoExamen {
+  preguntas: Array<{
+    enunciado: string;
+    opciones: [string, string, string, string]; // A, B, C, D
+    /** Índice (0-3) de la opción correcta. */
+    correcta: number;
+  }>;
+}
