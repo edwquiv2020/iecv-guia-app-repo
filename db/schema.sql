@@ -3,6 +3,7 @@
 -- igual que la malla real en Excel del docente), y la capa de programación
 -- (calendario_clases) que asigna un tema a una fecha/ciclo/jornada concretos.
 
+drop table if exists usuarios_autorizados cascade;
 drop table if exists guia_archivos cascade;
 drop table if exists guias cascade;
 drop table if exists calendario_clases cascade;
@@ -15,6 +16,17 @@ drop table if exists cursos cascade;
 drop table if exists actividades cascade;
 drop table if exists malla_items cascade;
 drop table if exists tematicas cascade;
+
+-- Docentes con permiso para entrar a la app (login con Google) — sin dominio
+-- institucional propio, el control de acceso es esta lista explícita en vez
+-- de un filtro por dominio de correo. Agregar un docente nuevo es una fila
+-- acá, no un cambio de código.
+create table usuarios_autorizados (
+  email text primary key,
+  nombre text,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
 
 -- Catálogo de tipos de actividad semanal (qué es cada semana del calendario:
 -- clase normal, examen, día institucional, etc.) — lista abierta, se amplía
