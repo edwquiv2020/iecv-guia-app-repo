@@ -5,6 +5,7 @@ import Link from "next/link";
 import JSZip from "jszip";
 import type { Clei, TipoExamen } from "@/lib/types";
 import { cantidadPreguntasPorJornada } from "@/lib/types";
+import { Alert, Button, Field, Fieldset, Input, Select } from "@/components/ui";
 
 function formatearFechaLarga(iso: string): string {
   if (!iso) return "";
@@ -258,125 +259,122 @@ export default function Examenes() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div>
-          <h1 className="text-2xl font-bold">Generador de Exámenes — IECV</h1>
-          <p className="mt-1 text-sm text-gray-500">Diagnóstico · Intermedio · Final — Tecnología e Informática</p>
+          <h1 className="text-2xl font-bold text-foreground">Generador de Exámenes — IECV</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Diagnóstico · Intermedio · Final — Tecnología e Informática</p>
         </div>
-        <Link href="/" className="text-sm text-emerald-700 underline">← Generar guía</Link>
+        <Link href="/" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">← Generar guía</Link>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
-        {catalogoError && <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{catalogoError}</p>}
+        {catalogoError && <Alert tone="warning">{catalogoError}</Alert>}
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Ciclo y jornada</legend>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm">Ciclo</span>
-              <select className="mt-1 w-full rounded border px-3 py-2" value={cicloId} onChange={(e) => onCicloChange(e.target.value)} required>
-                <option value="" disabled>Selecciona un ciclo…</option>
-                {ciclos.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-sm">Jornada</span>
-              <select className="mt-1 w-full rounded border px-3 py-2" value={jornadaId} onChange={(e) => onJornadaChange(e.target.value)} required>
-                <option value="" disabled>Selecciona una jornada…</option>
-                {jornadas.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-              </select>
-            </label>
+        <Fieldset legend="Ciclo y jornada">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Ciclo" required>
+              {(id) => (
+                <Select id={id} value={cicloId} onChange={(e) => onCicloChange(e.target.value)} required>
+                  <option value="" disabled>Selecciona un ciclo…</option>
+                  {ciclos.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>)}
+                </Select>
+              )}
+            </Field>
+            <Field label="Jornada" required>
+              {(id) => (
+                <Select id={id} value={jornadaId} onChange={(e) => onJornadaChange(e.target.value)} required>
+                  <option value="" disabled>Selecciona una jornada…</option>
+                  {jornadas.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+                </Select>
+              )}
+            </Field>
           </div>
-        </fieldset>
+        </Fieldset>
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Tipo de examen</legend>
-          <div className="flex gap-6">
+        <Fieldset legend="Tipo de examen">
+          <div className="flex flex-wrap gap-6">
             {(["diagnostico", "intermedio", "final"] as const).map((t) => (
-              <label key={t} className="flex items-center gap-2 text-sm">
+              <label key={t} className="flex items-center gap-2 text-sm text-foreground">
                 <input type="radio" name="tipo" checked={tipo === t} onChange={() => onTipoChange(t)} />
                 {ETIQUETA_TIPO[t]}
               </label>
             ))}
           </div>
           {tipo === "diagnostico" && (
-            <p className="mt-2 text-xs text-gray-500">Conocimiento general de Tecnología e Informática, al inicio del período — no evalúa un curso puntual.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Conocimiento general de Tecnología e Informática, al inicio del período — no evalúa un curso puntual.</p>
           )}
-        </fieldset>
+        </Fieldset>
 
         {(tipo === "intermedio" || tipo === "final") && (
-          <label className="block">
-            <span className="text-sm font-medium">Curso a evaluar</span>
-            <select className="mt-1 w-full rounded border px-3 py-2" value={cursoId} onChange={(e) => setCursoId(e.target.value)} required>
-              <option value="" disabled>Selecciona un curso…</option>
-              {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </label>
+          <Field label="Curso a evaluar" required>
+            {(id) => (
+              <Select id={id} value={cursoId} onChange={(e) => setCursoId(e.target.value)} required>
+                <option value="" disabled>Selecciona un curso…</option>
+                {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </Select>
+            )}
+          </Field>
         )}
 
         {cicloId && jornadaId && filasDelTipo.length > 0 && (
-          <fieldset className="rounded border p-4">
-            <legend className="px-1 text-sm font-medium">Semana programada ({ACTIVIDAD_POR_TIPO[tipo]})</legend>
-            <select className="w-full rounded border px-3 py-2" value={semanaProgramadaId} onChange={(e) => onSemanaProgramadaChange(e.target.value)}>
+          <Fieldset legend={`Semana programada (${ACTIVIDAD_POR_TIPO[tipo]})`}>
+            <Select value={semanaProgramadaId} onChange={(e) => onSemanaProgramadaChange(e.target.value)}>
               <option value="">— Crear una fecha nueva (no está en el horario) —</option>
               {filasDelTipo.map((f) => (
                 <option key={f.id} value={f.id}>
                   Semana {f.semana} — {f.fecha.slice(0, 10)}{f.curso_nombre ? ` — ${f.curso_nombre}` : ""}{f.origen === "ad_hoc" ? " (manual)" : ""}
                 </option>
               ))}
-            </select>
-          </fieldset>
+            </Select>
+          </Fieldset>
         )}
 
-        <label className="block">
-          <span className="text-sm font-medium">Grupo / CLEI / Jornada</span>
-          <input className="mt-1 w-full rounded border bg-gray-50 px-3 py-2" value={grupoCleiJornada || "Elige ciclo y jornada arriba"} disabled />
-        </label>
+        <Field label="Grupo / CLEI / Jornada">
+          {(id) => <Input id={id} value={grupoCleiJornada || "Elige ciclo y jornada arriba"} disabled />}
+        </Field>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">Semana No</span>
-            <input type="number" min={1} className="mt-1 w-full rounded border px-3 py-2" value={semana} onChange={(e) => setSemana(Number(e.target.value))} />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Fecha de aplicación</span>
-            <input type="date" className="mt-1 w-full rounded border px-3 py-2" value={fechaAplicacionIso} onChange={(e) => setFechaAplicacionIso(e.target.value)} required />
-          </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Semana No">
+            {(id) => <Input id={id} type="number" min={1} value={semana} onChange={(e) => setSemana(Number(e.target.value))} />}
+          </Field>
+          <Field label="Fecha de aplicación" required>
+            {(id) => (
+              <Input id={id} type="date" value={fechaAplicacionIso} onChange={(e) => setFechaAplicacionIso(e.target.value)} required />
+            )}
+          </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">Sede</span>
-            <input className="mt-1 w-full rounded border px-3 py-2" value={sede} onChange={(e) => setSede(e.target.value)} />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Docente/Evaluador</span>
-            <input className="mt-1 w-full rounded border px-3 py-2" value={docente} onChange={(e) => setDocente(e.target.value)} />
-          </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Sede">
+            {(id) => <Input id={id} value={sede} onChange={(e) => setSede(e.target.value)} />}
+          </Field>
+          <Field label="Docente/Evaluador">
+            {(id) => <Input id={id} value={docente} onChange={(e) => setDocente(e.target.value)} />}
+          </Field>
         </div>
 
-        <div className="rounded border bg-gray-50 px-3 py-2 text-sm text-gray-600">
+        <div className="rounded-lg border border-border bg-surface-muted px-3.5 py-2.5 text-sm text-muted-foreground">
           {cantidadPreguntas} preguntas · valoración {valoracionPregunta} c/u
           {jornadaActual ? "" : " (elige la jornada para calcular esto)"}
         </div>
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Imágenes de apoyo por pregunta (opcional)</legend>
-          <p className="mb-3 text-xs text-gray-500">
+        <Fieldset legend="Imágenes de apoyo por pregunta (opcional)">
+          <p className="mb-3 text-xs text-muted-foreground">
             Si una pregunta necesita una captura de pantalla como contexto (ej. una tabla de Excel), súbela aquí y describe qué muestra — la IA redacta esa pregunta a partir de tu descripción para que coincidan exactamente. Las preguntas sin imagen se redactan libremente.
           </p>
           <div className="space-y-3">
             {Array.from({ length: cantidadPreguntas }, (_, idx) => idx + 1).map((n) => (
-              <div key={n} className="rounded border p-3">
-                <p className="text-sm font-medium">Pregunta {n}</p>
+              <div key={n} className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Pregunta {n}</p>
                 <input
                   type="file"
                   accept="image/png,image/jpeg"
-                  className="mt-2 w-full text-sm"
+                  className="mt-2 w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-foreground hover:file:bg-border"
                   onChange={(e) => setPreguntaImagenes((prev) => ({ ...prev, [n]: e.target.files?.[0] ?? null }))}
                 />
-                <input
-                  className="mt-2 w-full rounded border px-3 py-2 text-sm"
+                <Input
+                  size="sm"
+                  className="mt-2"
                   placeholder="Qué muestra la imagen (ej. tabla de Excel con columnas Producto, Cantidad, Precio)"
                   value={preguntaDescripciones[n] ?? ""}
                   onChange={(e) => setPreguntaDescripciones((prev) => ({ ...prev, [n]: e.target.value }))}
@@ -384,14 +382,14 @@ export default function Examenes() {
               </div>
             ))}
           </div>
-        </fieldset>
+        </Fieldset>
 
-        {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        {exito && <p className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">{exito}</p>}
+        {error && <Alert tone="danger">{error}</Alert>}
+        {exito && <Alert tone="success">{exito}</Alert>}
 
-        <button type="submit" disabled={enviando} className="w-full rounded bg-emerald-700 px-4 py-3 font-medium text-white disabled:opacity-50">
+        <Button type="submit" size="lg" disabled={enviando} className="w-full">
           {enviando ? "Generando examen… (puede tardar ~20-30s)" : `Generar ${ETIQUETA_TIPO[tipo]}`}
-        </button>
+        </Button>
       </form>
     </main>
   );

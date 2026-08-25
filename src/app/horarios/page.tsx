@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alert, Badge, Button, Field, Fieldset, Input, Select } from "@/components/ui";
 
 interface Ciclo { id: string; nombre: string; grados: string[] }
 interface Jornada { id: string; nombre: string; dias: string }
@@ -48,15 +49,20 @@ function GuiaCelda({
   if (generada && archivos.length > 0) {
     return (
       <div>
-        <div className="flex items-center gap-1 text-emerald-700">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-success-subtle py-0.5 pl-2.5 pr-1 text-xs font-medium text-success-subtle-foreground">
           <span>✅ {etiqueta}</span>
-          <button type="button" className="text-gray-400 hover:text-red-600" onClick={onAlternar} title="Quitar registro y archivos guardados">
+          <button
+            type="button"
+            className="rounded-full px-1 text-success-subtle-foreground/70 hover:bg-danger-subtle hover:text-danger"
+            onClick={onAlternar}
+            title="Quitar registro y archivos guardados"
+          >
             ✕
           </button>
         </div>
-        <div className="ml-4 flex flex-col">
+        <div className="ml-1 mt-1 flex flex-col">
           {archivos.map((a) => (
-            <a key={a.id} href={`/api/guias/archivos/${a.id}`} className="text-xs text-blue-600 underline" target="_blank" rel="noreferrer">
+            <a key={a.id} href={`/api/guias/archivos/${a.id}`} className="text-xs text-info underline underline-offset-2" target="_blank" rel="noreferrer">
               {a.nombre}
             </a>
           ))}
@@ -67,9 +73,11 @@ function GuiaCelda({
   return (
     <button
       type="button"
-      className={generada ? "text-left text-emerald-700" : "text-left text-gray-400"}
       onClick={onAlternar}
       title="Clic para marcar/desmarcar"
+      className={`inline-flex items-center gap-1 rounded-full py-0.5 px-2.5 text-xs font-medium ${
+        generada ? "bg-success-subtle text-success-subtle-foreground" : "bg-surface-muted text-muted-foreground"
+      }`}
     >
       {generada ? "✅" : "⏳"} {etiqueta}
     </button>
@@ -270,49 +278,48 @@ export default function Horarios() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="text-2xl font-bold">Horarios — carga de calendario académico</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="text-2xl font-bold text-foreground">Horarios — carga de calendario académico</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
         Carga las fechas que entrega rectoría por ciclo y jornada. La generación automática
         repite cada N días (7 para semanal, 15 para algunos ciclos que rotan quincenal) — ajusta
         el intervalo según lo que entregue rectoría. Si no sigue un patrón fijo, usa carga manual.
       </p>
 
-      <div className="mt-8 grid grid-cols-2 gap-4">
-        <label className="block">
-          <span className="text-sm font-medium">Ciclo</span>
-          <select className="mt-1 w-full rounded border px-3 py-2" value={cicloId} onChange={(e) => setCicloId(e.target.value)}>
-            <option value="" disabled>Selecciona un ciclo…</option>
-            {ciclos.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Jornada</span>
-          <select className="mt-1 w-full rounded border px-3 py-2" value={jornadaId} onChange={(e) => setJornadaId(e.target.value)}>
-            <option value="" disabled>Selecciona una jornada…</option>
-            {jornadas.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-          </select>
-        </label>
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Ciclo">
+          {(id) => (
+            <Select id={id} value={cicloId} onChange={(e) => setCicloId(e.target.value)}>
+              <option value="" disabled>Selecciona un ciclo…</option>
+              {ciclos.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>)}
+            </Select>
+          )}
+        </Field>
+        <Field label="Jornada">
+          {(id) => (
+            <Select id={id} value={jornadaId} onChange={(e) => setJornadaId(e.target.value)}>
+              <option value="" disabled>Selecciona una jornada…</option>
+              {jornadas.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+            </Select>
+          )}
+        </Field>
       </div>
 
       {cicloId && jornadaId && (
         <>
-          <label className="mt-8 flex items-center gap-2 text-sm font-medium">
+          <label className="mt-8 flex items-center gap-2 text-sm font-medium text-foreground">
             <input type="checkbox" checked={modoAutomatico} onChange={(e) => setModoAutomatico(e.target.checked)} />
             Generar automático (secuencia regular)
           </label>
 
           {jornadasGemelas.length > 0 && (
-            <fieldset className="mt-4 rounded border border-blue-200 bg-blue-50 p-4">
-              <legend className="px-1 text-sm font-medium">
-                Este ciclo también se dicta en {jornadaActual?.dias} en otra jornada
-              </legend>
-              <p className="text-xs text-gray-500">
+            <Fieldset tone="info" className="mt-4" legend={`Este ciclo también se dicta en ${jornadaActual?.dias} en otra jornada`}>
+              <p className="text-xs text-info-subtle-foreground">
                 Si el horario es el mismo, marca la(s) jornada(s) donde también quieres cargarlo —
                 se guarda ahí una copia idéntica, sin tener que repetir la carga.
               </p>
               <div className="mt-2 flex flex-wrap gap-4">
                 {jornadasGemelas.map((j) => (
-                  <label key={j.id} className="flex items-center gap-2 text-sm">
+                  <label key={j.id} className="flex items-center gap-2 text-sm text-foreground">
                     <input
                       type="checkbox"
                       checked={copiarAJornadas.includes(j.id)}
@@ -322,62 +329,65 @@ export default function Horarios() {
                   </label>
                 ))}
               </div>
-            </fieldset>
+            </Fieldset>
           )}
 
           {modoAutomatico ? (
-            <fieldset className="mt-4 rounded border p-4">
-              <legend className="px-1 text-sm font-medium">Generación automática</legend>
-              <div className="grid grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="text-sm">Curso</span>
-                  <select className="mt-1 w-full rounded border px-3 py-2" value={autoCursoId} onChange={(e) => setAutoCursoId(e.target.value)}>
-                    <option value="" disabled>Selecciona un curso…</option>
-                    {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm">Fecha de inicio</span>
-                  <input type="date" className="mt-1 w-full rounded border px-3 py-2" value={autoFechaInicio} onChange={(e) => setAutoFechaInicio(e.target.value)} />
-                </label>
-                <label className="block">
-                  <span className="text-sm">Semana inicial No</span>
-                  <input type="number" min={1} className="mt-1 w-full rounded border px-3 py-2" value={autoSemanaInicial} onChange={(e) => setAutoSemanaInicial(Number(e.target.value))} />
-                </label>
-                <label className="block">
-                  <span className="text-sm">Guía inicial No</span>
-                  <input type="number" min={0} className="mt-1 w-full rounded border px-3 py-2" value={autoGuiaInicial} onChange={(e) => setAutoGuiaInicial(Number(e.target.value))} />
-                  <span className="text-xs text-gray-400">0 si la primera semana es de inducción/diagnóstico, sin guía.</span>
-                </label>
-                <label className="block">
-                  <span className="text-sm">Cantidad de semanas</span>
-                  <input type="number" min={1} max={40} className="mt-1 w-full rounded border px-3 py-2" value={autoCantidad} onChange={(e) => setAutoCantidad(Number(e.target.value))} />
-                </label>
-                <label className="block">
-                  <span className="text-sm">Repetir cada (días)</span>
-                  <input type="number" min={1} max={60} className="mt-1 w-full rounded border px-3 py-2" value={autoIntervaloDias} onChange={(e) => setAutoIntervaloDias(Number(e.target.value))} />
-                  <span className="text-xs text-gray-400">7 = semanal, 15 = quincenal.</span>
-                </label>
+            <Fieldset className="mt-4" legend="Generación automática">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Curso">
+                  {(id) => (
+                    <Select id={id} value={autoCursoId} onChange={(e) => setAutoCursoId(e.target.value)}>
+                      <option value="" disabled>Selecciona un curso…</option>
+                      {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                <Field label="Fecha de inicio">
+                  {(id) => <Input id={id} type="date" value={autoFechaInicio} onChange={(e) => setAutoFechaInicio(e.target.value)} />}
+                </Field>
+                <Field label="Semana inicial No">
+                  {(id) => (
+                    <Input id={id} type="number" min={1} value={autoSemanaInicial} onChange={(e) => setAutoSemanaInicial(Number(e.target.value))} />
+                  )}
+                </Field>
+                <Field label="Guía inicial No" hint="0 si la primera semana es de inducción/diagnóstico, sin guía.">
+                  {(id) => (
+                    <Input id={id} type="number" min={0} value={autoGuiaInicial} onChange={(e) => setAutoGuiaInicial(Number(e.target.value))} />
+                  )}
+                </Field>
+                <Field label="Cantidad de semanas">
+                  {(id) => (
+                    <Input id={id} type="number" min={1} max={40} value={autoCantidad} onChange={(e) => setAutoCantidad(Number(e.target.value))} />
+                  )}
+                </Field>
+                <Field label="Repetir cada (días)" hint="7 = semanal, 15 = quincenal.">
+                  {(id) => (
+                    <Input id={id} type="number" min={1} max={60} value={autoIntervaloDias} onChange={(e) => setAutoIntervaloDias(Number(e.target.value))} />
+                  )}
+                </Field>
               </div>
 
               {previewAuto.length > 0 && (
-                <div className="mt-4 max-h-72 overflow-y-auto rounded border">
+                <div className="mt-4 max-h-72 overflow-auto rounded-lg border border-border">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50"><tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Actividad (edítala por semana)</th></tr></thead>
+                    <thead className="bg-surface-muted text-muted-foreground">
+                      <tr><th className="p-2.5 text-left font-medium">Semana</th><th className="p-2.5 text-left font-medium">Guía</th><th className="p-2.5 text-left font-medium">Fecha</th><th className="p-2.5 text-left font-medium">Actividad (edítala por semana)</th></tr>
+                    </thead>
                     <tbody>
                       {previewAuto.map((f, i) => (
-                        <tr key={i} className="border-t">
-                          <td className="p-2">{f.semana}</td>
-                          <td className="p-2">{f.guia}</td>
-                          <td className="p-2">{f.fecha}</td>
-                          <td className="p-2">
-                            <select
-                              className="w-full rounded border px-2 py-1"
+                        <tr key={i} className="border-t border-border">
+                          <td className="p-2.5 text-foreground">{f.semana}</td>
+                          <td className="p-2.5 text-foreground">{f.guia}</td>
+                          <td className="p-2.5 text-foreground">{f.fecha}</td>
+                          <td className="p-2.5">
+                            <Select
+                              size="sm"
                               value={f.actividadId}
                               onChange={(e) => setAutoActividadesPorFila((prev) => ({ ...prev, [i]: e.target.value }))}
                             >
                               {actividades.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                            </select>
+                            </Select>
                           </td>
                         </tr>
                       ))}
@@ -385,107 +395,163 @@ export default function Horarios() {
                   </table>
                 </div>
               )}
-            </fieldset>
+            </Fieldset>
           ) : (
-            <fieldset className="mt-4 rounded border p-4">
-              <legend className="px-1 text-sm font-medium">Carga manual, fila por fila</legend>
+            <Fieldset className="mt-4" legend="Carga manual, fila por fila">
               <div className="space-y-2">
                 {filasManual.map((f, i) => (
-                  <div key={i} className="grid grid-cols-12 gap-2">
-                    <select className="col-span-3 rounded border px-2 py-1 text-sm" value={f.cursoId} onChange={(e) => actualizarFilaManual(i, "cursoId", e.target.value)}>
+                  <div key={i} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-2 sm:grid-cols-12 sm:border-0 sm:p-0">
+                    <Select
+                      size="sm"
+                      className="col-span-2 sm:col-span-3"
+                      value={f.cursoId}
+                      onChange={(e) => actualizarFilaManual(i, "cursoId", e.target.value)}
+                    >
                       <option value="">Curso (opcional)…</option>
                       {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                    </select>
-                    <input type="number" className="col-span-1 rounded border px-2 py-1 text-sm" value={f.semana} onChange={(e) => actualizarFilaManual(i, "semana", Number(e.target.value))} placeholder="Semana" />
-                    <input type="number" className="col-span-1 rounded border px-2 py-1 text-sm" value={f.guia} onChange={(e) => actualizarFilaManual(i, "guia", Number(e.target.value))} placeholder="Guía" />
-                    <input type="date" className="col-span-2 rounded border px-2 py-1 text-sm" value={f.fecha} onChange={(e) => actualizarFilaManual(i, "fecha", e.target.value)} />
-                    <select className="col-span-4 rounded border px-2 py-1 text-sm" value={f.actividadId} onChange={(e) => actualizarFilaManual(i, "actividadId", e.target.value)}>
+                    </Select>
+                    <Input
+                      type="number"
+                      size="sm"
+                      className="col-span-1"
+                      value={f.semana}
+                      onChange={(e) => actualizarFilaManual(i, "semana", Number(e.target.value))}
+                      placeholder="Semana"
+                    />
+                    <Input
+                      type="number"
+                      size="sm"
+                      className="col-span-1"
+                      value={f.guia}
+                      onChange={(e) => actualizarFilaManual(i, "guia", Number(e.target.value))}
+                      placeholder="Guía"
+                    />
+                    <Input
+                      type="date"
+                      size="sm"
+                      className="col-span-2"
+                      value={f.fecha}
+                      onChange={(e) => actualizarFilaManual(i, "fecha", e.target.value)}
+                    />
+                    <Select
+                      size="sm"
+                      className="col-span-2 sm:col-span-4"
+                      value={f.actividadId}
+                      onChange={(e) => actualizarFilaManual(i, "actividadId", e.target.value)}
+                    >
                       <option value="" disabled>Actividad…</option>
                       {actividades.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                    </select>
-                    <button type="button" className="col-span-1 text-red-600" onClick={() => quitarFilaManual(i)}>✕</button>
+                    </Select>
+                    <button
+                      type="button"
+                      className="col-span-1 rounded-md text-danger hover:bg-danger-subtle"
+                      onClick={() => quitarFilaManual(i)}
+                      aria-label="Quitar fila"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={agregarFilaManual} className="mt-3 rounded border px-3 py-1 text-sm">+ agregar fila</button>
-            </fieldset>
+              <Button type="button" variant="secondary" size="sm" onClick={agregarFilaManual} className="mt-3">
+                + agregar fila
+              </Button>
+            </Fieldset>
           )}
 
-          {error && <p className="mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          {exito && <p className="mt-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700">{exito}</p>}
+          {error && <div className="mt-4"><Alert tone="danger">{error}</Alert></div>}
+          {exito && <div className="mt-4"><Alert tone="success">{exito}</Alert></div>}
 
           {conflictos && (
-            <div className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              <p className="font-medium">
-                Estas semanas ya tienen una clase creada manualmente desde el generador de guías
-                (sin horario oficial todavía). Si guardas, se reemplaza con estos datos nuevos:
-              </p>
-              {Object.entries(conflictos).map(([destinoId, filas]) => (
-                <div key={destinoId} className="mt-2">
-                  <p className="text-xs font-medium uppercase text-amber-700">
-                    {jornadas.find((j) => j.id === destinoId)?.nombre ?? destinoId}
-                  </p>
-                  <ul className="mt-1 list-disc pl-5">
-                    {filas.map((c) => <li key={c.semana}>Semana {c.semana} — Guía {c.guia} — {c.fecha.slice(0, 10)}</li>)}
-                  </ul>
-                </div>
-              ))}
-              <button type="button" onClick={() => guardar(true)} className="mt-2 rounded bg-amber-700 px-3 py-1 text-white">
-                Sí, reemplazar y guardar
-              </button>
+            <div className="mt-4">
+              <Alert tone="warning">
+                <p className="font-medium">
+                  Estas semanas ya tienen una clase creada manualmente desde el generador de guías
+                  (sin horario oficial todavía). Si guardas, se reemplaza con estos datos nuevos:
+                </p>
+                {Object.entries(conflictos).map(([destinoId, filas]) => (
+                  <div key={destinoId} className="mt-2">
+                    <p className="text-xs font-medium uppercase text-warning">
+                      {jornadas.find((j) => j.id === destinoId)?.nombre ?? destinoId}
+                    </p>
+                    <ul className="mt-1 list-disc pl-5">
+                      {filas.map((c) => <li key={c.semana}>Semana {c.semana} — Guía {c.guia} — {c.fecha.slice(0, 10)}</li>)}
+                    </ul>
+                  </div>
+                ))}
+                <Button type="button" variant="warning" size="sm" onClick={() => guardar(true)} className="mt-3">
+                  Sí, reemplazar y guardar
+                </Button>
+              </Alert>
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={guardando}
-            onClick={() => guardar(false)}
-            className="mt-4 w-full rounded bg-emerald-700 px-4 py-3 font-medium text-white disabled:opacity-50"
-          >
+          <Button type="button" size="lg" disabled={guardando} onClick={() => guardar(false)} className="mt-4 w-full">
             {guardando ? "Guardando…" : "Guardar horario"}
-          </button>
+          </Button>
 
-          <h2 className="mt-10 text-lg font-semibold">Ya cargado para este ciclo/jornada</h2>
+          <h2 className="mt-10 text-lg font-semibold text-foreground">Ya cargado para este ciclo/jornada</h2>
           {filasExistentes.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-500">Todavía no hay nada cargado.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Todavía no hay nada cargado.</p>
           ) : (
-            <table className="mt-2 w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr><th className="p-2 text-left">Semana</th><th className="p-2 text-left">Guía</th><th className="p-2 text-left">Fecha</th><th className="p-2 text-left">Actividad</th><th className="p-2 text-left">Curso</th><th className="p-2 text-left">Tema</th><th className="p-2 text-left">Guías</th><th></th></tr>
-              </thead>
-              <tbody>
-                {filasExistentes.map((f) => (
-                  <tr key={f.id} className="border-t">
-                    <td className="p-2">{f.semana}</td>
-                    <td className="p-2">{f.guia}</td>
-                    <td className="p-2">{f.fecha.slice(0, 10)}</td>
-                    <td className="p-2">
-                      {f.actividad_nombre}
-                      {f.origen === "ad_hoc" && <span className="ml-1 text-xs text-amber-600">(manual)</span>}
-                    </td>
-                    <td className="p-2">{f.curso_nombre ?? "—"}</td>
-                    <td className="p-2">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-gray-400">—</span>}</td>
-                    <td className="p-2">
-                      <div className="flex flex-col gap-1.5">
-                        <GuiaCelda
-                          etiqueta="Estándar"
-                          generada={f.guia_estandar_generada}
-                          archivos={f.archivos.estandar}
-                          onAlternar={() => alternarGuia(f.id, "estandar", f.guia_estandar_generada)}
-                        />
-                        <GuiaCelda
-                          etiqueta="DUA"
-                          generada={f.guia_dua_generada}
-                          archivos={f.archivos.dua}
-                          onAlternar={() => alternarGuia(f.id, "dua", f.guia_dua_generada)}
-                        />
-                      </div>
-                    </td>
-                    <td className="p-2"><button className="text-red-600" onClick={() => borrarFila(f.id)}>✕</button></td>
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted text-muted-foreground">
+                  <tr>
+                    <th className="p-3 text-left font-medium">Semana</th>
+                    <th className="p-3 text-left font-medium">Guía</th>
+                    <th className="p-3 text-left font-medium">Fecha</th>
+                    <th className="p-3 text-left font-medium">Actividad</th>
+                    <th className="p-3 text-left font-medium">Curso</th>
+                    <th className="p-3 text-left font-medium">Tema</th>
+                    <th className="p-3 text-left font-medium">Guías</th>
+                    <th className="p-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filasExistentes.map((f) => (
+                    <tr key={f.id} className="border-t border-border">
+                      <td className="p-3 text-foreground">{f.semana}</td>
+                      <td className="p-3 text-foreground">{f.guia}</td>
+                      <td className="p-3 text-foreground">{f.fecha.slice(0, 10)}</td>
+                      <td className="p-3 text-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <span>{f.actividad_nombre}</span>
+                          {f.origen === "ad_hoc" && <Badge tone="warning">manual</Badge>}
+                        </div>
+                      </td>
+                      <td className="p-3 text-foreground">{f.curso_nombre ?? "—"}</td>
+                      <td className="p-3 text-foreground">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-1.5">
+                          <GuiaCelda
+                            etiqueta="Estándar"
+                            generada={f.guia_estandar_generada}
+                            archivos={f.archivos.estandar}
+                            onAlternar={() => alternarGuia(f.id, "estandar", f.guia_estandar_generada)}
+                          />
+                          <GuiaCelda
+                            etiqueta="DUA"
+                            generada={f.guia_dua_generada}
+                            archivos={f.archivos.dua}
+                            onAlternar={() => alternarGuia(f.id, "dua", f.guia_dua_generada)}
+                          />
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <button
+                          className="rounded-md p-1 text-danger hover:bg-danger-subtle"
+                          onClick={() => borrarFila(f.id)}
+                          aria-label="Borrar fila"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}

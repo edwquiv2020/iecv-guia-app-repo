@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import { useSession } from "next-auth/react";
 import type { Clei } from "@/lib/types";
+import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
 
 function formatearFechas(iso: string): { corta: string; larga: string } {
   if (!iso) return { corta: "", larga: "" };
@@ -403,70 +404,56 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div>
-          <h1 className="text-2xl font-bold">Generador de Guía de Formación — IECV</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Generador de Guía de Formación — IECV</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <a href="/examenes" className="text-sm text-emerald-700 underline">Generar exámenes →</a>
-          <a href="/horarios" className="text-sm text-emerald-700 underline">Cargar horarios →</a>
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <a href="/examenes" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Generar exámenes →</a>
+          <a href="/horarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Cargar horarios →</a>
           {session?.user?.rol === "admin" && (
             <>
-              <a href="/admin/mallas" className="text-sm text-emerald-700 underline">Administrar mallas →</a>
-              <a href="/admin/usuarios" className="text-sm text-emerald-700 underline">Gestionar docentes →</a>
+              <a href="/admin/mallas" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Administrar mallas →</a>
+              <a href="/admin/usuarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Gestionar docentes →</a>
             </>
           )}
         </div>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
-        {catalogoError && <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{catalogoError}</p>}
+        {catalogoError && <Alert tone="warning">{catalogoError}</Alert>}
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Ciclo y jornada</legend>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm">Ciclo</span>
-              <select
-                className="mt-1 w-full rounded border px-3 py-2"
-                value={cicloId}
-                onChange={(e) => onCicloChange(e.target.value)}
-                required
-              >
-                <option value="" disabled>Selecciona un ciclo…</option>
-                {ciclos.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-sm">Jornada</span>
-              <select
-                className="mt-1 w-full rounded border px-3 py-2"
-                value={jornadaId}
-                onChange={(e) => onJornadaChange(e.target.value)}
-                required
-              >
-                <option value="" disabled>Selecciona una jornada…</option>
-                {jornadas.map((j) => (
-                  <option key={j.id} value={j.id}>{j.nombre}</option>
-                ))}
-              </select>
-            </label>
+        <Fieldset legend="Ciclo y jornada">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Ciclo" required>
+              {(id) => (
+                <Select id={id} value={cicloId} onChange={(e) => onCicloChange(e.target.value)} required>
+                  <option value="" disabled>Selecciona un ciclo…</option>
+                  {ciclos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Jornada" required>
+              {(id) => (
+                <Select id={id} value={jornadaId} onChange={(e) => onJornadaChange(e.target.value)} required>
+                  <option value="" disabled>Selecciona una jornada…</option>
+                  {jornadas.map((j) => (
+                    <option key={j.id} value={j.id}>{j.nombre}</option>
+                  ))}
+                </Select>
+              )}
+            </Field>
           </div>
-        </fieldset>
+        </Fieldset>
 
         {cicloId && jornadaId && (
-          <fieldset className="rounded border p-4">
-            <legend className="px-1 text-sm font-medium">Semana programada</legend>
-            <select
-              className="w-full rounded border px-3 py-2"
-              value={semanaProgramadaId}
-              onChange={(e) => onSemanaProgramadaChange(e.target.value)}
-            >
+          <Fieldset legend="Semana programada">
+            <Select value={semanaProgramadaId} onChange={(e) => onSemanaProgramadaChange(e.target.value)}>
               <option value="">
                 {calendarioFilas.length === 0 ? "No hay horario cargado para este ciclo/jornada — crea la clase abajo" : "— Crear una clase nueva (no está en el horario) —"}
               </option>
@@ -479,172 +466,140 @@ export default function Home() {
                   {f.guia_dua_generada ? " · DUA ✅" : ""}
                 </option>
               ))}
-            </select>
-            {notaActividad && <p className="mt-1 text-xs text-amber-600">{notaActividad}</p>}
+            </Select>
+            {notaActividad && <p className="mt-2 text-xs text-warning">{notaActividad}</p>}
 
             {hayQueConfirmarRegeneracion && (
-              <div className="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                <p>La guía {tiposYaGenerados.join(" y ")} de esta semana ya se generó antes.</p>
-                <label className="mt-1 flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={confirmarRegenerar} onChange={(e) => setConfirmarRegenerar(e.target.checked)} />
-                  Sí, generar de nuevo (reemplaza el registro anterior)
-                </label>
+              <div className="mt-3">
+                <Alert tone="warning">
+                  <span className="block">La guía {tiposYaGenerados.join(" y ")} de esta semana ya se generó antes.</span>
+                  <label className="mt-2 flex items-center gap-2 text-xs font-normal">
+                    <input type="checkbox" checked={confirmarRegenerar} onChange={(e) => setConfirmarRegenerar(e.target.checked)} />
+                    Sí, generar de nuevo (reemplaza el registro anterior)
+                  </label>
+                </Alert>
               </div>
             )}
-          </fieldset>
+          </Fieldset>
         )}
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Catálogo (curso → tema)</legend>
-          <label className="block">
-            <span className="text-sm">Curso</span>
-            <select
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={cursoId}
-              onChange={(e) => setCursoId(e.target.value)}
-              required
-            >
-              <option value="" disabled>Selecciona un curso…</option>
-              {cursos.map((c) => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
-            {!semanaProgramadaId && cursoId && calendarioFilas.some((f) => f.curso_id === cursoId) && (
-              <button
-                type="button"
-                onClick={usarPatronGeneral}
-                className="mt-2 rounded border px-3 py-1 text-xs text-emerald-700"
-              >
-                Usar información general (+7 días desde la última clase de este curso)
-              </button>
+        <Fieldset legend="Catálogo (curso → tema)">
+          <Field label="Curso" required>
+            {(id) => (
+              <>
+                <Select id={id} value={cursoId} onChange={(e) => setCursoId(e.target.value)} required>
+                  <option value="" disabled>Selecciona un curso…</option>
+                  {cursos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </Select>
+                {!semanaProgramadaId && cursoId && calendarioFilas.some((f) => f.curso_id === cursoId) && (
+                  <Button type="button" variant="secondary" size="sm" onClick={usarPatronGeneral} className="mt-2">
+                    Usar información general (+7 días desde la última clase de este curso)
+                  </Button>
+                )}
+              </>
             )}
-          </label>
+          </Field>
 
-          <label className="mt-4 block">
-            <span className="text-sm">Tema de la malla</span>
-            <select
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={temaId}
-              onChange={(e) => onTemaChange(e.target.value)}
-              disabled={temas.length === 0}
-              required
-            >
-              <option value="" disabled>
-                {cursoId ? (temas.length ? "Selecciona un tema…" : "Este curso no tiene malla cargada todavía") : "Elige primero un curso"}
-              </option>
-              {temas.map((t) => (
-                <option key={t.id} value={t.id}>{t.numero}. {t.tema}</option>
-              ))}
-            </select>
-            {archivoKahoot && (
-              <span className="mt-1 block text-xs text-gray-400">Kahoot sugerido: {archivoKahoot}</span>
+          <Field label="Tema de la malla" required className="mt-4">
+            {(id) => (
+              <>
+                <Select
+                  id={id}
+                  value={temaId}
+                  onChange={(e) => onTemaChange(e.target.value)}
+                  disabled={temas.length === 0}
+                  required
+                >
+                  <option value="" disabled>
+                    {cursoId ? (temas.length ? "Selecciona un tema…" : "Este curso no tiene malla cargada todavía") : "Elige primero un curso"}
+                  </option>
+                  {temas.map((t) => (
+                    <option key={t.id} value={t.id}>{t.numero}. {t.tema}</option>
+                  ))}
+                </Select>
+                {archivoKahoot && (
+                  <span className="mt-1 block text-xs text-muted-foreground">Kahoot sugerido: {archivoKahoot}</span>
+                )}
+              </>
             )}
-          </label>
-        </fieldset>
+          </Field>
+        </Fieldset>
 
-        <label className="block">
-          <span className="text-sm font-medium">CLEI</span>
-          <input className="mt-1 w-full rounded border bg-gray-50 px-3 py-2" value={clei} disabled />
-        </label>
+        <Field label="CLEI">{(id) => <Input id={id} value={clei} disabled />}</Field>
 
-        <label className="block">
-          <span className="text-sm font-medium">Grupo / CLEI / Jornada (como aparece en la tabla)</span>
-          <span className="ml-1 text-xs text-gray-400">(automático — depende del ciclo y la jornada elegidos)</span>
-          <input
-            className="mt-1 w-full rounded border bg-gray-50 px-3 py-2"
-            value={grupoCleiJornada || "Elige ciclo y jornada arriba"}
-            disabled
-          />
-        </label>
+        <Field label="Grupo / CLEI / Jornada (como aparece en la tabla)" hint="(automático — depende del ciclo y la jornada elegidos)">
+          {(id) => <Input id={id} value={grupoCleiJornada || "Elige ciclo y jornada arriba"} disabled />}
+        </Field>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">Semana No</span>
-            <input
-              type="number"
-              min={1}
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={semana}
-              onChange={(e) => setSemana(Number(e.target.value))}
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Guía No</span>
-            <input
-              type="number"
-              min={1}
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={guia}
-              onChange={(e) => setGuia(Number(e.target.value))}
-            />
-          </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Semana No">
+            {(id) => (
+              <Input id={id} type="number" min={1} value={semana} onChange={(e) => setSemana(Number(e.target.value))} />
+            )}
+          </Field>
+          <Field label="Guía No">
+            {(id) => (
+              <Input id={id} type="number" min={1} value={guia} onChange={(e) => setGuia(Number(e.target.value))} />
+            )}
+          </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">Fecha de la clase</span>
-            <input
-              type="date"
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={fechaClaseIso}
-              onChange={(e) => setFechaClaseIso(e.target.value)}
-              required
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Fecha de cargue en Moodle</span>
-            <input
-              type="date"
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={fechaCargueIso}
-              onChange={(e) => setFechaCargueIso(e.target.value)}
-            />
-            <span className="text-xs text-gray-400">Si la dejas vacía, se usa la misma fecha de clase.</span>
-          </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Fecha de la clase" required>
+            {(id) => (
+              <Input id={id} type="date" value={fechaClaseIso} onChange={(e) => setFechaClaseIso(e.target.value)} required />
+            )}
+          </Field>
+          <Field label="Fecha de cargue en Moodle" hint="Si la dejas vacía, se usa la misma fecha de clase.">
+            {(id) => (
+              <Input id={id} type="date" value={fechaCargueIso} onChange={(e) => setFechaCargueIso(e.target.value)} />
+            )}
+          </Field>
         </div>
 
-        <label className="block">
-          <span className="text-sm font-medium">Tema de la semana</span>
-          <span className="ml-1 text-xs text-gray-400">(autocompletado desde el tema elegido, editable)</span>
-          <input
-            className="mt-1 w-full rounded border px-3 py-2"
-            value={tema}
-            onChange={(e) => setTema(e.target.value)}
-            placeholder="INTRODUCCIÓN A INTERNET"
-            required
-          />
-        </label>
+        <Field label="Tema de la semana" hint="(autocompletado desde el tema elegido, editable)" required>
+          {(id) => (
+            <Input
+              id={id}
+              value={tema}
+              onChange={(e) => setTema(e.target.value)}
+              placeholder="INTRODUCCIÓN A INTERNET"
+              required
+            />
+          )}
+        </Field>
 
-        <label className="block">
-          <span className="text-sm font-medium">Subtemas (uno por línea, en orden)</span>
-          <span className="ml-1 text-xs text-gray-400">(autocompletado, edítalo si quieres dividirlo en varios A/B/C)</span>
-          <textarea
-            className="mt-1 w-full rounded border px-3 py-2"
-            rows={4}
-            value={subtemasTexto}
-            onChange={(e) => setSubtemasTexto(e.target.value)}
-            placeholder={"Navegadores web\nBuscadores\nCorreo electrónico"}
-            required
-          />
-        </label>
+        <Field label="Subtemas (uno por línea, en orden)" hint="(autocompletado, edítalo si quieres dividirlo en varios A/B/C)" required>
+          {(id) => (
+            <Textarea
+              id={id}
+              rows={4}
+              value={subtemasTexto}
+              onChange={(e) => setSubtemasTexto(e.target.value)}
+              placeholder={"Navegadores web\nBuscadores\nCorreo electrónico"}
+              required
+            />
+          )}
+        </Field>
 
         {subtemasList.length > 0 && (
-          <fieldset className="rounded border p-4">
-            <legend className="px-1 text-sm font-medium">Imágenes por subtema (opcional — captura real u otra ilustración)</legend>
+          <Fieldset legend="Imágenes por subtema (opcional — captura real u otra ilustración)">
             <div className="space-y-4">
               {subtemasList.map((titulo, i) => (
-                <div key={i} className="rounded border p-3">
-                  <p className="text-sm font-medium">{i + 1}. {titulo}</p>
+                <div key={i} className="rounded-lg border border-border p-3">
+                  <p className="text-sm font-medium text-foreground">{i + 1}. {titulo}</p>
                   <input
                     type="file"
                     accept="image/png,image/jpeg"
                     multiple
-                    className="mt-2 w-full text-sm"
+                    className="mt-2 w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-foreground hover:file:bg-border"
                     onChange={(e) =>
                       setSubtemaImagenes((prev) => ({ ...prev, [i]: Array.from(e.target.files ?? []) }))
                     }
                   />
-                  <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+                  <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={!!subtemaEsCaptura[i]}
@@ -655,35 +610,39 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </fieldset>
+          </Fieldset>
         )}
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Video de apoyo (URL autocompletada — verifica título/canal/duración tú antes de enviarlo)</legend>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm">Título</span>
-              <input className="mt-1 w-full rounded border px-3 py-2" value={videoTitulo} onChange={(e) => setVideoTitulo(e.target.value)} required />
-            </label>
-            <label className="block">
-              <span className="text-sm">Canal</span>
-              <input className="mt-1 w-full rounded border px-3 py-2" value={videoCanal} onChange={(e) => setVideoCanal(e.target.value)} required />
-            </label>
-            <label className="block">
-              <span className="text-sm">Duración (m:ss)</span>
-              <input className="mt-1 w-full rounded border px-3 py-2" value={videoDuracion} onChange={(e) => setVideoDuracion(e.target.value)} placeholder="4:32" required />
-            </label>
-            <label className="block">
-              <span className="text-sm">URL de YouTube</span>
-              <input className="mt-1 w-full rounded border px-3 py-2" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." required />
-            </label>
+        <Fieldset legend="Video de apoyo (URL autocompletada — verifica título/canal/duración tú antes de enviarlo)">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Título" required>
+              {(id) => <Input id={id} value={videoTitulo} onChange={(e) => setVideoTitulo(e.target.value)} required />}
+            </Field>
+            <Field label="Canal" required>
+              {(id) => <Input id={id} value={videoCanal} onChange={(e) => setVideoCanal(e.target.value)} required />}
+            </Field>
+            <Field label="Duración (m:ss)" required>
+              {(id) => (
+                <Input id={id} value={videoDuracion} onChange={(e) => setVideoDuracion(e.target.value)} placeholder="4:32" required />
+              )}
+            </Field>
+            <Field label="URL de YouTube" required>
+              {(id) => (
+                <Input
+                  id={id}
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  required
+                />
+              )}
+            </Field>
           </div>
-        </fieldset>
+        </Fieldset>
 
-        <fieldset className="rounded border p-4">
-          <legend className="px-1 text-sm font-medium">Tipo de guía a generar</legend>
+        <Fieldset legend="Tipo de guía a generar">
           <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={quiereEstandar}
@@ -691,7 +650,7 @@ export default function Home() {
               />
               Estándar
             </label>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={quiereDua}
@@ -701,27 +660,26 @@ export default function Home() {
             </label>
           </div>
           {quiereDua && (
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-muted-foreground">
               La versión DUA toma el subtema A ya generado y lo convierte en un procedimiento de 4 repeticiones con apoyo decreciente — reutiliza las imágenes que subas para ese subtema.
             </p>
           )}
-        </fieldset>
+        </Fieldset>
 
-        <label className="block">
-          <span className="text-sm font-medium">Hora máxima de entrega</span>
-          <input className="mt-1 w-40 rounded border px-3 py-2" value={horaMaxima} onChange={(e) => setHoraMaxima(e.target.value)} />
-        </label>
+        <Field label="Hora máxima de entrega">
+          {(id) => (
+            <div className="w-40">
+              <Input id={id} value={horaMaxima} onChange={(e) => setHoraMaxima(e.target.value)} />
+            </div>
+          )}
+        </Field>
 
-        {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        {exito && <p className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">{exito}</p>}
+        {error && <Alert tone="danger">{error}</Alert>}
+        {exito && <Alert tone="success">{exito}</Alert>}
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full rounded bg-emerald-700 px-4 py-3 font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" size="lg" disabled={enviando} className="w-full">
           {enviando ? "Generando guía… (puede tardar ~20-30s)" : "Generar guía en Word"}
-        </button>
+        </Button>
       </form>
     </main>
   );

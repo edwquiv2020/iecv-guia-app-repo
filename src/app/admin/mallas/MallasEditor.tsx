@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
 
 interface Curso {
   id: string;
@@ -281,27 +282,25 @@ export default function MallasEditor() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div>
-          <h1 className="text-2xl font-bold">Administrar mallas — IECV</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Administrar mallas — IECV</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Elige un curso para ver, crear, editar o eliminar sus temas.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Link href="/" className="text-sm text-emerald-700 underline">← Generar guía</Link>
-          <Link href="/horarios" className="text-sm text-emerald-700 underline">Cargar horarios →</Link>
-          <Link href="/admin/usuarios" className="text-sm text-emerald-700 underline">Gestionar docentes →</Link>
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <Link href="/" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">← Generar guía</Link>
+          <Link href="/horarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Cargar horarios →</Link>
+          <Link href="/admin/usuarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Gestionar docentes →</Link>
         </div>
       </div>
 
-      {error && <p className="mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {exito && <p className="mt-4 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{exito}</p>}
+      {error && <div className="mt-4"><Alert tone="danger">{error}</Alert></div>}
+      {exito && <div className="mt-4"><Alert tone="success">{exito}</Alert></div>}
 
-      <fieldset className="mt-6 rounded border p-4">
-        <legend className="px-1 text-sm font-medium">Curso</legend>
-        <select
-          className="mt-1 w-full rounded border px-3 py-2"
+      <Fieldset className="mt-6" legend="Curso">
+        <Select
           value={cursoId}
           onChange={(e) => {
             setCursoId(e.target.value);
@@ -312,225 +311,210 @@ export default function MallasEditor() {
           {cursos.map((c) => (
             <option key={c.id} value={c.id}>{c.nombre}</option>
           ))}
-        </select>
-      </fieldset>
+        </Select>
+      </Fieldset>
 
       {cursoId && (
         <div className="mt-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Temas de la malla</h2>
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <h2 className="text-lg font-medium text-foreground">Temas de la malla</h2>
             {!mostrarForm && !mostrarSyncDrive && (
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={abrirSyncDrive}
-                  className="rounded border border-emerald-700 px-3 py-1.5 text-sm font-medium text-emerald-700"
                   title="Elige un archivo de la carpeta de Drive 01_MALLAS_CONTENIDO/ para traer sus temas (inserta/actualiza por número, nunca elimina)."
                 >
                   Sincronizar desde Drive
-                </button>
-                <button
-                  type="button"
-                  onClick={abrirNuevo}
-                  className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white"
-                >
+                </Button>
+                <Button type="button" size="sm" onClick={abrirNuevo}>
                   + Agregar tema
-                </button>
+                </Button>
               </div>
             )}
           </div>
 
           {mostrarSyncDrive && (
-            <div className="mt-4 space-y-4 rounded border border-emerald-200 bg-emerald-50/40 p-4">
-              <p className="text-sm font-medium">Sincronizar desde Drive</p>
-              <p className="text-xs text-gray-500">
+            <div className="mt-4 space-y-4 rounded-xl border border-brand/25 bg-brand-subtle/60 p-5">
+              <p className="text-sm font-medium text-brand-subtle-foreground">Sincronizar desde Drive</p>
+              <p className="text-xs text-brand-subtle-foreground/80">
                 La carpeta no tiene un archivo por curso con nombre predecible —
                 elige tú cuál corresponde, para no arriesgarte a traer la malla
                 equivocada.
               </p>
 
-              {cargandoArchivos && <p className="text-sm text-gray-500">Cargando archivos de Drive…</p>}
+              {cargandoArchivos && <p className="text-sm text-muted-foreground">Cargando archivos de Drive…</p>}
 
               {!cargandoArchivos && (
-                <label className="block">
-                  <span className="text-sm">Archivo</span>
-                  <select
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={archivoSeleccionado}
-                    onChange={(e) => onSeleccionarArchivoDrive(e.target.value)}
-                  >
-                    <option value="">— Selecciona un archivo —</option>
-                    {archivosDrive.map((a) => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </select>
-                </label>
+                <Field label="Archivo">
+                  {(id) => (
+                    <Select id={id} value={archivoSeleccionado} onChange={(e) => onSeleccionarArchivoDrive(e.target.value)}>
+                      <option value="">— Selecciona un archivo —</option>
+                      {archivosDrive.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
               )}
 
-              {cargandoPestanas && <p className="text-sm text-gray-500">Leyendo pestañas del archivo…</p>}
+              {cargandoPestanas && <p className="text-sm text-muted-foreground">Leyendo pestañas del archivo…</p>}
 
               {!cargandoPestanas && pestanasDrive.length > 1 && (
-                <label className="block">
-                  <span className="text-sm">Pestaña</span>
-                  <select
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={pestanaSeleccionada}
-                    onChange={(e) => setPestanaSeleccionada(e.target.value)}
-                  >
-                    {pestanasDrive.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </label>
+                <Field label="Pestaña">
+                  {(id) => (
+                    <Select id={id} value={pestanaSeleccionada} onChange={(e) => setPestanaSeleccionada(e.target.value)}>
+                      {pestanasDrive.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
               )}
 
               <div className="flex gap-3">
-                <button
+                <Button
                   type="button"
+                  size="sm"
                   onClick={confirmarSincronizacion}
                   disabled={!archivoSeleccionado || sincronizando}
-                  className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
                   {sincronizando ? "Sincronizando…" : "Sincronizar este archivo"}
-                </button>
-                <button type="button" onClick={cerrarSyncDrive} className="rounded border px-4 py-2 text-sm">
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={cerrarSyncDrive}>
                   Cancelar
-                </button>
+                </Button>
               </div>
             </div>
           )}
 
-          {cargandoTemas && <p className="mt-3 text-sm text-gray-500">Cargando temas…</p>}
+          {cargandoTemas && <p className="mt-3 text-sm text-muted-foreground">Cargando temas…</p>}
 
           {!cargandoTemas && temas.length === 0 && !mostrarForm && (
-            <p className="mt-3 text-sm text-gray-500">Este curso todavía no tiene temas cargados.</p>
+            <p className="mt-3 text-sm text-muted-foreground">Este curso todavía no tiene temas cargados.</p>
           )}
 
           {mostrarForm && (
-            <form onSubmit={onSubmit} className="mt-4 space-y-4 rounded border border-emerald-200 bg-emerald-50/40 p-4">
-              <p className="text-sm font-medium">
+            <form onSubmit={onSubmit} className="mt-4 space-y-4 rounded-xl border border-brand/25 bg-brand-subtle/60 p-5">
+              <p className="text-sm font-medium text-brand-subtle-foreground">
                 {editandoId ? "Editar tema" : "Nuevo tema"}
               </p>
               <div className="grid grid-cols-4 gap-4">
-                <label className="col-span-1 block">
-                  <span className="text-sm">Número</span>
-                  <input
-                    type="number"
-                    min={1}
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={form.numero}
-                    onChange={(e) => setForm({ ...form, numero: e.target.value })}
-                  />
-                </label>
-                <label className="col-span-3 block">
-                  <span className="text-sm">Tema</span>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={form.tema}
-                    onChange={(e) => setForm({ ...form, tema: e.target.value })}
-                    placeholder="ej. FUNCIÓN LÓGICA SI"
-                  />
-                </label>
+                <Field label="Número" className="col-span-1">
+                  {(id) => (
+                    <Input id={id} type="number" min={1} value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} />
+                  )}
+                </Field>
+                <Field label="Tema" className="col-span-3">
+                  {(id) => (
+                    <Input
+                      id={id}
+                      value={form.tema}
+                      onChange={(e) => setForm({ ...form, tema: e.target.value })}
+                      placeholder="ej. FUNCIÓN LÓGICA SI"
+                    />
+                  )}
+                </Field>
               </div>
 
-              <label className="block">
-                <span className="text-sm">Subtemas</span>
-                <span className="ml-1 text-xs text-gray-400">(uno por línea)</span>
-                <textarea
-                  className="mt-1 w-full rounded border px-3 py-2"
-                  rows={4}
-                  value={form.subtemas}
-                  onChange={(e) => setForm({ ...form, subtemas: e.target.value })}
-                  placeholder={"Sintaxis de la función SI\nCondiciones simples\nComparaciones lógicas"}
-                />
-                {subtemasList.length > 0 && (
-                  <span className="mt-1 block text-xs text-gray-400">{subtemasList.length} subtema(s)</span>
+              <Field label="Subtemas" hint="(uno por línea)">
+                {(id) => (
+                  <>
+                    <Textarea
+                      id={id}
+                      rows={4}
+                      value={form.subtemas}
+                      onChange={(e) => setForm({ ...form, subtemas: e.target.value })}
+                      placeholder={"Sintaxis de la función SI\nCondiciones simples\nComparaciones lógicas"}
+                    />
+                    {subtemasList.length > 0 && (
+                      <span className="mt-1 block text-xs text-muted-foreground">{subtemasList.length} subtema(s)</span>
+                    )}
+                  </>
                 )}
-              </label>
+              </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="text-sm">Video de apoyo (URL)</span>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={form.urlVideo}
-                    onChange={(e) => setForm({ ...form, urlVideo: e.target.value })}
-                    placeholder="https://youtube.com/..."
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm">Archivo Kahoot</span>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={form.archivoKahoot}
-                    onChange={(e) => setForm({ ...form, archivoKahoot: e.target.value })}
-                    placeholder="Kahoot_S6.xlsx"
-                  />
-                </label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Video de apoyo (URL)">
+                  {(id) => (
+                    <Input
+                      id={id}
+                      value={form.urlVideo}
+                      onChange={(e) => setForm({ ...form, urlVideo: e.target.value })}
+                      placeholder="https://youtube.com/..."
+                    />
+                  )}
+                </Field>
+                <Field label="Archivo Kahoot">
+                  {(id) => (
+                    <Input
+                      id={id}
+                      value={form.archivoKahoot}
+                      onChange={(e) => setForm({ ...form, archivoKahoot: e.target.value })}
+                      placeholder="Kahoot_S6.xlsx"
+                    />
+                  )}
+                </Field>
               </div>
 
               <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
+                <Button type="submit" size="sm" disabled={guardando}>
                   {guardando ? "Guardando…" : editandoId ? "Guardar cambios" : "Crear tema"}
-                </button>
-                <button
-                  type="button"
-                  onClick={cerrarForm}
-                  className="rounded border px-4 py-2 text-sm"
-                >
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={cerrarForm}>
                   Cancelar
-                </button>
+                </Button>
               </div>
             </form>
           )}
 
           {temas.length > 0 && (
-            <table className="mt-4 w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="py-2 pr-2 font-normal">#</th>
-                  <th className="py-2 pr-2 font-normal">Tema</th>
-                  <th className="py-2 pr-2 font-normal">Subtemas</th>
-                  <th className="py-2 pr-2 font-normal">Video</th>
-                  <th className="py-2 pr-2 font-normal">Kahoot</th>
-                  <th className="py-2 pr-2 font-normal"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {temas.map((t) => (
-                  <tr key={t.id} className="border-b align-top">
-                    <td className="py-2 pr-2">{t.numero}</td>
-                    <td className="py-2 pr-2 font-medium">{t.tema}</td>
-                    <td className="py-2 pr-2 text-gray-500">
-                      {t.subtemas.split("\n").filter(Boolean).length} subtema(s)
-                    </td>
-                    <td className="py-2 pr-2 text-gray-400">{t.url_video ? "✓" : "—"}</td>
-                    <td className="py-2 pr-2 text-gray-400">{t.archivo_kahoot ? "✓" : "—"}</td>
-                    <td className="py-2 pr-2 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => abrirEditar(t)}
-                        className="mr-3 text-emerald-700 underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onEliminar(t)}
-                        disabled={borrandoId === t.id}
-                        className="text-red-600 underline disabled:opacity-50"
-                      >
-                        {borrandoId === t.id ? "..." : "Eliminar"}
-                      </button>
-                    </td>
+            <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted text-muted-foreground">
+                  <tr>
+                    <th className="p-3 text-left font-medium">#</th>
+                    <th className="p-3 text-left font-medium">Tema</th>
+                    <th className="p-3 text-left font-medium">Subtemas</th>
+                    <th className="p-3 text-left font-medium">Video</th>
+                    <th className="p-3 text-left font-medium">Kahoot</th>
+                    <th className="p-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {temas.map((t) => (
+                    <tr key={t.id} className="border-t border-border align-top">
+                      <td className="p-3 text-foreground">{t.numero}</td>
+                      <td className="p-3 font-medium text-foreground">{t.tema}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {t.subtemas.split("\n").filter(Boolean).length} subtema(s)
+                      </td>
+                      <td className="p-3">{t.url_video ? <span className="text-success">✓</span> : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="p-3">{t.archivo_kahoot ? <span className="text-success">✓</span> : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => abrirEditar(t)}
+                          className="mr-3 text-brand underline underline-offset-2 hover:text-brand-hover"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onEliminar(t)}
+                          disabled={borrandoId === t.id}
+                          className="text-danger underline underline-offset-2 disabled:opacity-50"
+                        >
+                          {borrandoId === t.id ? "..." : "Eliminar"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
