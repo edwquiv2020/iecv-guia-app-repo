@@ -103,6 +103,8 @@ Abre `http://localhost:3000`.
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | OAuth de Google para el login (Auth.js). |
 | `AUTH_SECRET` | Firma de sesión de Auth.js. |
 | `FONT_DIR` | Carpeta de fuentes DejaVu que usan los scripts Python de la imagen motivacional y la ruta visual (por defecto `/usr/share/fonts/truetype/dejavu`, ya instalado en el `Dockerfile`; en Mac local usa `assets/fonts/dejavu`, ver `.env.local`). |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` / `GOOGLE_DRIVE_MALLAS_FOLDER_ID` | Cuenta de servicio y carpeta de Drive para "Sincronizar desde Drive" en `/admin/mallas` (ver sección propia abajo). |
+| `LIMITE_GENERACIONES_DIA` | Tope de generaciones con IA por docente cada 24h en `/api/generar-guia` y `/api/generar-examen` (protección de costo). Opcional — por defecto 30. |
 
 ### Base de datos
 
@@ -111,6 +113,7 @@ node db/migrate.mjs          # esquema completo (drop + create) — solo para un
 node db/migrate_auth.mjs     # migración aditiva: tabla usuarios_autorizados
 node db/migrate_guia_archivos.mjs  # migración aditiva: persistencia de guías/exámenes
 node db/migrate_roles.mjs    # migración aditiva: columna rol (docente/admin)
+node db/migrate_rate_limit.mjs  # migración aditiva: tabla generaciones_log (límite diario)
 node db/seed.mjs             # jornadas y ciclos base
 node db/seed_horarios.mjs    # bloques de horario por jornada
 node db/seed_temas.mjs <curso-slug> db/malla_<curso>.json  # malla de un curso
@@ -181,6 +184,18 @@ adivinar cuál usar — hay que renombrar el archivo ambiguo en Drive.
 — nunca desactiva un tema que ya no esté en el Sheet. Si se borra una fila
 en Drive, hay que desactivar ese tema a mano desde `/admin/mallas`.
 
+### Límite diario de generaciones con IA
+
+`/api/generar-guia` y `/api/generar-examen` llevan un tope de
+generaciones por docente cada 24 horas (`src/lib/rateLimit.ts`), configurable
+con `LIMITE_GENERACIONES_DIA` (por defecto 30). Cada intento queda
+registrado en `generaciones_log` **antes** de llamar a Anthropic y cuenta
+aunque termine en error — los reintentos internos de `anthropic.ts`
+también cuestan. Al alcanzar el tope, la ruta responde `429` con un
+mensaje claro en vez de seguir llamando a la API. Es una protección
+adicional, no reemplaza un tope de gasto configurado en la consola de
+Anthropic.
+
 ### Prueba sin gastar API de Anthropic
 
 `test_build.ts` genera un `.docx` de ejemplo con contenido fijo (sin llamar
@@ -225,6 +240,11 @@ Además de las utilidades puras (`sumarDias`, tipos) y los smoke tests de
   `googleapis` y ejercen el matching de archivo↔curso (incluida la
   ambigüedad de más de una coincidencia) y el parseo de filas del Sheet
   (mapeo de columnas por encabezado, filas vacías, encabezado inválido).
+- **Unit tests de `rateLimit.ts`** (`src/lib/__tests__/rateLimit.test.ts`)
+  — el cálculo dentro/fuera de límite, el override por
+  `LIMITE_GENERACIONES_DIA` y su caída al valor por defecto si no es un
+  número válido. Las rutas de generar-guia/generar-examen también prueban
+  el `429` real y que no llamen al modelo cuando el tope ya se alcanzó.
 
 ## Despliegue
 
@@ -270,6 +290,7 @@ src/lib/buildKit.ts                    ensamblado del kit de subida manual
 src/lib/db.ts                          cliente Postgres compartido
 src/lib/storage.ts                     cliente Supabase Storage compartido
 src/lib/googleDrive.ts                 lectura de mallas desde Drive (cuenta de servicio)
+src/lib/rateLimit.ts                   límite diario de generaciones con IA por docente
 db/                                    schema.sql, migraciones aditivas, seeds y mallas por curso
 py_scripts/                            scripts Python de la skill original en uso (imagen motivacional, ruta visual)
 assets/logo_comfenalco.jpg             logo real (bajado de Drive)

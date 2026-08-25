@@ -35,6 +35,9 @@ vi.mock("@/lib/db", () => ({
   sql: Object.assign((...args: unknown[]) => sql(...args), { json: (v: unknown) => v }),
 }));
 
+const auth = vi.fn();
+vi.mock("@/auth", () => ({ auth: () => auth() }));
+
 const { POST } = await import("../route");
 
 const paramsBase = {
@@ -138,6 +141,7 @@ beforeEach(() => {
   generarImagenMotivacional.mockImplementation(imagenTortuga);
   generarRutaVisual.mockImplementation(iconoNegrita);
   sql.mockResolvedValue([]);
+  auth.mockResolvedValue({ user: { email: "docente@gmail.com" } });
 });
 
 describe("POST /api/generar-guia", () => {
@@ -299,5 +303,33 @@ describe("POST /api/generar-guia", () => {
     const zip = await JSZip.loadAsync(docxBuf);
     const mediaFiles = Object.keys(zip.files).filter((f) => f.startsWith("word/media/"));
     expect(mediaFiles.length).toBeGreaterThanOrEqual(4); // logo + ilustración + ícono del paso + ruta visual
+  });
+
+  it("rechaza con 401 si no hay sesión con correo (no debería pasar detrás del proxy, pero no confía a ciegas)", async () => {
+    auth.mockResolvedValue(null);
+    const request = new NextRequest("http://localhost/api/generar-guia", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...paramsBase, tipos: ["estandar"] }),
+    });
+
+    const res = await POST(request);
+    expect(res.status).toBe(401);
+    expect(generarContenidoGuia).not.toHaveBeenCalled();
+  });
+
+  it("rechaza con 429 al alcanzar el límite diario de generaciones, sin llamar al modelo", async () => {
+    sql.mockResolvedValueOnce([{ total: 30 }]); // conteo del límite diario ya en el tope
+    const request = new NextRequest("http://localhost/api/generar-guia", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...paramsBase, tipos: ["estandar"] }),
+    });
+
+    const res = await POST(request);
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data.error).toMatch(/límite/);
+    expect(generarContenidoGuia).not.toHaveBeenCalled();
   });
 });

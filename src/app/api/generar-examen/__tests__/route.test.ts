@@ -18,6 +18,9 @@ vi.mock("@/lib/db", () => ({
   sql: Object.assign((...args: unknown[]) => sql(...args), { json: (v: unknown) => v }),
 }));
 
+const auth = vi.fn();
+vi.mock("@/auth", () => ({ auth: () => auth() }));
+
 const { POST } = await import("../route");
 
 const diagnosticoParams = {
@@ -60,7 +63,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   generarContenidoDiagnostico.mockResolvedValue(contenidoConPreguntas(10));
   generarContenidoExamen.mockResolvedValue(contenidoConPreguntas(10));
+  // Sirve tanto para temasCubiertos() como para el conteo del límite diario
+  // (rateLimit.ts solo lee ${fila?.total ?? 0}, que da 0 con este shape —
+  // dentro del límite por defecto).
   sql.mockResolvedValue([{ tema: "FUNCIÓN SI", subtemas: "Sintaxis\nCondiciones" }]);
+  auth.mockResolvedValue({ user: { email: "docente@gmail.com" } });
 });
 
 describe("POST /api/generar-examen", () => {
@@ -121,7 +128,9 @@ describe("POST /api/generar-examen", () => {
     for (const archivo of data.archivos) {
       expect(esZipValido(archivo.contenidoBase64)).toBe(true);
     }
-    expect(sql).not.toHaveBeenCalled();
+    // No consulta temasCubiertos (Diagnóstico no evalúa un curso), pero sql
+    // sí se llama 2 veces para el límite diario: el conteo + el registro.
+    expect(sql).toHaveBeenCalledTimes(2);
     expect(generarContenidoExamen).not.toHaveBeenCalled();
   });
 
@@ -140,7 +149,8 @@ describe("POST /api/generar-examen", () => {
     expect(data.archivos[0].nombre).toBe(
       "FTO-EDU-FOR-98_V1_Examen_Intermedio_Semana5_CLEI_III_SEMANAL1.docx"
     );
-    expect(sql).toHaveBeenCalledTimes(1);
+    // 3 llamadas a sql: conteo del límite diario + registro + temasCubiertos.
+    expect(sql).toHaveBeenCalledTimes(3);
     expect(generarContenidoExamen).toHaveBeenCalledWith(
       expect.objectContaining({ cursoId: "curso-1" }),
       ["FUNCIÓN SI — Sintaxis\nCondiciones"],
@@ -178,5 +188,47 @@ describe("POST /api/generar-examen", () => {
       expect.objectContaining({ tipo: "diagnostico" }),
       [expect.objectContaining({ index: 1, descripcionImagen: "Captura de la barra de fórmulas de Excel." })]
     );
+  });
+
+  it("rechaza con 401 si no hay sesión con correo (no debería pasar detrás del proxy, pero no confía a ciegas)", async () => {
+    auth.mockResolvedValue(null);
+    const request = new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(diagnosticoParams),
+    });
+
+    const res = await POST(request);
+    expect(res.status).toBe(401);
+    expect(generarContenidoDiagnostico).not.toHaveBeenCalled();
+  });
+
+  it("rechaza con 429 al alcanzar el límite diario de generaciones, sin llamar al modelo", async () => {
+    sql.mockResolvedValueOnce([{ total: 30 }]); // conteo del límite diario ya en el tope
+    const request = new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(diagnosticoParams),
+    });
+
+    const res = await POST(request);
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data.error).toMatch(/límite/);
+    expect(generarContenidoDiagnostico).not.toHaveBeenCalled();
+  });
+
+  it("respeta LIMITE_GENERACIONES_DIA si está configurado en el entorno", async () => {
+    process.env.LIMITE_GENERACIONES_DIA = "2";
+    sql.mockResolvedValueOnce([{ total: 2 }]);
+    const request = new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(diagnosticoParams),
+    });
+
+    const res = await POST(request);
+    expect(res.status).toBe(429);
+    delete process.env.LIMITE_GENERACIONES_DIA;
   });
 });

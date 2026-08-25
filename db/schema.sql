@@ -3,6 +3,7 @@
 -- igual que la malla real en Excel del docente), y la capa de programación
 -- (calendario_clases) que asigna un tema a una fecha/ciclo/jornada concretos.
 
+drop table if exists generaciones_log cascade;
 drop table if exists usuarios_autorizados cascade;
 drop table if exists guia_archivos cascade;
 drop table if exists guias cascade;
@@ -158,6 +159,20 @@ create table guia_archivos (
   created_at timestamptz not null default now()
 );
 
+-- Un registro por cada intento real de generación con IA (POST a
+-- /api/generar-guia o /api/generar-examen, sin importar si terminó en
+-- éxito o error) — solo para el límite diario por docente (ver
+-- src/lib/rateLimit.ts), protege contra un costo de API disparado por un
+-- bug de reintento en bucle o una cuenta comprometida. No se borra nunca
+-- desde la app; si crece mucho, es seguro purgar filas viejas a mano.
+create table generaciones_log (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  ruta text not null,
+  created_at timestamptz not null default now()
+);
+
 create index temas_curso_idx on temas (curso_id, numero);
 create index calendario_clases_lookup_idx on calendario_clases (ciclo_id, jornada_id, semana_academica);
 create index guia_archivos_guia_idx on guia_archivos (guia_id);
+create index generaciones_log_email_ruta_idx on generaciones_log (email, ruta, created_at);

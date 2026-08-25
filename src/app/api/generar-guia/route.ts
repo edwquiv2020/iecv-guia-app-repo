@@ -9,6 +9,8 @@ import { buildGuiaDocx, buildGuiaDuaDocx, type RutaVisualSubtema } from "@/lib/b
 import { buildKahootXlsx } from "@/lib/buildKahoot";
 import { buildKitSubidaDocx } from "@/lib/buildKit";
 import { sql } from "@/lib/db";
+import { auth } from "@/auth";
+import { dentroDelLimiteDiario, registrarGeneracion, mensajeLimiteAlcanzado } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -81,6 +83,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validado.error }, { status: 400 });
   }
   const params = validado.data;
+
+  // Protección de costo: cuenta este intento aunque termine en error (los
+  // reintentos de anthropic.ts también cuestan) — mismo criterio en
+  // /api/generar-examen.
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) {
+    return NextResponse.json({ error: "Sesión inválida." }, { status: 401 });
+  }
+  if (!(await dentroDelLimiteDiario(email, "generar-guia"))) {
+    return NextResponse.json({ error: mensajeLimiteAlcanzado() }, { status: 429 });
+  }
+  await registrarGeneracion(email, "generar-guia");
 
   try {
     // Tipos de taller usados en las últimas guías Estándar de este mismo

@@ -4,6 +4,8 @@ import { generarContenidoDiagnostico, generarContenidoExamen } from "@/lib/anthr
 import { buildDiagnosticoDocx, buildExamenDocx, type ImagenPreguntaExamen } from "@/lib/buildExamen";
 import { buildKitSubidaExamenDocx } from "@/lib/buildKit";
 import { sql } from "@/lib/db";
+import { auth } from "@/auth";
+import { dentroDelLimiteDiario, registrarGeneracion, mensajeLimiteAlcanzado } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -92,6 +94,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validado.error }, { status: 400 });
   }
   const params = validado.data;
+
+  // Protección de costo: mismo criterio que /api/generar-guia.
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) {
+    return NextResponse.json({ error: "Sesión inválida." }, { status: 401 });
+  }
+  if (!(await dentroDelLimiteDiario(email, "generar-examen"))) {
+    return NextResponse.json({ error: mensajeLimiteAlcanzado() }, { status: 429 });
+  }
+  await registrarGeneracion(email, "generar-examen");
 
   try {
     const contenido = params.tipo === "diagnostico"
