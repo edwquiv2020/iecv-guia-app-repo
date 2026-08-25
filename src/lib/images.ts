@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, type ExecFileException } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -24,7 +24,19 @@ export async function generarImagenMotivacional(claveBanco: string): Promise<Buf
   const scriptPath = path.join(PY_SCRIPTS_DIR, "gen_imagen_motivacional_v2.py");
   const argJson = JSON.stringify({ clave: claveBanco, out_path: outPath });
 
-  const { stdout, stderr } = await execFileAsync(PYTHON_BIN, [scriptPath, argJson]);
+  let stdout: string, stderr: string;
+  try {
+    ({ stdout, stderr } = await execFileAsync(PYTHON_BIN, [scriptPath, argJson]));
+  } catch (err) {
+    // execFile rechaza directo (sin llegar al parseo de abajo) cuando
+    // python3 termina con código de error — el .message por defecto es
+    // "Command failed: ..." sin ningún detalle real; el stderr/stdout de
+    // verdad va en propiedades aparte del error, hay que rescatarlo a mano.
+    const e = err as ExecFileException & { stdout?: string; stderr?: string };
+    throw new Error(
+      `No se pudo ejecutar el generador de imagen motivacional (${claveBanco}): ${e.stderr || e.stdout || e.message}`
+    );
+  }
   let result: { ok: boolean; out_path?: string; error?: string };
   try {
     result = JSON.parse(stdout.trim().split("\n").pop() || "{}");

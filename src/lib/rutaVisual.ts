@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, type ExecFileException } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -25,7 +25,19 @@ export async function generarRutaVisual(
   const scriptPath = path.join(PY_SCRIPTS_DIR, "gen_ruta_visual.py");
   const argJson = JSON.stringify({ tab, grupo, opciones, out_path: outPath });
 
-  const { stdout, stderr } = await execFileAsync(PYTHON_BIN, [scriptPath, argJson]);
+  let stdout: string, stderr: string;
+  try {
+    ({ stdout, stderr } = await execFileAsync(PYTHON_BIN, [scriptPath, argJson]));
+  } catch (err) {
+    // Mismo punto ciego que generarImagenMotivacional() en images.ts: si
+    // python3 termina con código de error, execFile rechaza directo con un
+    // .message genérico ("Command failed: ...") — el stderr/stdout real
+    // hay que rescatarlo de las propiedades del error.
+    const e = err as ExecFileException & { stdout?: string; stderr?: string };
+    throw new Error(
+      `No se pudo ejecutar el generador de ruta visual (${tab} > ${grupo}): ${e.stderr || e.stdout || e.message}`
+    );
+  }
   let result: { ok: boolean; out_path?: string; error?: string };
   try {
     result = JSON.parse(stdout.trim().split("\n").pop() || "{}");
