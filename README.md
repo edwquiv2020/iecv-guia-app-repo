@@ -65,7 +65,10 @@ contenido pedagógico, igual que hacía la skill en el chat.
   elige explícitamente el archivo/pestaña de `01_MALLAS_CONTENIDO/` (no
   hay una convención de nombre confiable para adivinarlo) y trae esa
   malla hacia Postgres, bajo demanda — el resto de la app sigue leyendo
-  de Postgres como siempre.
+  de Postgres como siempre. Probado contra la carpeta real: los 11
+  cursos de la malla se sincronizaron correctamente (10 de 11 archivos
+  `.xlsx` abrieron a la primera; 3 que estaban dañados se repararon y
+  re-subieron, 1 quedó cubierto por su pestaña en el archivo combinado).
 
 Todo lo anterior está probado de punta a punta (generación real de guía,
 DUA, examen y Kahoot, conversión a PDF para revisión visual) y pasando en
@@ -188,6 +191,14 @@ hipervínculo en `url_video`.
 (`src/lib/googleDrive.ts`, `src/app/api/mallas/sincronizar-drive/route.ts`)
 — nunca desactiva un tema que ya no esté en el archivo. Si se borra una
 fila en Drive, hay que desactivar ese tema a mano desde `/admin/mallas`.
+
+**Archivos `.xlsx` dañados**: en la carpeta real aparecieron varios con
+el zip interno mal armado (típico de algunos exportadores) — la app no
+intenta repararlos sola, pero si `descargarWorkbook()` no puede leer uno,
+la sincronización falla con un mensaje explícito ("Este archivo parece
+estar dañado... ábrelo en Excel o Google Sheets y guárdalo de nuevo") en
+vez de un error crudo de `exceljs`. Volver a guardar el archivo desde
+Excel/Sheets reescribe un zip válido y resuelve el problema.
 
 ### Límite diario de generaciones con IA
 
