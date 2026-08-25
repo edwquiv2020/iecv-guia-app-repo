@@ -61,10 +61,11 @@ contenido pedagógico, igual que hacía la skill en el chat.
   desactivarse ni quitarse el rol admin a sí mismo, para no bloquear el
   acceso por accidente.
 - **Sincronización de mallas desde Google Drive** (botón "Sincronizar
-  desde Drive" en `/admin/mallas`, ver sección propia abajo): trae la
-  malla de un curso desde el Sheet correspondiente en
-  `01_MALLAS_CONTENIDO/` hacia Postgres, bajo demanda — el resto de la app
-  sigue leyendo de Postgres como siempre.
+  desde Drive" en `/admin/mallas`, ver sección propia abajo): el admin
+  elige explícitamente el archivo/pestaña de `01_MALLAS_CONTENIDO/` (no
+  hay una convención de nombre confiable para adivinarlo) y trae esa
+  malla hacia Postgres, bajo demanda — el resto de la app sigue leyendo
+  de Postgres como siempre.
 
 Todo lo anterior está probado de punta a punta (generación real de guía,
 DUA, examen y Kahoot, conversión a PDF para revisión visual) y pasando en
@@ -153,7 +154,7 @@ update usuarios_autorizados set rol = 'admin' where email = 'tu-correo@gmail.com
 ### Sincronización de mallas desde Google Drive
 
 `/admin/mallas` tiene un botón "Sincronizar desde Drive" (por curso) que
-trae la malla desde el Sheet correspondiente en la carpeta de Drive
+trae la malla desde un archivo elegido en la carpeta de Drive
 `01_MALLAS_CONTENIDO/` hacia Postgres. No es lectura en vivo en cada
 request — es una sincronización bajo demanda que dispara el admin; el
 resto de la app (formulario de guía, exámenes, etc.) sigue leyendo
@@ -169,20 +170,24 @@ por docente. Variables en `.env.local`:
 - `GOOGLE_DRIVE_MALLAS_FOLDER_ID`: el id de la carpeta
   `01_MALLAS_CONTENIDO/` (de su URL en Drive).
 
-**Cómo empareja archivo↔curso**: un Google Sheet por curso (mismo
-esquema de columnas que ya usa la app: `numero | tema | subtemas |
-url_video | archivo_kahoot`, encabezado en la fila 1, mapeado por nombre
-de columna, no por posición). El nombre del curso en Postgres (`cursos.nombre`)
-se compara contra el nombre del archivo en Drive (sin tildes/mayúsculas,
-por contención en cualquier sentido — ej. curso "Microsoft Word" matchea
-un archivo "Malla Microsoft Word 2026"). Si hay más de un Sheet que
-coincide, la sincronización falla con un error explícito en vez de
-adivinar cuál usar — hay que renombrar el archivo ambiguo en Drive.
+**Archivos reales**: son `.xlsx` subidos (no Google Sheets nativo), sin
+una convención de nombre confiable por curso (ej. `BANCO_Excel.xlsx`,
+`BANCO_Word.xlsx`, pero también un archivo que agrupa varios cursos como
+pestañas — `Mallas_IA_PowerPoint_Canva_PowerBI_20semanas.xlsx` — y
+archivos `TRACKER_*` que no son mallas). Por eso la app **no adivina** el
+archivo por nombre del curso: en el panel "Sincronizar desde Drive" el
+admin elige explícitamente el archivo (y la pestaña, si el archivo tiene
+más de una) de una lista real leída de la carpeta
+(`GET /api/mallas/drive-archivos`, `GET /api/mallas/drive-archivos/[fileId]/pestanas`).
+Las columnas (`numero | tema | subtemas | url_video | archivo_kahoot`,
+encabezado en la fila 1) se mapean por nombre de columna, no por
+posición, tolerando variaciones de tilde/mayúsculas y celdas con
+hipervínculo en `url_video`.
 
 **No destructivo**: solo inserta/actualiza temas por `(curso, numero)`
 (`src/lib/googleDrive.ts`, `src/app/api/mallas/sincronizar-drive/route.ts`)
-— nunca desactiva un tema que ya no esté en el Sheet. Si se borra una fila
-en Drive, hay que desactivar ese tema a mano desde `/admin/mallas`.
+— nunca desactiva un tema que ya no esté en el archivo. Si se borra una
+fila en Drive, hay que desactivar ese tema a mano desde `/admin/mallas`.
 
 ### Límite diario de generaciones con IA
 
@@ -236,10 +241,11 @@ Además de las utilidades puras (`sumarDias`, tipos) y los smoke tests de
   teórica, foto motivacional por rotación de semana, etc.) para las 5
   funciones exportadas (guía, DUA, Kahoot, diagnóstico, examen).
 - **Unit tests de `googleDrive.ts`** (`src/lib/__tests__/googleDrive.test.ts`)
-  — mockean `drive.files.list`/`sheets.spreadsheets.values.get` del SDK de
-  `googleapis` y ejercen el matching de archivo↔curso (incluida la
-  ambigüedad de más de una coincidencia) y el parseo de filas del Sheet
-  (mapeo de columnas por encabezado, filas vacías, encabezado inválido).
+  — mockean `drive.files.list`/`drive.files.get` del SDK de `googleapis`
+  y arman `.xlsx` reales en memoria con `exceljs` para ejercer el parseo
+  de verdad: mapeo de columnas por encabezado, celdas con hipervínculo,
+  filas vacías, encabezado inválido, y lectura de una pestaña específica
+  en un archivo con varias.
 - **Unit tests de `rateLimit.ts`** (`src/lib/__tests__/rateLimit.test.ts`)
   — el cálculo dentro/fuera de límite, el override por
   `LIMITE_GENERACIONES_DIA` y su caída al valor por defecto si no es un
