@@ -81,6 +81,16 @@ describe("listarPestanas", () => {
     mockDescarga(buf);
     expect(await listarPestanas("file-1")).toEqual(["Inteligencia Artificial", "PowerPoint"]);
   });
+
+  it("da un mensaje claro y accionable si el .xlsx está dañado (zip truncado/corrupto)", async () => {
+    // Caso real encontrado en la carpeta de Drive: algunos .xlsx quedan con
+    // el zip mal armado por el exportador que los generó. Truncar un buffer
+    // válido reproduce ese mismo tipo de fallo real de exceljs.
+    const buf = await xlsxBuffer([["N°", "Tema", "Subtema"], [1, "Tema", "Subtema"]]);
+    const dañado = buf.slice(0, Math.floor(buf.byteLength / 2));
+    mockDescarga(dañado);
+    await expect(listarPestanas("file-1")).rejects.toThrow(/dañado.*Ábrelo en Excel o Google Sheets/);
+  });
 });
 
 describe("leerMallaDesdeXlsx", () => {

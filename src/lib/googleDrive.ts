@@ -78,11 +78,22 @@ async function descargarWorkbook(fileId: string): Promise<ExcelJS.Workbook> {
   const drive = google.drive({ version: "v3", auth: auth() });
   const res = await drive.files.get({ fileId, alt: "media" }, { responseType: "arraybuffer" });
   const wb = new ExcelJS.Workbook();
-  // exceljs trae su propia copia de @types/node cuyo tipo Buffer no
-  // coincide nominalmente con el del proyecto, aunque sea estructuralmente
-  // igual — de ahí el `any` puntual.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await wb.xlsx.load(Buffer.from(res.data as ArrayBuffer) as any);
+  try {
+    // exceljs trae su propia copia de @types/node cuyo tipo Buffer no
+    // coincide nominalmente con el del proyecto, aunque sea estructuralmente
+    // igual — de ahí el `any` puntual.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await wb.xlsx.load(Buffer.from(res.data as ArrayBuffer) as any);
+  } catch (err) {
+    // exceljs lanza errores de zip/XML crudos (ej. "uncompressed data size
+    // mismatch", "unmatched closing tag") cuando el .xlsx quedó mal armado
+    // por el exportador que lo generó — no es recuperable acá, pero sí
+    // accionable: re-guardarlo desde Excel/Sheets reescribe el zip válido.
+    const detalle = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Este archivo parece estar dañado (no se pudo leer como .xlsx: ${detalle}). Ábrelo en Excel o Google Sheets y guárdalo de nuevo — eso normalmente arregla el problema.`
+    );
+  }
   return wb;
 }
 
