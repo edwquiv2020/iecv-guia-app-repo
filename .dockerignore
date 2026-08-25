@@ -1,0 +1,18 @@
+# No pesa nada útil en la imagen y hace el build de Docker mucho más lento
+# (se instala de cero adentro con npm ci de todas formas).
+node_modules
+.next
+out
+build
+
+# Nunca deben terminar en una capa de la imagen — si algún día se construye
+# la imagen localmente (en vez de desde el checkout limpio de GitHub que
+# usa Railway), esto evita que un .env.local con secretos reales quede
+# empacado adentro.
+.env*
+!.env.example
+
+.git
+*.tsbuildinfo
+npm-debug.log*
+.DS_Store
