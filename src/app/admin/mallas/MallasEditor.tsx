@@ -322,7 +322,7 @@ export default function MallasEditor() {
               <div className="flex gap-2">
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   onClick={abrirSyncDrive}
                   title="Elige un archivo de la carpeta de Drive 01_MALLAS_CONTENIDO/ para traer sus temas (inserta/actualiza por número, nunca elimina)."
@@ -383,7 +383,7 @@ export default function MallasEditor() {
                 >
                   {sincronizando ? "Sincronizando…" : "Sincronizar este archivo"}
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={cerrarSyncDrive}>
+                <Button type="button" variant="outline" size="sm" onClick={cerrarSyncDrive}>
                   Cancelar
                 </Button>
               </div>
@@ -463,7 +463,7 @@ export default function MallasEditor() {
                 <Button type="submit" size="sm" disabled={guardando}>
                   {guardando ? "Guardando…" : editandoId ? "Guardar cambios" : "Crear tema"}
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={cerrarForm}>
+                <Button type="button" variant="outline" size="sm" onClick={cerrarForm}>
                   Cancelar
                 </Button>
               </div>

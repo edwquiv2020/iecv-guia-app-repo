@@ -1,5 +1,5 @@
 import { forwardRef, type SelectHTMLAttributes } from "react";
-import { FIELD_CLASSES, FIELD_SIZE_CLASSES, type FieldSize } from "./Input";
+import { FIELD_CLASSES, FIELD_SIZE_CLASSES, type FieldSize } from "./input";
 
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> {
   invalid?: boolean;

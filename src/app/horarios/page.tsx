@@ -453,7 +453,7 @@ export default function Horarios() {
                   </div>
                 ))}
               </div>
-              <Button type="button" variant="secondary" size="sm" onClick={agregarFilaManual} className="mt-3">
+              <Button type="button" variant="outline" size="sm" onClick={agregarFilaManual} className="mt-3">
                 + agregar fila
               </Button>
             </Fieldset>
@@ -486,7 +486,7 @@ export default function Horarios() {
             </div>
           )}
 
-          <Button type="button" size="lg" disabled={guardando} onClick={() => guardar(false)} className="mt-4 w-full">
+          <Button type="button" size="xl" disabled={guardando} onClick={() => guardar(false)} className="mt-4 w-full">
             {guardando ? "Guardando…" : "Guardar horario"}
           </Button>
 

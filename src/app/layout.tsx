@@ -4,8 +4,10 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { auth, signOut } from "@/auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-app-sans" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Generador de Guías IECV",
@@ -32,25 +34,28 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <SessionProvider session={session}>
-          <div className="flex items-center justify-end gap-3 border-b border-border bg-surface-muted px-6 py-1.5 text-xs text-muted-foreground">
-            <ThemeToggle />
-            {session?.user && (
-              <>
-                <span>{session.user.email}</span>
-                <form
-                  action={async () => {
-                    "use server";
-                    await signOut();
-                  }}
-                >
-                  <button type="submit" className="underline hover:text-foreground">
-                    Cerrar sesión
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-          {children}
+          <TooltipProvider>
+            <div className="flex items-center justify-end gap-3 border-b border-border bg-surface-muted px-6 py-1.5 text-xs text-muted-foreground">
+              <ThemeToggle />
+              {session?.user && (
+                <>
+                  <span>{session.user.email}</span>
+                  <form
+                    action={async () => {
+                      "use server";
+                      await signOut();
+                    }}
+                  >
+                    <button type="submit" className="underline hover:text-foreground">
+                      Cerrar sesión
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+            {children}
+            <Toaster />
+          </TooltipProvider>
         </SessionProvider>
       </body>
     </html>

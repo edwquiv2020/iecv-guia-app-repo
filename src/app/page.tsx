@@ -494,7 +494,7 @@ export default function Home() {
                   ))}
                 </Select>
                 {!semanaProgramadaId && cursoId && calendarioFilas.some((f) => f.curso_id === cursoId) && (
-                  <Button type="button" variant="secondary" size="sm" onClick={usarPatronGeneral} className="mt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={usarPatronGeneral} className="mt-2">
                     Usar información general (+7 días desde la última clase de este curso)
                   </Button>
                 )}
@@ -677,7 +677,7 @@ export default function Home() {
         {error && <Alert tone="danger">{error}</Alert>}
         {exito && <Alert tone="success">{exito}</Alert>}
 
-        <Button type="submit" size="lg" disabled={enviando} className="w-full">
+        <Button type="submit" size="xl" disabled={enviando} className="w-full">
           {enviando ? "Generando guía… (puede tardar ~20-30s)" : "Generar guía en Word"}
         </Button>
       </form>

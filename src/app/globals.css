@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 /* Modo oscuro por clase: .dark en <html> gana siempre sobre el sistema.
    Sin esa clase, se sigue prefers-color-scheme. Ver ThemeToggle. */
@@ -6,14 +8,14 @@
 
 :root {
   --background: #ffffff;
+  --foreground: #0f172a; /* slate-900 */
   --surface: #ffffff;
   --surface-muted: #f8fafc; /* slate-50 */
-  --foreground: #0f172a; /* slate-900 */
   --muted-foreground: #475569; /* slate-600 — 4.5:1+ sobre blanco y sobre surface-muted */
   --border: #e2e8f0; /* slate-200 */
   --border-strong: #cbd5e1; /* slate-300 */
 
-  --brand: #047857; /* emerald-700 — AA con texto blanco */
+  --brand: #047857; /* emerald-700 — AA con texto blanco, fijo en ambos temas (ver --primary) */
   --brand-hover: #065f46; /* emerald-800 */
   --brand-subtle: #ecfdf5; /* emerald-50 */
   --brand-subtle-foreground: #065f46; /* emerald-800 */
@@ -37,6 +39,38 @@
   --violet: #6d28d9; /* violet-700, para etiquetas extra (CLEI, tipo) */
   --violet-subtle: #f5f3ff; /* violet-50 */
   --violet-subtle-foreground: #5b21b6; /* violet-800 */
+
+  /* Tokens que espera shadcn/ui — reusan la paleta de arriba en vez de
+     inventar una escala gris nueva, para que sus componentes (Button,
+     Dialog, DropdownMenu, Card, Tabs, Sidebar, Sonner) se vean parte del
+     mismo sistema. --primary es fijo en claro/oscuro: es el color de
+     relleno de un botón sólido con texto blanco, no cambia con el tema
+     (a diferencia de --brand, que sí se aclara en oscuro para servir como
+     texto/link legible sobre el fondo oscuro). */
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-muted);
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --input: var(--border);
+  --ring: var(--brand);
+  --radius: 0.625rem;
+
+  --sidebar: var(--surface-muted);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary); /* fijo como --primary, no var(--brand) — mismo motivo: texto blanco encima */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--surface);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--brand);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,7 +83,7 @@
     --border: #1e293b; /* slate-800 */
     --border-strong: #334155; /* slate-700 */
 
-    --brand: #10b981; /* emerald-500 — brilla sobre fondo oscuro */
+    --brand: #10b981; /* emerald-500 — brilla sobre fondo oscuro (texto/links) */
     --brand-hover: #34d399; /* emerald-400 */
     --brand-subtle: #064e3b; /* emerald-900 */
     --brand-subtle-foreground: #6ee7b7; /* emerald-300 */
@@ -73,6 +107,28 @@
     --violet: #a78bfa; /* violet-400 */
     --violet-subtle: #2e1065; /* violet-950 */
     --violet-subtle-foreground: #c4b5fd;
+
+    /* Literal, no var(--brand): --brand se aclara en oscuro para servir de
+       texto/link legible sobre el fondo oscuro (emerald-500), pero ese tono
+       no pasa AA como relleno con texto blanco encima — el botón se queda
+       fijo en emerald-700 en los dos temas. */
+    --primary: #047857;
+    --secondary: var(--surface-muted);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-muted);
+    --accent: var(--surface-muted);
+    --accent-foreground: var(--foreground);
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface);
+    --popover-foreground: var(--foreground);
+    --input: var(--border);
+
+    --sidebar: var(--surface-muted);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-accent: var(--surface);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
   }
 }
 
@@ -109,6 +165,24 @@
   --violet: #a78bfa;
   --violet-subtle: #2e1065;
   --violet-subtle-foreground: #c4b5fd;
+
+  --primary: #047857; /* literal — ver comentario en el bloque @media de arriba */
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-muted);
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--foreground);
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --input: var(--border);
+
+  --sidebar: var(--surface-muted);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--surface);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
 }
 
 @theme inline {
@@ -145,10 +219,50 @@
   --color-violet-subtle: var(--violet-subtle);
   --color-violet-subtle-foreground: var(--violet-subtle-foreground);
 
-  --font-sans: var(--font-app-sans);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  --font-sans: var(--font-sans);
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
 }

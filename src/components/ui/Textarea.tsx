@@ -1,5 +1,5 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
-import { FIELD_CLASSES, FIELD_SIZE_CLASSES, type FieldSize } from "./Input";
+import { FIELD_CLASSES, FIELD_SIZE_CLASSES, type FieldSize } from "./input";
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   invalid?: boolean;

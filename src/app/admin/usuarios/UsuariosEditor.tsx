@@ -161,7 +161,7 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
             <Button type="submit" size="sm" disabled={guardando}>
               {guardando ? "Guardando…" : "Agregar docente"}
             </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => { setMostrarForm(false); setForm(FORM_VACIO); }}>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setMostrarForm(false); setForm(FORM_VACIO); }}>
               Cancelar
             </Button>
           </div>

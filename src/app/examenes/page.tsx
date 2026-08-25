@@ -387,7 +387,7 @@ export default function Examenes() {
         {error && <Alert tone="danger">{error}</Alert>}
         {exito && <Alert tone="success">{exito}</Alert>}
 
-        <Button type="submit" size="lg" disabled={enviando} className="w-full">
+        <Button type="submit" size="xl" disabled={enviando} className="w-full">
           {enviando ? "Generando examen… (puede tardar ~20-30s)" : `Generar ${ETIQUETA_TIPO[tipo]}`}
         </Button>
       </form>
