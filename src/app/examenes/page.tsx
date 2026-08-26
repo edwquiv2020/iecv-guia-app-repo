@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import JSZip from "jszip";
 import type { Clei, TipoExamen } from "@/lib/types";
 import { cantidadPreguntasPorJornada } from "@/lib/types";
@@ -259,12 +258,9 @@ export default function Examenes() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Generador de Exámenes — IECV</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Diagnóstico · Intermedio · Final — Tecnología e Informática</p>
-        </div>
-        <Link href="/" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">← Generar guía</Link>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Generador de Exámenes — IECV</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Diagnóstico · Intermedio · Final — Tecnología e Informática</p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">

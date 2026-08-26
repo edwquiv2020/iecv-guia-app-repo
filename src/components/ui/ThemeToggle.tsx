@@ -23,7 +23,7 @@ function applyTheme(theme: Theme) {
 /** Cicla sistema → claro → oscuro. El layout ya aplicó la clase guardada
  * antes del primer paint (ver THEME_INIT_SCRIPT en layout.tsx); aquí solo
  * leemos esa clase para mostrar el estado inicial correcto. */
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
@@ -49,7 +49,10 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={cycle}
-      className="flex items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+      className={
+        className ??
+        "flex items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+      }
       aria-label={`Tema: ${LABELS[theme]}. Cambiar tema.`}
       title={`Tema: ${LABELS[theme]}`}
     >

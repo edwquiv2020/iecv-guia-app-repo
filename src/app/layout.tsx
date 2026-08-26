@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { auth, signOut } from "@/auth";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { Navbar } from "@/components/Navbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -35,24 +35,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <SessionProvider session={session}>
           <TooltipProvider>
-            <div className="flex items-center justify-end gap-3 border-b border-border bg-surface-muted px-6 py-1.5 text-xs text-muted-foreground">
-              <ThemeToggle />
-              {session?.user && (
-                <>
-                  <span>{session.user.email}</span>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await signOut();
-                    }}
-                  >
-                    <button type="submit" className="underline hover:text-foreground">
-                      Cerrar sesión
-                    </button>
-                  </form>
-                </>
-              )}
-            </div>
+            <Navbar
+              userEmail={session?.user?.email}
+              isAdmin={session?.user?.rol === "admin"}
+              onSignOut={async () => {
+                "use server";
+                await signOut();
+              }}
+            />
             {children}
             <Toaster />
           </TooltipProvider>

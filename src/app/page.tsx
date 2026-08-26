@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
-import { useSession } from "next-auth/react";
 import type { Clei } from "@/lib/types";
 import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
 
@@ -61,7 +60,6 @@ function gradosATexto(grados: string[]): string {
 }
 
 export default function Home() {
-  const { data: session } = useSession();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [temas, setTemas] = useState<Tema[]>([]);
@@ -404,23 +402,11 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Generador de Guía de Formación — IECV</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-1 sm:items-end">
-          <a href="/examenes" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Generar exámenes →</a>
-          <a href="/horarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Cargar horarios →</a>
-          {session?.user?.rol === "admin" && (
-            <>
-              <a href="/admin/mallas" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Administrar mallas →</a>
-              <a href="/admin/usuarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Gestionar docentes →</a>
-            </>
-          )}
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Generador de Guía de Formación — IECV</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
+        </p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
