@@ -17,10 +17,10 @@ interface Usuario {
   activo: boolean;
   rol: "docente" | "admin";
   created_at: string;
-  cursoIds: string[];
+  asignaturaIds: string[];
 }
 
-interface Curso {
+interface Asignatura {
   id: string;
   nombre: string;
 }
@@ -29,34 +29,34 @@ interface FormState {
   email: string;
   nombre: string;
   rol: "docente" | "admin";
-  cursoIds: string[];
+  asignaturaIds: string[];
 }
 
-const FORM_VACIO: FormState = { email: "", nombre: "", rol: "docente", cursoIds: [] };
+const FORM_VACIO: FormState = { email: "", nombre: "", rol: "docente", asignaturaIds: [] };
 
 /** Checkboxes de asignaturas, reusado en el form de alta y en el diálogo de edición. */
 function SelectorAsignaturas({
-  cursos,
-  seleccionados,
+  asignaturas,
+  seleccionadas,
   onToggle,
 }: {
-  cursos: Curso[];
-  seleccionados: string[];
-  onToggle: (cursoId: string) => void;
+  asignaturas: Asignatura[];
+  seleccionadas: string[];
+  onToggle: (asignaturaId: string) => void;
 }) {
-  if (cursos.length === 0) {
+  if (asignaturas.length === 0) {
     return <p className="text-sm text-muted-foreground">No hay asignaturas en el catálogo todavía.</p>;
   }
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {cursos.map((c) => (
-        <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
+      {asignaturas.map((a) => (
+        <label key={a.id} className="flex items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
-            checked={seleccionados.includes(c.id)}
-            onChange={() => onToggle(c.id)}
+            checked={seleccionadas.includes(a.id)}
+            onChange={() => onToggle(a.id)}
           />
-          {c.nombre}
+          {a.nombre}
         </label>
       ))}
     </div>
@@ -65,7 +65,7 @@ function SelectorAsignaturas({
 
 export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
   const [cargando, setCargando] = useState(true);
 
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -78,7 +78,7 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
 
   // Docente cuyas asignaturas se están editando en el diálogo — null = cerrado.
   const [editando, setEditando] = useState<Usuario | null>(null);
-  const [cursosEnEdicion, setCursosEnEdicion] = useState<string[]>([]);
+  const [asignaturasEnEdicion, setAsignaturasEnEdicion] = useState<string[]>([]);
 
   function cargarUsuarios() {
     fetch("/api/usuarios")
@@ -93,19 +93,20 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
   // recargarTemas() en MallasEditor.
   useEffect(cargarUsuarios, []);
 
-  // El catálogo de asignaturas para las casillas — un admin lo ve completo.
+  // El catálogo completo de asignaturas para las casillas (no se filtra por
+  // docente — eso solo aplica a los cursos que desbloquea cada asignatura).
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { cursos: Curso[] }) => setCursos(data.cursos))
+      .then((data: { asignaturas: Asignatura[] }) => setAsignaturas(data.asignaturas))
       .catch(() => {
         // No bloquea la pantalla — solo no se podrán asignar asignaturas hasta recargar.
       });
   }, []);
 
-  function nombresAsignaturas(cursoIds: string[]): string[] {
-    return cursoIds
-      .map((id) => cursos.find((c) => c.id === id)?.nombre)
+  function nombresAsignaturas(asignaturaIds: string[]): string[] {
+    return asignaturaIds
+      .map((id) => asignaturas.find((a) => a.id === id)?.nombre)
       .filter((n): n is string => !!n);
   }
 
@@ -129,7 +130,7 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
           email,
           nombre: form.nombre.trim() || null,
           rol: form.rol,
-          cursoIds: form.cursoIds,
+          asignaturaIds: form.asignaturaIds,
         }),
       });
       const data = await res.json();
@@ -150,7 +151,7 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
 
   async function actualizar(
     email: string,
-    cambios: Partial<Pick<Usuario, "activo" | "rol">> & { cursoIds?: string[] }
+    cambios: Partial<Pick<Usuario, "activo" | "rol">> & { asignaturaIds?: string[] }
   ) {
     setError(null);
     setExito(null);
@@ -176,12 +177,12 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
 
   function abrirEdicionAsignaturas(u: Usuario) {
     setEditando(u);
-    setCursosEnEdicion(u.cursoIds);
+    setAsignaturasEnEdicion(u.asignaturaIds);
   }
 
   async function guardarAsignaturas() {
     if (!editando) return;
-    await actualizar(editando.email, { cursoIds: cursosEnEdicion });
+    await actualizar(editando.email, { asignaturaIds: asignaturasEnEdicion });
     setEditando(null);
   }
 
@@ -191,7 +192,8 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
         <h1 className="text-2xl font-bold text-foreground">Docentes autorizados — IECV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Quién puede entrar con Google, qué rol tiene, y a qué asignaturas
-          está asociado (define qué cursos puede elegir al crear sus fichas).
+          está asociado (Español, Matemáticas, Tecnología e Informática...).
+          Hoy solo Tecnología e Informática tiene cursos para generar fichas.
         </p>
       </div>
 
@@ -234,17 +236,17 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
               </Select>
             )}
           </Field>
-          <Field label="Asignaturas" hint="(qué cursos puede elegir este docente al crear sus fichas)">
+          <Field label="Asignaturas" hint="(a qué asignaturas está asociado este docente)">
             {() => (
               <SelectorAsignaturas
-                cursos={cursos}
-                seleccionados={form.cursoIds}
-                onToggle={(cursoId) =>
+                asignaturas={asignaturas}
+                seleccionadas={form.asignaturaIds}
+                onToggle={(asignaturaId) =>
                   setForm((prev) => ({
                     ...prev,
-                    cursoIds: prev.cursoIds.includes(cursoId)
-                      ? prev.cursoIds.filter((id) => id !== cursoId)
-                      : [...prev.cursoIds, cursoId],
+                    asignaturaIds: prev.asignaturaIds.includes(asignaturaId)
+                      ? prev.asignaturaIds.filter((id) => id !== asignaturaId)
+                      : [...prev.asignaturaIds, asignaturaId],
                   }))
                 }
               />
@@ -280,7 +282,7 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
               {usuarios.map((u) => {
                 const esUnoMismo = u.email.toLowerCase() === sesionEmail.toLowerCase();
                 const actualizando = actualizandoEmail === u.email;
-                const asignaturas = nombresAsignaturas(u.cursoIds);
+                const nombresDelUsuario = nombresAsignaturas(u.asignaturaIds);
                 return (
                   <tr key={u.email} className="border-t border-border align-top">
                     <td className="p-3 font-medium text-foreground">
@@ -301,10 +303,10 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
                     </td>
                     <td className="p-3">
                       <div className="flex max-w-56 flex-wrap items-center gap-1">
-                        {asignaturas.length === 0 ? (
+                        {nombresDelUsuario.length === 0 ? (
                           <span className="text-xs text-muted-foreground">— ninguna —</span>
                         ) : (
-                          asignaturas.map((nombre) => (
+                          nombresDelUsuario.map((nombre) => (
                             <Badge key={nombre} tone="brand">{nombre}</Badge>
                           ))
                         )}
@@ -345,15 +347,15 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
           <DialogHeader>
             <DialogTitle>Asignaturas de {editando?.email}</DialogTitle>
             <DialogDescription>
-              Solo podrá elegir estas asignaturas al crear guías, exámenes o fichas.
+              Solo podrá generar fichas de los cursos que pertenezcan a estas asignaturas.
             </DialogDescription>
           </DialogHeader>
           <SelectorAsignaturas
-            cursos={cursos}
-            seleccionados={cursosEnEdicion}
-            onToggle={(cursoId) =>
-              setCursosEnEdicion((prev) =>
-                prev.includes(cursoId) ? prev.filter((id) => id !== cursoId) : [...prev, cursoId]
+            asignaturas={asignaturas}
+            seleccionadas={asignaturasEnEdicion}
+            onToggle={(asignaturaId) =>
+              setAsignaturasEnEdicion((prev) =>
+                prev.includes(asignaturaId) ? prev.filter((id) => id !== asignaturaId) : [...prev, asignaturaId]
               )
             }
           />

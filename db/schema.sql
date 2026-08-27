@@ -4,7 +4,7 @@
 -- (calendario_clases) que asigna un tema a una fecha/ciclo/jornada concretos.
 
 drop table if exists generaciones_log cascade;
-drop table if exists docente_cursos cascade;
+drop table if exists docente_asignaturas cascade;
 drop table if exists usuarios_autorizados cascade;
 drop table if exists guia_archivos cascade;
 drop table if exists guias cascade;
@@ -15,6 +15,7 @@ drop table if exists temas cascade;
 drop table if exists curso_ciclos cascade;
 drop table if exists ciclos cascade;
 drop table if exists cursos cascade;
+drop table if exists asignaturas cascade;
 drop table if exists actividades cascade;
 drop table if exists malla_items cascade;
 drop table if exists tematicas cascade;
@@ -44,11 +45,30 @@ create table actividades (
   created_at timestamptz not null default now()
 );
 
+-- Asignaturas reales del plan de estudios (Español, Inglés, Matemáticas,
+-- Física, Tecnología e Informática, etc.) — lista abierta, se amplía
+-- agregando filas aquí, igual que `actividades`. Es el nivel al que se
+-- asocia cada docente (ver docente_asignaturas); `cursos` son los
+-- temas/módulos concretos dentro de una asignatura — hoy solo Tecnología e
+-- Informática tiene cursos cargados, ver GET /api/catalogo.
+create table asignaturas (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null,
+  nombre text not null,
+  activa boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Temas/módulos concretos que se pueden generar como guía (Canva, Excel,
+-- Python...) — todos pertenecen hoy a la asignatura "Tecnología e
+-- Informática"; asignatura_id nullable porque un curso podría cargarse
+-- antes de que exista su asignatura en el catálogo.
 create table cursos (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   nombre text not null,
   descripcion text,
+  asignatura_id uuid references asignaturas(id),
   activo boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -68,15 +88,16 @@ create table curso_ciclos (
   primary key (curso_id, ciclo_id)
 );
 
--- Qué asignaturas puede generar cada docente (asignadas desde
+-- A qué asignaturas está asociado cada docente (asignado desde
 -- /admin/usuarios) — filtra el selector de curso en / y /examenes para
--- rol='docente'; un admin sigue viendo el catálogo completo sin importar
--- esta tabla (ver GET /api/catalogo).
-create table docente_cursos (
+-- rol='docente' (solo ve cursos cuya asignatura tiene asignada); un admin
+-- sigue viendo el catálogo completo sin importar esta tabla (ver GET
+-- /api/catalogo).
+create table docente_asignaturas (
   email text not null references usuarios_autorizados(email) on delete cascade,
-  curso_id uuid not null references cursos(id) on delete cascade,
+  asignatura_id uuid not null references asignaturas(id) on delete cascade,
   created_at timestamptz not null default now(),
-  primary key (email, curso_id)
+  primary key (email, asignatura_id)
 );
 
 create table temas (

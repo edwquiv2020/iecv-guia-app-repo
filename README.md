@@ -118,7 +118,7 @@ node db/migrate_auth.mjs     # migración aditiva: tabla usuarios_autorizados
 node db/migrate_guia_archivos.mjs  # migración aditiva: persistencia de guías/exámenes
 node db/migrate_roles.mjs    # migración aditiva: columna rol (docente/admin)
 node db/migrate_rate_limit.mjs  # migración aditiva: tabla generaciones_log (límite diario)
-node db/migrate_docente_cursos.mjs  # migración aditiva: tabla docente_cursos (asignaturas por docente)
+node db/migrate_asignaturas.mjs  # migración aditiva: tabla asignaturas + cursos.asignatura_id + docente_asignaturas
 node db/seed.mjs             # jornadas y ciclos base
 node db/seed_horarios.mjs    # bloques de horario por jornada
 node db/seed_temas.mjs <curso-slug> db/malla_<curso>.json  # malla de un curso
@@ -157,12 +157,22 @@ update usuarios_autorizados set rol = 'admin' where email = 'tu-correo@gmail.com
 
 ### Asignaturas por docente
 
-`docente_cursos` (many-to-many) guarda qué asignaturas puede generar cada
-docente — se edita desde `/admin/usuarios` (al crear un docente o con
-"Editar asignaturas" en la tabla). `GET /api/catalogo` filtra el selector de
-curso en `/` y `/examenes` según esta tabla para `rol='docente'`; un `admin`
-siempre ve el catálogo completo. Un docente sin asignaturas asignadas ve el
-selector de curso vacío hasta que un admin le asigne al menos una.
+`asignaturas` es el catálogo real del plan de estudios (Español, Inglés,
+Matemáticas, Física, Tecnología e Informática, etc. — lista abierta, se
+amplía agregando filas ahí, igual que `actividades`). `cursos` (Canva,
+Excel, Word, Python...) son los temas/módulos concretos que sí se pueden
+generar como guía; cada uno pertenece a una asignatura vía
+`cursos.asignatura_id` — hoy todos pertenecen a "Tecnología e Informática",
+las demás asignaturas todavía no tienen cursos propios.
+
+`docente_asignaturas` (many-to-many) guarda a qué asignaturas está asociado
+cada docente — se edita desde `/admin/usuarios` (al crear un docente o con
+"Editar" en la columna Asignaturas de la tabla). `GET /api/catalogo` filtra
+el selector de curso en `/` y `/examenes` para `rol='docente'`: solo ve los
+cursos cuya asignatura tiene asignada (en la práctica, hoy, si tiene
+Tecnología e Informática asignada ve los 11 cursos actuales; cualquier otra
+asignatura no tiene cursos todavía, así que ve el selector vacío). Un
+`admin` siempre ve el catálogo completo.
 
 ### Sincronización de mallas desde Google Drive
 

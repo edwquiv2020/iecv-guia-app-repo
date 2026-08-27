@@ -8,7 +8,7 @@ interface UsuarioUpdateInput {
   nombre?: string | null;
   activo?: boolean;
   rol?: "docente" | "admin";
-  cursoIds?: string[];
+  asignaturaIds?: string[];
 }
 
 /**
@@ -50,22 +50,22 @@ export async function PUT(
     return NextResponse.json({ error: "Docente no encontrado." }, { status: 404 });
   }
 
-  // cursoIds solo llega cuando se editan las asignaturas desde el diálogo
-  // dedicado — reemplaza la lista completa (no es un merge parcial).
-  if (body.cursoIds !== undefined) {
-    await sql`delete from docente_cursos where email = ${email}`;
-    if (body.cursoIds.length > 0) {
+  // asignaturaIds solo llega cuando se editan las asignaturas desde el
+  // diálogo dedicado — reemplaza la lista completa (no es un merge parcial).
+  if (body.asignaturaIds !== undefined) {
+    await sql`delete from docente_asignaturas where email = ${email}`;
+    if (body.asignaturaIds.length > 0) {
       await sql`
-        insert into docente_cursos (email, curso_id)
-        select ${email}, unnest(${body.cursoIds}::uuid[])
+        insert into docente_asignaturas (email, asignatura_id)
+        select ${email}, unnest(${body.asignaturaIds}::uuid[])
       `;
     }
   }
 
-  const [{ cursoIds }] = await sql`
-    select coalesce(array_agg(curso_id), '{}') as "cursoIds"
-    from docente_cursos where email = ${email}
+  const [{ asignaturaIds }] = await sql`
+    select coalesce(array_agg(asignatura_id), '{}') as "asignaturaIds"
+    from docente_asignaturas where email = ${email}
   `;
 
-  return NextResponse.json({ usuario: { ...actualizado, cursoIds } });
+  return NextResponse.json({ usuario: { ...actualizado, asignaturaIds } });
 }

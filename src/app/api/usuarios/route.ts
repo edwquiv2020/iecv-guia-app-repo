@@ -14,9 +14,9 @@ export async function GET() {
   const usuarios = await sql`
     select
       u.email, u.nombre, u.activo, u.rol, u.created_at,
-      coalesce(array_agg(dc.curso_id) filter (where dc.curso_id is not null), '{}') as "cursoIds"
+      coalesce(array_agg(da.asignatura_id) filter (where da.asignatura_id is not null), '{}') as "asignaturaIds"
     from usuarios_autorizados u
-    left join docente_cursos dc on dc.email = u.email
+    left join docente_asignaturas da on da.email = u.email
     group by u.email, u.nombre, u.activo, u.rol, u.created_at
     order by u.created_at
   `;
@@ -27,7 +27,7 @@ interface UsuarioInput {
   email?: string;
   nombre?: string | null;
   rol?: "docente" | "admin";
-  cursoIds?: string[];
+  asignaturaIds?: string[];
 }
 
 export async function POST(request: NextRequest) {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Correo inválido." }, { status: 400 });
   }
 
-  const cursoIds = body.cursoIds ?? [];
+  const asignaturaIds = body.asignaturaIds ?? [];
 
   try {
     const [nuevo] = await sql`
@@ -52,13 +52,13 @@ export async function POST(request: NextRequest) {
       values (${email}, ${body.nombre?.trim() || null}, ${rol})
       returning email, nombre, activo, rol, created_at
     `;
-    if (cursoIds.length > 0) {
+    if (asignaturaIds.length > 0) {
       await sql`
-        insert into docente_cursos (email, curso_id)
-        select ${email}, unnest(${cursoIds}::uuid[])
+        insert into docente_asignaturas (email, asignatura_id)
+        select ${email}, unnest(${asignaturaIds}::uuid[])
       `;
     }
-    return NextResponse.json({ usuario: { ...nuevo, cursoIds } }, { status: 201 });
+    return NextResponse.json({ usuario: { ...nuevo, asignaturaIds } }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("usuarios_autorizados_pkey") || message.includes("duplicate key")) {
