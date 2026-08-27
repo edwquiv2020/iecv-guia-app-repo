@@ -4,6 +4,7 @@
 -- (calendario_clases) que asigna un tema a una fecha/ciclo/jornada concretos.
 
 drop table if exists generaciones_log cascade;
+drop table if exists docente_cursos cascade;
 drop table if exists usuarios_autorizados cascade;
 drop table if exists guia_archivos cascade;
 drop table if exists guias cascade;
@@ -65,6 +66,17 @@ create table curso_ciclos (
   curso_id uuid not null references cursos(id) on delete cascade,
   ciclo_id uuid not null references ciclos(id) on delete cascade,
   primary key (curso_id, ciclo_id)
+);
+
+-- Qué asignaturas puede generar cada docente (asignadas desde
+-- /admin/usuarios) — filtra el selector de curso en / y /examenes para
+-- rol='docente'; un admin sigue viendo el catálogo completo sin importar
+-- esta tabla (ver GET /api/catalogo).
+create table docente_cursos (
+  email text not null references usuarios_autorizados(email) on delete cascade,
+  curso_id uuid not null references cursos(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (email, curso_id)
 );
 
 create table temas (

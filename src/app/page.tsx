@@ -411,6 +411,12 @@ export default function Home() {
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
         {catalogoError && <Alert tone="warning">{catalogoError}</Alert>}
+        {!catalogoError && ciclos.length > 0 && cursos.length === 0 && (
+          <Alert tone="warning">
+            No tienes asignaturas asignadas todavía — pide a un administrador
+            que te asocie al menos una en <strong>Docentes</strong> antes de crear una guía.
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
           <Fieldset legend="Ciclo y jornada">

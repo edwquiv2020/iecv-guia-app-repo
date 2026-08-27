@@ -265,6 +265,12 @@ export default function Examenes() {
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
         {catalogoError && <Alert tone="warning">{catalogoError}</Alert>}
+        {!catalogoError && ciclos.length > 0 && cursos.length === 0 && (
+          <Alert tone="warning">
+            No tienes asignaturas asignadas todavía — pide a un administrador
+            que te asocie al menos una en <strong>Docentes</strong> antes de generar un examen intermedio o final.
+          </Alert>
+        )}
 
         <Fieldset legend="Ciclo y jornada">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

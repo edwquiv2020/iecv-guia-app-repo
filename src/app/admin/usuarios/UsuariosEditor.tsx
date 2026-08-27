@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Field, Input, Select } from "@/components/ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Usuario {
   email: string;
@@ -9,18 +17,55 @@ interface Usuario {
   activo: boolean;
   rol: "docente" | "admin";
   created_at: string;
+  cursoIds: string[];
+}
+
+interface Curso {
+  id: string;
+  nombre: string;
 }
 
 interface FormState {
   email: string;
   nombre: string;
   rol: "docente" | "admin";
+  cursoIds: string[];
 }
 
-const FORM_VACIO: FormState = { email: "", nombre: "", rol: "docente" };
+const FORM_VACIO: FormState = { email: "", nombre: "", rol: "docente", cursoIds: [] };
+
+/** Checkboxes de asignaturas, reusado en el form de alta y en el diálogo de edición. */
+function SelectorAsignaturas({
+  cursos,
+  seleccionados,
+  onToggle,
+}: {
+  cursos: Curso[];
+  seleccionados: string[];
+  onToggle: (cursoId: string) => void;
+}) {
+  if (cursos.length === 0) {
+    return <p className="text-sm text-muted-foreground">No hay asignaturas en el catálogo todavía.</p>;
+  }
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {cursos.map((c) => (
+        <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={seleccionados.includes(c.id)}
+            onChange={() => onToggle(c.id)}
+          />
+          {c.nombre}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [cursos, setCursos] = useState<Curso[]>([]);
   const [cargando, setCargando] = useState(true);
 
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -30,6 +75,10 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
   const [actualizandoEmail, setActualizandoEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+
+  // Docente cuyas asignaturas se están editando en el diálogo — null = cerrado.
+  const [editando, setEditando] = useState<Usuario | null>(null);
+  const [cursosEnEdicion, setCursosEnEdicion] = useState<string[]>([]);
 
   function cargarUsuarios() {
     fetch("/api/usuarios")
@@ -43,6 +92,22 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
   // de agregar/actualizar no vuelve a mostrar el spinner, igual que
   // recargarTemas() en MallasEditor.
   useEffect(cargarUsuarios, []);
+
+  // El catálogo de asignaturas para las casillas — un admin lo ve completo.
+  useEffect(() => {
+    fetch("/api/catalogo")
+      .then((r) => r.json())
+      .then((data: { cursos: Curso[] }) => setCursos(data.cursos))
+      .catch(() => {
+        // No bloquea la pantalla — solo no se podrán asignar asignaturas hasta recargar.
+      });
+  }, []);
+
+  function nombresAsignaturas(cursoIds: string[]): string[] {
+    return cursoIds
+      .map((id) => cursos.find((c) => c.id === id)?.nombre)
+      .filter((n): n is string => !!n);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,7 +125,12 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
       const res = await fetch("/api/usuarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, nombre: form.nombre.trim() || null, rol: form.rol }),
+        body: JSON.stringify({
+          email,
+          nombre: form.nombre.trim() || null,
+          rol: form.rol,
+          cursoIds: form.cursoIds,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -78,7 +148,10 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
     }
   }
 
-  async function actualizar(email: string, cambios: Partial<Pick<Usuario, "activo" | "rol">>) {
+  async function actualizar(
+    email: string,
+    cambios: Partial<Pick<Usuario, "activo" | "rol">> & { cursoIds?: string[] }
+  ) {
     setError(null);
     setExito(null);
     setActualizandoEmail(email);
@@ -101,13 +174,24 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
     }
   }
 
+  function abrirEdicionAsignaturas(u: Usuario) {
+    setEditando(u);
+    setCursosEnEdicion(u.cursoIds);
+  }
+
+  async function guardarAsignaturas() {
+    if (!editando) return;
+    await actualizar(editando.email, { cursoIds: cursosEnEdicion });
+    setEditando(null);
+  }
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Docentes autorizados — IECV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quién puede entrar con Google y quién tiene rol admin (puede
-          administrar mallas y esta misma pantalla).
+          Quién puede entrar con Google, qué rol tiene, y a qué asignaturas
+          está asociado (define qué cursos puede elegir al crear sus fichas).
         </p>
       </div>
 
@@ -150,6 +234,22 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
               </Select>
             )}
           </Field>
+          <Field label="Asignaturas" hint="(qué cursos puede elegir este docente al crear sus fichas)">
+            {() => (
+              <SelectorAsignaturas
+                cursos={cursos}
+                seleccionados={form.cursoIds}
+                onToggle={(cursoId) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    cursoIds: prev.cursoIds.includes(cursoId)
+                      ? prev.cursoIds.filter((id) => id !== cursoId)
+                      : [...prev.cursoIds, cursoId],
+                  }))
+                }
+              />
+            )}
+          </Field>
           <div className="flex gap-3">
             <Button type="submit" size="sm" disabled={guardando}>
               {guardando ? "Guardando…" : "Agregar docente"}
@@ -165,12 +265,13 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
 
       {!cargando && usuarios.length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-surface-muted text-muted-foreground">
               <tr>
                 <th className="p-3 text-left font-medium">Correo</th>
                 <th className="p-3 text-left font-medium">Nombre</th>
                 <th className="p-3 text-left font-medium">Rol</th>
+                <th className="p-3 text-left font-medium">Asignaturas</th>
                 <th className="p-3 text-left font-medium">Activo</th>
                 <th className="p-3"></th>
               </tr>
@@ -179,6 +280,7 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
               {usuarios.map((u) => {
                 const esUnoMismo = u.email.toLowerCase() === sesionEmail.toLowerCase();
                 const actualizando = actualizandoEmail === u.email;
+                const asignaturas = nombresAsignaturas(u.cursoIds);
                 return (
                   <tr key={u.email} className="border-t border-border align-top">
                     <td className="p-3 font-medium text-foreground">
@@ -196,6 +298,25 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
                         <option value="docente">Docente</option>
                         <option value="admin">Admin</option>
                       </Select>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex max-w-56 flex-wrap items-center gap-1">
+                        {asignaturas.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">— ninguna —</span>
+                        ) : (
+                          asignaturas.map((nombre) => (
+                            <Badge key={nombre} tone="brand">{nombre}</Badge>
+                          ))
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={actualizando}
+                        onClick={() => abrirEdicionAsignaturas(u)}
+                        className="mt-1 text-xs text-brand underline underline-offset-2 hover:text-brand-hover disabled:opacity-50"
+                      >
+                        Editar
+                      </button>
                     </td>
                     <td className="p-3">
                       {u.activo ? <Badge tone="success">✓ activo</Badge> : <Badge tone="neutral">inactivo</Badge>}
@@ -218,6 +339,34 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
           </table>
         </div>
       )}
+
+      <Dialog open={!!editando} onOpenChange={(open) => !open && setEditando(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignaturas de {editando?.email}</DialogTitle>
+            <DialogDescription>
+              Solo podrá elegir estas asignaturas al crear guías, exámenes o fichas.
+            </DialogDescription>
+          </DialogHeader>
+          <SelectorAsignaturas
+            cursos={cursos}
+            seleccionados={cursosEnEdicion}
+            onToggle={(cursoId) =>
+              setCursosEnEdicion((prev) =>
+                prev.includes(cursoId) ? prev.filter((id) => id !== cursoId) : [...prev, cursoId]
+              )
+            }
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditando(null)}>
+              Cancelar
+            </Button>
+            <Button type="button" size="sm" onClick={guardarAsignaturas} disabled={actualizandoEmail === editando?.email}>
+              {actualizandoEmail === editando?.email ? "Guardando…" : "Guardar asignaturas"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

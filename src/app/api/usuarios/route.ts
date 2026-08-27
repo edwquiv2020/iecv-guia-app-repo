@@ -12,9 +12,13 @@ export async function GET() {
   }
 
   const usuarios = await sql`
-    select email, nombre, activo, rol, created_at
-    from usuarios_autorizados
-    order by created_at
+    select
+      u.email, u.nombre, u.activo, u.rol, u.created_at,
+      coalesce(array_agg(dc.curso_id) filter (where dc.curso_id is not null), '{}') as "cursoIds"
+    from usuarios_autorizados u
+    left join docente_cursos dc on dc.email = u.email
+    group by u.email, u.nombre, u.activo, u.rol, u.created_at
+    order by u.created_at
   `;
   return NextResponse.json({ usuarios });
 }
@@ -23,6 +27,7 @@ interface UsuarioInput {
   email?: string;
   nombre?: string | null;
   rol?: "docente" | "admin";
+  cursoIds?: string[];
 }
 
 export async function POST(request: NextRequest) {
@@ -39,13 +44,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Correo inválido." }, { status: 400 });
   }
 
+  const cursoIds = body.cursoIds ?? [];
+
   try {
     const [nuevo] = await sql`
       insert into usuarios_autorizados (email, nombre, rol)
       values (${email}, ${body.nombre?.trim() || null}, ${rol})
       returning email, nombre, activo, rol, created_at
     `;
-    return NextResponse.json({ usuario: nuevo }, { status: 201 });
+    if (cursoIds.length > 0) {
+      await sql`
+        insert into docente_cursos (email, curso_id)
+        select ${email}, unnest(${cursoIds}::uuid[])
+      `;
+    }
+    return NextResponse.json({ usuario: { ...nuevo, cursoIds } }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("usuarios_autorizados_pkey") || message.includes("duplicate key")) {

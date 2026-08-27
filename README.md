@@ -118,6 +118,7 @@ node db/migrate_auth.mjs     # migración aditiva: tabla usuarios_autorizados
 node db/migrate_guia_archivos.mjs  # migración aditiva: persistencia de guías/exámenes
 node db/migrate_roles.mjs    # migración aditiva: columna rol (docente/admin)
 node db/migrate_rate_limit.mjs  # migración aditiva: tabla generaciones_log (límite diario)
+node db/migrate_docente_cursos.mjs  # migración aditiva: tabla docente_cursos (asignaturas por docente)
 node db/seed.mjs             # jornadas y ciclos base
 node db/seed_horarios.mjs    # bloques de horario por jornada
 node db/seed_temas.mjs <curso-slug> db/malla_<curso>.json  # malla de un curso
@@ -153,6 +154,15 @@ siguientes ya se agregan desde `/admin/usuarios`):
 ```sql
 update usuarios_autorizados set rol = 'admin' where email = 'tu-correo@gmail.com';
 ```
+
+### Asignaturas por docente
+
+`docente_cursos` (many-to-many) guarda qué asignaturas puede generar cada
+docente — se edita desde `/admin/usuarios` (al crear un docente o con
+"Editar asignaturas" en la tabla). `GET /api/catalogo` filtra el selector de
+curso en `/` y `/examenes` según esta tabla para `rol='docente'`; un `admin`
+siempre ve el catálogo completo. Un docente sin asignaturas asignadas ve el
+selector de curso vacío hasta que un admin le asigne al menos una.
 
 ### Sincronización de mallas desde Google Drive
 

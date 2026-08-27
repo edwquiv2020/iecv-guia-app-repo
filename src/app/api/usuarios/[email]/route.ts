@@ -8,6 +8,7 @@ interface UsuarioUpdateInput {
   nombre?: string | null;
   activo?: boolean;
   rol?: "docente" | "admin";
+  cursoIds?: string[];
 }
 
 /**
@@ -48,5 +49,23 @@ export async function PUT(
   if (!actualizado) {
     return NextResponse.json({ error: "Docente no encontrado." }, { status: 404 });
   }
-  return NextResponse.json({ usuario: actualizado });
+
+  // cursoIds solo llega cuando se editan las asignaturas desde el diálogo
+  // dedicado — reemplaza la lista completa (no es un merge parcial).
+  if (body.cursoIds !== undefined) {
+    await sql`delete from docente_cursos where email = ${email}`;
+    if (body.cursoIds.length > 0) {
+      await sql`
+        insert into docente_cursos (email, curso_id)
+        select ${email}, unnest(${body.cursoIds}::uuid[])
+      `;
+    }
+  }
+
+  const [{ cursoIds }] = await sql`
+    select coalesce(array_agg(curso_id), '{}') as "cursoIds"
+    from docente_cursos where email = ${email}
+  `;
+
+  return NextResponse.json({ usuario: { ...actualizado, cursoIds } });
 }
