@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
 
 interface Curso {
@@ -48,6 +47,10 @@ export default function MallasEditor() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(FORM_VACIO);
   const [mostrarForm, setMostrarForm] = useState(false);
+  // El formulario de edición vive fijo arriba de la tabla — en una malla larga,
+  // "Editar" en una fila de abajo lo abre fuera de la vista. Este ref permite
+  // llevar la pantalla hasta él en cuanto se abre.
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [guardando, setGuardando] = useState(false);
   const [borrandoId, setBorrandoId] = useState<string | null>(null);
@@ -205,6 +208,15 @@ export default function MallasEditor() {
     setExito(null);
   }
 
+  // En una malla larga, "Editar" en una fila de más abajo abría el formulario
+  // fuera de la vista (el form vive fijo arriba de la tabla). Llevamos la
+  // pantalla hasta él en cuanto se muestra, para que no parezca que no pasó nada.
+  useEffect(() => {
+    if (mostrarForm) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [mostrarForm, editandoId]);
+
   function cerrarForm() {
     setMostrarForm(false);
     setEditandoId(null);
@@ -282,18 +294,11 @@ export default function MallasEditor() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Administrar mallas — IECV</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Elige un curso para ver, crear, editar o eliminar sus temas.
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-1 sm:items-end">
-          <Link href="/" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">← Generar guía</Link>
-          <Link href="/horarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Cargar horarios →</Link>
-          <Link href="/admin/usuarios" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Gestionar docentes →</Link>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Administrar mallas — IECV</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Elige un curso para ver, crear, editar o eliminar sus temas.
+        </p>
       </div>
 
       {error && <div className="mt-4"><Alert tone="danger">{error}</Alert></div>}
@@ -397,7 +402,7 @@ export default function MallasEditor() {
           )}
 
           {mostrarForm && (
-            <form onSubmit={onSubmit} className="mt-4 space-y-4 rounded-xl border border-brand/25 bg-brand-subtle/60 p-5">
+            <form ref={formRef} onSubmit={onSubmit} className="mt-4 space-y-4 rounded-xl border border-brand/25 bg-brand-subtle/60 p-5">
               <p className="text-sm font-medium text-brand-subtle-foreground">
                 {editandoId ? "Editar tema" : "Nuevo tema"}
               </p>

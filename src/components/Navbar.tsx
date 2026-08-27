@@ -31,8 +31,13 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: "/admin/usuarios", label: "Docentes" },
 ];
 
+// Amarillo reservado solo para "dónde estoy" (tab activo) — el toggle de
+// tema y cerrar sesión usan un estilo neutro para no competir con eso.
 const THEME_TOGGLE_CLASS =
-  "flex items-center gap-1.5 rounded-md bg-yellow-400/90 px-2 py-1 text-green-900 transition-colors hover:bg-yellow-400";
+  "flex items-center gap-1.5 rounded-md border border-white/30 bg-white/10 px-2 py-1 text-white transition-colors hover:bg-white/20";
+
+const SIGN_OUT_BUTTON_CLASS =
+  "border border-white/30 bg-transparent text-white hover:bg-white/10";
 
 interface NavbarProps {
   userEmail?: string | null;
@@ -88,11 +93,7 @@ export function Navbar({ userEmail, isAdmin, onSignOut }: NavbarProps) {
                 {userEmail}
               </span>
               <form action={onSignOut}>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="bg-yellow-400 text-green-900 hover:bg-yellow-500"
-                >
+                <Button type="submit" size="sm" className={SIGN_OUT_BUTTON_CLASS}>
                   Cerrar sesión
                 </Button>
               </form>
@@ -152,10 +153,7 @@ export function Navbar({ userEmail, isAdmin, onSignOut }: NavbarProps) {
                       {userEmail}
                     </span>
                     <form action={onSignOut}>
-                      <Button
-                        type="submit"
-                        className="w-full bg-yellow-400 text-green-900 hover:bg-yellow-500"
-                      >
+                      <Button type="submit" className={cn("w-full", SIGN_OUT_BUTTON_CLASS)}>
                         <LogOut className="size-4" />
                         Cerrar sesión
                       </Button>

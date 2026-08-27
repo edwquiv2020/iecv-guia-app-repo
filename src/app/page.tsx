@@ -412,62 +412,64 @@ export default function Home() {
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
         {catalogoError && <Alert tone="warning">{catalogoError}</Alert>}
 
-        <Fieldset legend="Ciclo y jornada">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Ciclo" required>
-              {(id) => (
-                <Select id={id} value={cicloId} onChange={(e) => onCicloChange(e.target.value)} required>
-                  <option value="" disabled>Selecciona un ciclo…</option>
-                  {ciclos.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-            <Field label="Jornada" required>
-              {(id) => (
-                <Select id={id} value={jornadaId} onChange={(e) => onJornadaChange(e.target.value)} required>
-                  <option value="" disabled>Selecciona una jornada…</option>
-                  {jornadas.map((j) => (
-                    <option key={j.id} value={j.id}>{j.nombre}</option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-          </div>
-        </Fieldset>
-
-        {cicloId && jornadaId && (
-          <Fieldset legend="Semana programada">
-            <Select value={semanaProgramadaId} onChange={(e) => onSemanaProgramadaChange(e.target.value)}>
-              <option value="">
-                {calendarioFilas.length === 0 ? "No hay horario cargado para este ciclo/jornada — crea la clase abajo" : "— Crear una clase nueva (no está en el horario) —"}
-              </option>
-              {calendarioFilas.map((f) => (
-                <option key={f.id} value={f.id}>
-                  Semana {f.semana} — {f.fecha.slice(0, 10)} — {f.actividad_nombre}
-                  {f.curso_nombre ? ` — ${f.curso_nombre}` : ""}
-                  {f.origen === "ad_hoc" ? " (manual)" : ""}
-                  {f.guia_estandar_generada ? " · Estándar ✅" : ""}
-                  {f.guia_dua_generada ? " · DUA ✅" : ""}
-                </option>
-              ))}
-            </Select>
-            {notaActividad && <p className="mt-2 text-xs text-warning">{notaActividad}</p>}
-
-            {hayQueConfirmarRegeneracion && (
-              <div className="mt-3">
-                <Alert tone="warning">
-                  <span className="block">La guía {tiposYaGenerados.join(" y ")} de esta semana ya se generó antes.</span>
-                  <label className="mt-2 flex items-center gap-2 text-xs font-normal">
-                    <input type="checkbox" checked={confirmarRegenerar} onChange={(e) => setConfirmarRegenerar(e.target.checked)} />
-                    Sí, generar de nuevo (reemplaza el registro anterior)
-                  </label>
-                </Alert>
-              </div>
-            )}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+          <Fieldset legend="Ciclo y jornada">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Ciclo" required>
+                {(id) => (
+                  <Select id={id} value={cicloId} onChange={(e) => onCicloChange(e.target.value)} required>
+                    <option value="" disabled>Selecciona un ciclo…</option>
+                    {ciclos.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nombre} ({c.grados.join("-")})</option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              <Field label="Jornada" required>
+                {(id) => (
+                  <Select id={id} value={jornadaId} onChange={(e) => onJornadaChange(e.target.value)} required>
+                    <option value="" disabled>Selecciona una jornada…</option>
+                    {jornadas.map((j) => (
+                      <option key={j.id} value={j.id}>{j.nombre}</option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+            </div>
           </Fieldset>
-        )}
+
+          {cicloId && jornadaId && (
+            <Fieldset legend="Semana programada">
+              <Select value={semanaProgramadaId} onChange={(e) => onSemanaProgramadaChange(e.target.value)}>
+                <option value="">
+                  {calendarioFilas.length === 0 ? "No hay horario cargado para este ciclo/jornada — crea la clase abajo" : "— Crear una clase nueva (no está en el horario) —"}
+                </option>
+                {calendarioFilas.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    Semana {f.semana} — {f.fecha.slice(0, 10)} — {f.actividad_nombre}
+                    {f.curso_nombre ? ` — ${f.curso_nombre}` : ""}
+                    {f.origen === "ad_hoc" ? " (manual)" : ""}
+                    {f.guia_estandar_generada ? " · Estándar ✅" : ""}
+                    {f.guia_dua_generada ? " · DUA ✅" : ""}
+                  </option>
+                ))}
+              </Select>
+              {notaActividad && <p className="mt-2 text-xs text-warning">{notaActividad}</p>}
+
+              {hayQueConfirmarRegeneracion && (
+                <div className="mt-3">
+                  <Alert tone="warning">
+                    <span className="block">La guía {tiposYaGenerados.join(" y ")} de esta semana ya se generó antes.</span>
+                    <label className="mt-2 flex items-center gap-2 text-xs font-normal">
+                      <input type="checkbox" checked={confirmarRegenerar} onChange={(e) => setConfirmarRegenerar(e.target.checked)} />
+                      Sí, generar de nuevo (reemplaza el registro anterior)
+                    </label>
+                  </Alert>
+                </div>
+              )}
+            </Fieldset>
+          )}
+        </div>
 
         <Fieldset legend="Catálogo (curso → tema)">
           <Field label="Curso" required>
@@ -513,11 +515,13 @@ export default function Home() {
           </Field>
         </Fieldset>
 
-        <Field label="CLEI">{(id) => <Input id={id} value={clei} disabled />}</Field>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[120px_1fr]">
+          <Field label="CLEI">{(id) => <Input id={id} value={clei} disabled />}</Field>
 
-        <Field label="Grupo / CLEI / Jornada (como aparece en la tabla)" hint="(automático — depende del ciclo y la jornada elegidos)">
-          {(id) => <Input id={id} value={grupoCleiJornada || "Elige ciclo y jornada arriba"} disabled />}
-        </Field>
+          <Field label="Grupo / CLEI / Jornada (como aparece en la tabla)" hint="(automático — depende del ciclo y la jornada elegidos)">
+            {(id) => <Input id={id} value={grupoCleiJornada || "Elige ciclo y jornada arriba"} disabled />}
+          </Field>
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Semana No">
@@ -571,7 +575,20 @@ export default function Home() {
         </Field>
 
         {subtemasList.length > 0 && (
-          <Fieldset legend="Imágenes por subtema (opcional — captura real u otra ilustración)">
+          <details className="group rounded-xl border border-border bg-surface p-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground marker:hidden">
+              <span>
+                Imágenes por subtema{" "}
+                <span className="font-normal text-muted-foreground">({subtemasList.length})</span>
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">
+                <span className="group-open:hidden">Opcional — clic para mostrar</span>
+                <span className="hidden group-open:inline">Clic para ocultar</span>
+              </span>
+            </summary>
+            <p className="mb-3 mt-3 text-xs text-muted-foreground">
+              Captura real u otra ilustración para cada subtema.
+            </p>
             <div className="space-y-4">
               {subtemasList.map((titulo, i) => (
                 <div key={i} className="rounded-lg border border-border p-3">
@@ -596,10 +613,13 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </Fieldset>
+          </details>
         )}
 
-        <Fieldset legend="Video de apoyo (URL autocompletada — verifica título/canal/duración tú antes de enviarlo)">
+        <Fieldset legend="Video de apoyo">
+          <p className="mb-3 text-xs text-muted-foreground">
+            URL autocompletada — verifica título, canal y duración antes de enviarlo.
+          </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Título" required>
               {(id) => <Input id={id} value={videoTitulo} onChange={(e) => setVideoTitulo(e.target.value)} required />}

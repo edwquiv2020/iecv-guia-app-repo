@@ -354,8 +354,18 @@ export default function Examenes() {
           {jornadaActual ? "" : " (elige la jornada para calcular esto)"}
         </div>
 
-        <Fieldset legend="Imágenes de apoyo por pregunta (opcional)">
-          <p className="mb-3 text-xs text-muted-foreground">
+        <details className="group rounded-xl border border-border bg-surface p-5">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground marker:hidden">
+            <span>
+              Imágenes de apoyo por pregunta{" "}
+              <span className="font-normal text-muted-foreground">({cantidadPreguntas})</span>
+            </span>
+            <span className="text-xs font-normal text-muted-foreground">
+              <span className="group-open:hidden">Opcional — clic para mostrar</span>
+              <span className="hidden group-open:inline">Clic para ocultar</span>
+            </span>
+          </summary>
+          <p className="mb-3 mt-3 text-xs text-muted-foreground">
             Si una pregunta necesita una captura de pantalla como contexto (ej. una tabla de Excel), súbela aquí y describe qué muestra — la IA redacta esa pregunta a partir de tu descripción para que coincidan exactamente. Las preguntas sin imagen se redactan libremente.
           </p>
           <div className="space-y-3">
@@ -378,7 +388,7 @@ export default function Examenes() {
               </div>
             ))}
           </div>
-        </Fieldset>
+        </details>
 
         {error && <Alert tone="danger">{error}</Alert>}
         {exito && <Alert tone="success">{exito}</Alert>}

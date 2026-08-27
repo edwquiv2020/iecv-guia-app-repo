@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Field, Input, Select } from "@/components/ui";
 
@@ -104,18 +103,12 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Docentes autorizados — IECV</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Quién puede entrar con Google y quién tiene rol admin (puede
-            administrar mallas y esta misma pantalla).
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-1 sm:items-end">
-          <Link href="/" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">← Generar guía</Link>
-          <Link href="/admin/mallas" className="text-sm text-brand underline underline-offset-2 hover:text-brand-hover">Administrar mallas →</Link>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Docentes autorizados — IECV</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Quién puede entrar con Google y quién tiene rol admin (puede
+          administrar mallas y esta misma pantalla).
+        </p>
       </div>
 
       {error && <div className="mt-4"><Alert tone="danger">{error}</Alert></div>}

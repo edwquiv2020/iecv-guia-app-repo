@@ -495,7 +495,7 @@ export default function Horarios() {
             <p className="mt-2 text-sm text-muted-foreground">Todavía no hay nada cargado.</p>
           ) : (
             <div className="mt-2 overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead className="bg-surface-muted text-muted-foreground">
                   <tr>
                     <th className="p-3 text-left font-medium">Semana</th>
