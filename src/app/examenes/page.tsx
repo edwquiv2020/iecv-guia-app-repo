@@ -14,6 +14,7 @@ function formatearFechaLarga(iso: string): string {
 
 interface Ciclo { id: string; slug: string; nombre: string; grados: string[] }
 interface Curso { id: string; slug: string; nombre: string }
+interface Asignatura { id: string; slug: string; nombre: string }
 interface Jornada { id: string; slug: string; nombre: string; dias: string }
 interface Actividad { id: string; nombre: string }
 interface FilaCalendario {
@@ -51,6 +52,7 @@ export default function Examenes() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
   const [actividades, setActividades] = useState<Actividad[]>([]);
+  const [misAsignaturas, setMisAsignaturas] = useState<Asignatura[]>([]);
   const [catalogoError, setCatalogoError] = useState<string | null>(null);
 
   const [cicloId, setCicloId] = useState("");
@@ -60,6 +62,7 @@ export default function Examenes() {
 
   const [tipo, setTipo] = useState<TipoExamen>("diagnostico");
   const [cursoId, setCursoId] = useState("");
+  const [asignaturaId, setAsignaturaId] = useState("");
 
   const [calendarioFilas, setCalendarioFilas] = useState<FilaCalendario[]>([]);
   const [semanaProgramadaId, setSemanaProgramadaId] = useState("");
@@ -78,11 +81,13 @@ export default function Examenes() {
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[] }) => {
+      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[]; misAsignaturas: Asignatura[] }) => {
         setCiclos(data.ciclos.filter((c) => cleiDesdeCiclo(c.nombre) !== null));
         setCursos(data.cursos);
         setJornadas(data.jornadas);
         setActividades(data.actividades);
+        setMisAsignaturas(data.misAsignaturas);
+        if (data.misAsignaturas.length === 1) setAsignaturaId(data.misAsignaturas[0].id);
       })
       .catch(() => setCatalogoError("No se pudo cargar el catálogo desde la base de datos."));
   }, []);
@@ -167,6 +172,10 @@ export default function Examenes() {
       setError("Elige el curso a evaluar.");
       return;
     }
+    if (tipo === "diagnostico" && !asignaturaId) {
+      setError("Elige la asignatura del diagnóstico.");
+      return;
+    }
     if (!fechaAplicacionIso) {
       setError("Elige la fecha de aplicación.");
       return;
@@ -184,6 +193,7 @@ export default function Examenes() {
         cicloId, jornadaId,
         cursoId: cursoId || undefined,
         cursoNombre: curso?.nombre,
+        asignaturaId: tipo === "diagnostico" ? asignaturaId : undefined,
       };
 
       const formData = new FormData();
@@ -260,15 +270,22 @@ export default function Examenes() {
     <main className="mx-auto max-w-2xl px-6 py-10">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Generador de Exámenes — IECV</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Diagnóstico · Intermedio · Final — Tecnología e Informática</p>
+        <p className="mt-1 text-sm text-muted-foreground">Diagnóstico · Intermedio · Final</p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
         {catalogoError && <Alert tone="warning">{catalogoError}</Alert>}
-        {!catalogoError && ciclos.length > 0 && cursos.length === 0 && (
+        {!catalogoError && ciclos.length > 0 && misAsignaturas.length === 0 && (
           <Alert tone="warning">
-            No tienes asignaturas asignadas todavía — pide a un administrador
-            que te asocie al menos una en <strong>Docentes</strong> antes de generar un examen intermedio o final.
+            No tienes ninguna asignatura asignada todavía — pide a un
+            administrador que te asocie al menos una en <strong>Docentes</strong> antes de generar cualquier examen.
+          </Alert>
+        )}
+        {!catalogoError && misAsignaturas.length > 0 && cursos.length === 0 && (
+          <Alert tone="warning">
+            Ninguna de tus asignaturas tiene cursos cargados todavía — puedes
+            generar el Diagnóstico, pero el Examen Intermedio/Final necesita
+            que un admin cargue la malla de temas del curso en <strong>Mallas</strong>.
           </Alert>
         )}
 
@@ -303,9 +320,22 @@ export default function Examenes() {
             ))}
           </div>
           {tipo === "diagnostico" && (
-            <p className="mt-2 text-xs text-muted-foreground">Conocimiento general de Tecnología e Informática, al inicio del período — no evalúa un curso puntual.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Conocimiento general de la asignatura, al inicio del período — no evalúa un curso puntual.</p>
           )}
         </Fieldset>
+
+        {tipo === "diagnostico" && (
+          <Field label="Asignatura" required hint="(no tiene curso propio — elige a cuál de tus asignaturas aplica)">
+            {(id) => (
+              <Select id={id} value={asignaturaId} onChange={(e) => setAsignaturaId(e.target.value)} required>
+                <option value="" disabled>
+                  {misAsignaturas.length === 0 ? "No tienes asignaturas asignadas — pide a un admin que te asocie una" : "Selecciona una asignatura…"}
+                </option>
+                {misAsignaturas.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+              </Select>
+            )}
+          </Field>
+        )}
 
         {(tipo === "intermedio" || tipo === "final") && (
           <Field label="Curso a evaluar" required>

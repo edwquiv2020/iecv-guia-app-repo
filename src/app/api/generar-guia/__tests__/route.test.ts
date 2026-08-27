@@ -41,6 +41,7 @@ vi.mock("@/auth", () => ({ auth: () => auth() }));
 const { POST } = await import("../route");
 
 const paramsBase = {
+  cursoId: "curso-test-id",
   clei: "III" as const,
   grupoCleiJornada: "6-7/III/SEMANAL 1",
   jornada: "SEMANAL 1",
@@ -140,7 +141,16 @@ beforeEach(() => {
   generarCuestionarioKahoot.mockResolvedValue(kahootFixture);
   generarImagenMotivacional.mockImplementation(imagenTortuga);
   generarRutaVisual.mockImplementation(iconoNegrita);
-  sql.mockResolvedValue([]);
+  // La resolución de asignatura (cursos -> asignaturas) es la única
+  // consulta que necesita devolver algo — el resto (rate limit, insertar
+  // en generaciones_log, talleres recientes) se conforma con [].
+  sql.mockImplementation((strings: TemplateStringsArray) =>
+    Promise.resolve(
+      strings.join(" ").includes("asignatura_id")
+        ? [{ asignatura: "Tecnología e Informática" }]
+        : []
+    )
+  );
   auth.mockResolvedValue({ user: { email: "docente@gmail.com" } });
 });
 

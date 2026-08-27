@@ -9,7 +9,7 @@ export async function GET() {
   const esAdmin = session?.user?.rol === "admin";
   const email = session?.user?.email?.toLowerCase() ?? "";
 
-  const [ciclos, cursos, jornadas, actividades, asignaturas] = await Promise.all([
+  const [ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas] = await Promise.all([
     sql`select id, slug, nombre, grados from ciclos where activo order by nombre`,
     // Nota: curso_ciclos todavía no tiene filas cargadas, así que por ahora
     // no se filtra por ciclo. Sí se filtra por asignatura: un admin ve el
@@ -29,6 +29,18 @@ export async function GET() {
     // Catálogo completo de asignaturas — no se filtra por docente, lo usa
     // /admin/usuarios para las casillas de "a qué asignaturas asociar".
     sql`select id, slug, nombre from asignaturas where activa order by nombre`,
+    // Solo LAS asignaturas de este docente (o todas si es admin) — las usa
+    // /examenes para elegir la asignatura del Diagnóstico, que no tiene
+    // curso de dónde derivarla.
+    esAdmin
+      ? sql`select id, slug, nombre from asignaturas where activa order by nombre`
+      : sql`
+          select a.id, a.slug, a.nombre
+          from asignaturas a
+          join docente_asignaturas da on da.asignatura_id = a.id
+          where a.activa and da.email = ${email}
+          order by a.nombre
+        `,
   ]);
-  return NextResponse.json({ ciclos, cursos, jornadas, actividades, asignaturas });
+  return NextResponse.json({ ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas });
 }

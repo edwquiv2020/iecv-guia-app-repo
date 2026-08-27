@@ -9,6 +9,7 @@ import { generarImagenMotivacional } from "./src/lib/images";
 import type { ParametrosGuia, ContenidoGuia } from "./src/lib/types";
 
 const params: ParametrosGuia = {
+  asignatura: "Tecnología e Informática",
   clei: "III",
   grupoCleiJornada: "6-7/III/SEMANAL 1",
   jornada: "SEMANAL 1",

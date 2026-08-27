@@ -13,6 +13,8 @@ export const maxDuration = 60;
 interface ParamsExamenRequest extends ParametrosExamen {
   cicloId: string;
   jornadaId: string;
+  /** Solo Diagnóstico (no tiene cursoId de dónde derivar la asignatura) — el docente la elige directamente. */
+  asignaturaId?: string;
 }
 
 function validar(body: unknown): { ok: true; data: ParamsExamenRequest } | { ok: false; error: string } {
@@ -34,6 +36,9 @@ function validar(body: unknown): { ok: true; data: ParamsExamenRequest } | { ok:
   }
   if ((b.tipo === "intermedio" || b.tipo === "final") && !b.cursoId) {
     return { ok: false, error: "Falta el curso a evaluar (requerido para Intermedio/Final)." };
+  }
+  if (b.tipo === "diagnostico" && !b.asignaturaId) {
+    return { ok: false, error: "Falta elegir la asignatura del diagnóstico." };
   }
   return { ok: true, data: b as ParamsExamenRequest };
 }
@@ -93,18 +98,71 @@ export async function POST(request: NextRequest) {
   if (!validado.ok) {
     return NextResponse.json({ error: validado.error }, { status: 400 });
   }
-  const params = validado.data;
+  const datosFormulario = validado.data;
 
-  // Protección de costo: mismo criterio que /api/generar-guia.
   const session = await auth();
   const email = session?.user?.email;
   if (!email) {
     return NextResponse.json({ error: "Sesión inválida." }, { status: 401 });
   }
+
+  // Protección de costo: mismo criterio que /api/generar-guia — cuenta este
+  // intento aunque termine en error abajo (los reintentos de anthropic.ts
+  // también cuestan).
   if (!(await dentroDelLimiteDiario(email, "generar-examen"))) {
     return NextResponse.json({ error: mensajeLimiteAlcanzado() }, { status: 429 });
   }
   await registrarGeneracion(email, "generar-examen");
+
+  // La asignatura nunca la manda el formulario a mano — se resuelve acá.
+  // Intermedio/Final la sacan del curso elegido (cursos.asignatura_id,
+  // misma fuente que ya filtra qué cursos ve cada docente). Diagnóstico no
+  // tiene curso, así que el docente elige la asignatura directamente —
+  // validada contra sus propias asignaturas asignadas (docente_asignaturas),
+  // salvo que sea admin, que puede elegir cualquiera.
+  let asignatura: string | undefined;
+  if (datosFormulario.tipo === "diagnostico") {
+    // validar() ya exigió asignaturaId para este tipo — el `if` es solo para que TS lo angoste.
+    const asignaturaId = datosFormulario.asignaturaId;
+    if (!asignaturaId) {
+      return NextResponse.json({ error: "Falta elegir la asignatura del diagnóstico." }, { status: 400 });
+    }
+    const esAdmin = session?.user?.rol === "admin";
+    const [fila] = esAdmin
+      ? await sql`select nombre from asignaturas where id = ${asignaturaId}`
+      : await sql`
+          select a.nombre
+          from asignaturas a
+          join docente_asignaturas da on da.asignatura_id = a.id
+          where a.id = ${asignaturaId} and da.email = ${email}
+        `;
+    asignatura = fila?.nombre;
+    if (!asignatura) {
+      return NextResponse.json(
+        { error: "Esa asignatura no existe o no está asociada a tu cuenta." },
+        { status: 403 }
+      );
+    }
+  } else {
+    // validar() ya exigió cursoId para intermedio/final — el `if` es solo para que TS lo angoste.
+    const cursoId = datosFormulario.cursoId;
+    if (!cursoId) {
+      return NextResponse.json({ error: "Falta el curso a evaluar." }, { status: 400 });
+    }
+    const [fila] = await sql`
+      select a.nombre
+      from cursos c join asignaturas a on a.id = c.asignatura_id
+      where c.id = ${cursoId}
+    `;
+    asignatura = fila?.nombre;
+    if (!asignatura) {
+      return NextResponse.json(
+        { error: "No se pudo determinar la asignatura del curso elegido — vuelve a seleccionarlo." },
+        { status: 400 }
+      );
+    }
+  }
+  const params: ParamsExamenRequest = { ...datosFormulario, asignatura };
 
   try {
     const contenido = params.tipo === "diagnostico"

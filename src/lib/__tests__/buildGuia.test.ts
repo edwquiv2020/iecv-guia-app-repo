@@ -10,6 +10,7 @@ import type { ContenidoGuia, ParametrosGuia } from "@/lib/types";
 // corra rápido y sin dependencias externas en CI.
 
 const params: ParametrosGuia = {
+  asignatura: "Tecnología e Informática",
   clei: "III",
   grupoCleiJornada: "6-7/III/SEMANAL 1",
   jornada: "SEMANAL 1",

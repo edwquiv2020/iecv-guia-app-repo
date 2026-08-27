@@ -36,6 +36,7 @@ const diagnosticoParams = {
   docente: "Docente de prueba",
   cicloId: "ciclo-1",
   jornadaId: "jornada-1",
+  asignaturaId: "asignatura-1",
 };
 
 const intermedioParams = {
@@ -63,10 +64,17 @@ beforeEach(() => {
   vi.clearAllMocks();
   generarContenidoDiagnostico.mockResolvedValue(contenidoConPreguntas(10));
   generarContenidoExamen.mockResolvedValue(contenidoConPreguntas(10));
-  // Sirve tanto para temasCubiertos() como para el conteo del límite diario
-  // (rateLimit.ts solo lee ${fila?.total ?? 0}, que da 0 con este shape —
-  // dentro del límite por defecto).
-  sql.mockResolvedValue([{ tema: "FUNCIÓN SI", subtemas: "Sintaxis\nCondiciones" }]);
+  // La resolución de asignatura (join con `asignaturas`) necesita `nombre`;
+  // el resto (conteo del límite diario, insertar en generaciones_log,
+  // temasCubiertos) se conforma con este shape — rateLimit.ts solo lee
+  // ${fila?.total ?? 0}, que da 0 (dentro del límite) cuando no hay `total`.
+  sql.mockImplementation((strings: TemplateStringsArray) =>
+    Promise.resolve(
+      strings.join(" ").includes("asignaturas")
+        ? [{ nombre: "Tecnología e Informática" }]
+        : [{ tema: "FUNCIÓN SI", subtemas: "Sintaxis\nCondiciones" }]
+    )
+  );
   auth.mockResolvedValue({ user: { email: "docente@gmail.com" } });
 });
 
@@ -129,8 +137,9 @@ describe("POST /api/generar-examen", () => {
       expect(esZipValido(archivo.contenidoBase64)).toBe(true);
     }
     // No consulta temasCubiertos (Diagnóstico no evalúa un curso), pero sql
-    // sí se llama 2 veces para el límite diario: el conteo + el registro.
-    expect(sql).toHaveBeenCalledTimes(2);
+    // sí se llama 3 veces: conteo del límite diario + registro + resolver
+    // la asignatura elegida.
+    expect(sql).toHaveBeenCalledTimes(3);
     expect(generarContenidoExamen).not.toHaveBeenCalled();
   });
 
@@ -149,8 +158,9 @@ describe("POST /api/generar-examen", () => {
     expect(data.archivos[0].nombre).toBe(
       "FTO-EDU-FOR-98_V1_Examen_Intermedio_Semana5_CLEI_III_SEMANAL1.docx"
     );
-    // 3 llamadas a sql: conteo del límite diario + registro + temasCubiertos.
-    expect(sql).toHaveBeenCalledTimes(3);
+    // 4 llamadas a sql: conteo del límite diario + registro + resolver
+    // la asignatura del curso + temasCubiertos.
+    expect(sql).toHaveBeenCalledTimes(4);
     expect(generarContenidoExamen).toHaveBeenCalledWith(
       expect.objectContaining({ cursoId: "curso-1" }),
       ["FUNCIÓN SI — Sintaxis\nCondiciones"],

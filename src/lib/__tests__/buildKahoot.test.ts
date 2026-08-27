@@ -3,6 +3,7 @@ import { buildKahootXlsx } from "@/lib/buildKahoot";
 import type { ContenidoKahoot, ParametrosGuia } from "@/lib/types";
 
 const params: ParametrosGuia = {
+  asignatura: "Tecnología e Informática",
   clei: "III",
   grupoCleiJornada: "6-7/III/SEMANAL 1",
   jornada: "SEMANAL 1",

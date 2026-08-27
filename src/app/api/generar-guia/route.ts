@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   if (!validado.ok) {
     return NextResponse.json({ error: validado.error }, { status: 400 });
   }
-  const params = validado.data;
+  const datosFormulario = validado.data;
 
   // Protección de costo: cuenta este intento aunque termine en error (los
   // reintentos de anthropic.ts también cuestan) — mismo criterio en
@@ -96,6 +96,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: mensajeLimiteAlcanzado() }, { status: 429 });
   }
   await registrarGeneracion(email, "generar-guia");
+
+  // La asignatura nunca la manda el formulario a mano — se resuelve acá
+  // desde el curso elegido (cursos.asignatura_id), la misma fuente de
+  // verdad que ya filtra qué cursos ve cada docente (ver GET /api/catalogo).
+  const [cursoInfo] = datosFormulario.cursoId
+    ? await sql`
+        select a.nombre as asignatura
+        from cursos c join asignaturas a on a.id = c.asignatura_id
+        where c.id = ${datosFormulario.cursoId}
+      `
+    : [];
+  if (!cursoInfo?.asignatura) {
+    return NextResponse.json(
+      { error: "No se pudo determinar la asignatura del curso elegido — vuelve a seleccionar el curso." },
+      { status: 400 }
+    );
+  }
+  const params: ParamsConTipos = { ...datosFormulario, asignatura: cursoInfo.asignatura };
 
   try {
     // Tipos de taller usados en las últimas guías Estándar de este mismo

@@ -20,6 +20,8 @@ export type IconoPaso = (typeof ICONOS_PASOS)[number];
 
 /** Datos que el docente llena en el formulario para UNA guía semanal. */
 export interface ParametrosGuia {
+  /** Nombre real de la asignatura (Español, Matemáticas, Tecnología e Informática...) — resuelto en el servidor desde cursos.asignatura_id, nunca a mano por el docente. Define la identidad del docente-IA y el encabezado del Word. */
+  asignatura: string;
   clei: Clei;
   grupoCleiJornada: string; // ej. "6-7/III/SEMANAL 1"
   jornada: string; // ej. "SEMANAL 1", "SABADO 1"
@@ -194,7 +196,7 @@ export interface ContenidoKahoot {
 
 // ---------------------------------------------------------------------------
 // Exámenes: Diagnóstico (FTO-EDU-FOR-82, al inicio del período, conocimiento
-// general de Tecnología e Informática, sin curso específico) e
+// general de la asignatura elegida, sin curso específico) e
 // Intermedio/Final (FTO-EDU-FOR-98, uno por curso, a mitad y al final de las
 // semanas de ese curso). Selección múltiple con única respuesta, 4 opciones,
 // calificados con la hoja de respuestas tipo óvalos del formato físico.
@@ -209,6 +211,8 @@ export function cantidadPreguntasPorJornada(diasJornada: string): number {
 
 /** Datos que el docente llena en el formulario para UN examen (Diagnóstico, Intermedio o Final). */
 export interface ParametrosExamen {
+  /** Nombre real de la asignatura — resuelto en el servidor: desde cursos.asignatura_id si hay cursoId (Intermedio/Final), o desde el selector de Asignatura del formulario si es Diagnóstico (no tiene curso). */
+  asignatura: string;
   tipo: TipoExamen;
   clei: Clei;
   grupoCleiJornada: string; // ej. "6-7/III/SEMANAL 1"

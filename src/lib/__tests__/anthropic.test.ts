@@ -33,6 +33,7 @@ function textOnlyResponse() {
 }
 
 const paramsGuia: ParametrosGuia = {
+  asignatura: "Tecnología e Informática",
   clei: "III",
   grupoCleiJornada: "6-7/III/SEMANAL 1",
   jornada: "SEMANAL 1",
@@ -228,6 +229,7 @@ describe("generarCuestionarioKahoot", () => {
 });
 
 const paramsExamenBase: ParametrosExamen = {
+  asignatura: "Tecnología e Informática",
   tipo: "diagnostico",
   clei: "III",
   grupoCleiJornada: "6-7/III/SEMANAL 1",

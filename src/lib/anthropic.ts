@@ -43,7 +43,7 @@ const CONTENIDO_TOOL = {
             funcion: { type: "string", description: "Explicación técnica del subtema." },
             pasos: {
               type: "array",
-              description: `SOLO si el subtema es un procedimiento concreto de Windows/Office (ej. "Guardar un documento", "Aplicar negrita") — omite este campo por completo si el subtema es conceptual/explicativo. Cada paso lleva su ícono si corresponde a una de estas acciones: ${ICONOS_PASOS.join(", ")}. Si el paso no corresponde a ninguna, usa "ninguno" — nunca inventes un ícono fuera de esta lista.`,
+              description: `SOLO si el subtema es un procedimiento concreto en una herramienta digital con menús/cinta de opciones (ej. Windows/Office: "Guardar un documento", "Aplicar negrita") — omite este campo por completo si el subtema es conceptual/explicativo, o si la asignatura no usa ese tipo de herramienta (ej. Matemáticas, Español). Cada paso lleva su ícono si corresponde a una de estas acciones: ${ICONOS_PASOS.join(", ")}. Si el paso no corresponde a ninguna, usa "ninguno" — nunca inventes un ícono fuera de esta lista.`,
               items: {
                 type: "object",
                 properties: {
@@ -55,7 +55,7 @@ const CONTENIDO_TOOL = {
             },
             rutaVisual: {
               type: "object",
-              description: "Resumen visual del procedimiento como tira 'pestaña > grupo > opciones' de la cinta real de Word/Excel/PowerPoint (reemplaza la Imagen Representativa en texto). Mismo criterio que 'pasos': agrégalo solo si el subtema es un procedimiento concreto con pasos, y omítelo por completo si es conceptual. Usa los nombres REALES de pestaña y grupo del programa que corresponda al tema (ej. Word: 'Inicio'>'Fuente'/'Párrafo'; Excel: 'Inicio'>'Alineación'; Insertar>'Ilustraciones'/'Tablas'). Las opciones deben ser un subconjunto (2 a 4) de los íconos ya usados en 'pasos' de este mismo subtema, en el orden real en que aparecen en la cinta.",
+              description: "Resumen visual del procedimiento como tira 'pestaña > grupo > opciones' de la cinta real del programa (reemplaza la Imagen Representativa en texto). Mismo criterio que 'pasos': agrégalo solo si el subtema es un procedimiento concreto de una herramienta digital con cinta de opciones (Word/Excel/PowerPoint u otra similar), y omítelo por completo si es conceptual o la asignatura no usa ese tipo de herramienta. Usa los nombres REALES de pestaña y grupo del programa que corresponda al tema (ej. Word: 'Inicio'>'Fuente'/'Párrafo'; Excel: 'Inicio'>'Alineación'; Insertar>'Ilustraciones'/'Tablas'). Las opciones deben ser un subconjunto (2 a 4) de los íconos ya usados en 'pasos' de este mismo subtema, en el orden real en que aparecen en la cinta.",
               properties: {
                 tab: { type: "string", description: "Nombre real de la pestaña de la cinta, ej. 'Inicio', 'Insertar'." },
                 grupo: { type: "string", description: "Nombre real del grupo dentro de esa pestaña, ej. 'Fuente', 'Párrafo', 'Ilustraciones'." },
@@ -143,8 +143,8 @@ const CONTENIDO_TOOL = {
   },
 };
 
-function systemPrompt(): string {
-  return `Actúas como docente experto en Tecnología e Informática del Instituto de
+function systemPrompt(asignatura: string): string {
+  return `Actúas como docente experto en ${asignatura} del Instituto de
 Educación Comfenalco Valle (IECV), programa de Educación Básica y Media por
 Ciclos (CLEI) para jóvenes y adultos, sede Cali. Redactas el contenido
 pedagógico de la Guía de Formación semanal, formato institucional
@@ -183,6 +183,7 @@ function userPrompt(params: ParametrosGuia, talleresRecientes: string[]): string
     : "";
   return `Genera el contenido para la guía de esta semana:
 
+- Asignatura: ${params.asignatura}
 - CLEI: ${params.clei}
 - Jornada: ${params.jornada}
 - Semana No: ${params.semana} / Guía No: ${params.guia}
@@ -218,7 +219,7 @@ export async function generarContenidoGuia(params: ParametrosGuia, talleresRecie
     const message = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 8192,
-      system: systemPrompt(),
+      system: systemPrompt(params.asignatura),
       messages: [{ role: "user", content: userPrompt(params, talleresRecientes) }],
       tools: [CONTENIDO_TOOL],
       tool_choice: { type: "tool", name: "entregar_contenido_guia" },
@@ -466,8 +467,8 @@ const CONTENIDO_KAHOOT_TOOL = {
   },
 };
 
-function systemPromptKahoot(): string {
-  return `Actúas como docente de Tecnología e Informática del IECV creando un
+function systemPromptKahoot(asignatura: string): string {
+  return `Actúas como docente de ${asignatura} del IECV creando un
 cuestionario Kahoot de repaso para la guía de esta semana.
 
 Regla central: las 10 preguntas deben salir EXCLUSIVAMENTE de los conceptos
@@ -531,7 +532,7 @@ export async function generarCuestionarioKahoot(params: ParametrosGuia, contenid
     const message = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 3072,
-      system: systemPromptKahoot(),
+      system: systemPromptKahoot(params.asignatura),
       messages: [{ role: "user", content: userPromptKahoot(params, contenidoEstandar) }],
       tools: [CONTENIDO_KAHOOT_TOOL],
       tool_choice: { type: "tool", name: "entregar_cuestionario_kahoot" },
@@ -575,7 +576,7 @@ function contenidoExamenTool(nombre: string, cantidadPreguntas: number, descripc
             properties: {
               enunciado: {
                 type: "string",
-                description: "Situación/contexto breve seguido de la pregunta puntual, como un párrafo fluido (ej. 'Carlos está elaborando una hoja de cálculo... ¿Con cuál símbolo debe comenzar la fórmula?'). Sin markdown.",
+                description: "Situación/contexto breve seguido de la pregunta puntual, como un párrafo fluido, anclado a una situación laboral o cotidiana real de un adulto en el área de la asignatura (ej. en Tecnología: 'Carlos está elaborando una hoja de cálculo... ¿Con cuál símbolo debe comenzar la fórmula?'; en Matemáticas: 'Ana va a repartir una ganancia entre 3 socios en partes iguales... ¿Qué operación debe usar?'). Sin markdown.",
               },
               opciones: {
                 type: "array",
@@ -621,20 +622,20 @@ function validarContenidoExamen(data: ContenidoExamen, cantidadPreguntas: number
   return faltantes;
 }
 
-function systemPromptDiagnostico(): string {
-  return `Actúas como docente experto en Tecnología e Informática del Instituto de
+function systemPromptDiagnostico(asignatura: string): string {
+  return `Actúas como docente experto en ${asignatura} del Instituto de
 Educación Comfenalco Valle (IECV), programa de Educación Básica y Media por
 Ciclos (CLEI) para jóvenes y adultos, sede Cali. Redactas el Diagnóstico de
 Presaberes (formato FTO-EDU-FOR-82), aplicado el primer día del período,
 ANTES de dictar cualquier contenido del curso.
 
-Regla central: NO evalúas un curso puntual (aún no se ha dictado nada) — evalúas
-conocimiento general y previo de Tecnología e Informática que un adulto
-podría ya tener por experiencia de vida o laboral: qué es la informática,
-componentes básicos de un computador (procesador, monitor, USB, etc.), qué
-hace un sistema operativo, y uso general (no técnico) de Word/Excel/PowerPoint.
-Preguntas de cultura general del área, no de procedimientos específicos de
-ningún programa.
+Regla central: NO evalúas un curso puntual (aún no se ha dictado nada) —
+evalúas conocimiento general y previo de ${asignatura} que un adulto podría
+ya tener por experiencia de vida, laboral o escolar previa a este período —
+nociones y cultura general del área, nunca procedimientos técnicos
+específicos de un tema puntual que todavía no se ha dictado. Elige tú, según
+la asignatura, qué cuenta como "conocimiento general esperado" de un adulto
+en ese campo.
 
 Tono: situaciones cotidianas o laborales de adultos, nunca escolares. Sin
 markdown en los textos. Exactamente 4 opciones por pregunta (A-D), sin
@@ -644,7 +645,7 @@ Entrega el resultado exclusivamente llamando a la herramienta entregar_diagnosti
 }
 
 function userPromptDiagnostico(params: ParametrosExamen, preguntasInput: PreguntaExamenInput[]): string {
-  return `Genera el Diagnóstico de Presaberes de Tecnología e Informática:
+  return `Genera el Diagnóstico de Presaberes de ${params.asignatura}:
 
 - CLEI: ${params.clei}
 - Jornada: ${params.jornada}
@@ -654,7 +655,7 @@ function userPromptDiagnostico(params: ParametrosExamen, preguntasInput: Pregunt
 ${lineaImagenesPreguntas(preguntasInput, params.cantidadPreguntas)}`;
 }
 
-/** Diagnóstico de Presaberes — sin curso específico, conocimiento general de Tecnología e Informática. */
+/** Diagnóstico de Presaberes — sin curso específico, conocimiento general de la asignatura elegida. */
 export async function generarContenidoDiagnostico(
   params: ParametrosExamen,
   preguntasInput: PreguntaExamenInput[] = []
@@ -674,7 +675,7 @@ export async function generarContenidoDiagnostico(
     const message = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 4096,
-      system: systemPromptDiagnostico(),
+      system: systemPromptDiagnostico(params.asignatura),
       messages: [{ role: "user", content: userPromptDiagnostico(params, preguntasInput) }],
       tools: [tool],
       tool_choice: { type: "tool", name: "entregar_diagnostico" },
@@ -699,12 +700,12 @@ export async function generarContenidoDiagnostico(
   throw ultimoError ?? new Error("No se pudo generar el diagnóstico.");
 }
 
-function systemPromptExamen(tipo: "intermedio" | "final"): string {
+function systemPromptExamen(tipo: "intermedio" | "final", asignatura: string): string {
   const alcance = tipo === "intermedio"
     ? "Cubre SOLO los temas ya vistos hasta la fecha de este examen (los que te paso abajo) — nunca temas del curso que aún no se han dictado."
     : "Es el examen FINAL del curso — debe cubrir de forma equilibrada TODOS los temas vistos durante el curso completo (los que te paso abajo), sin concentrarse solo en los últimos.";
 
-  return `Actúas como docente experto en Tecnología e Informática del Instituto de
+  return `Actúas como docente experto en ${asignatura} del Instituto de
 Educación Comfenalco Valle (IECV), programa de Educación Básica y Media por
 Ciclos (CLEI) para jóvenes y adultos, sede Cali. Redactas el Instrumento de
 Evaluación (formato FTO-EDU-FOR-98, tipo de prueba "${tipo === "intermedio" ? "Intermedio" : "Final"}").
@@ -728,6 +729,7 @@ function userPromptExamen(params: ParametrosExamen, preguntasInput: PreguntaExam
     : "(sin temas registrados en el catálogo — usa el nombre del curso como única referencia)";
   return `Genera el examen ${params.tipo === "intermedio" ? "Intermedio" : "Final"} de ${params.cursoNombre ?? "este curso"}:
 
+- Asignatura: ${params.asignatura}
 - CLEI: ${params.clei}
 - Jornada: ${params.jornada}
 - Cantidad de preguntas: ${params.cantidadPreguntas}
@@ -765,7 +767,7 @@ export async function generarContenidoExamen(
     const message = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 4096,
-      system: systemPromptExamen(params.tipo),
+      system: systemPromptExamen(params.tipo, params.asignatura),
       messages: [{ role: "user", content: userPromptExamen(params, preguntasInput, temasCubiertos) }],
       tools: [tool],
       tool_choice: { type: "tool", name: "entregar_examen" },

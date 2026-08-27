@@ -405,7 +405,7 @@ export default function Home() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Generador de Guía de Formación — IECV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tecnología e Informática · CLEI III–VI · FTO-EDU-FOR-96 V3
+          CLEI III–VI · FTO-EDU-FOR-96 V3
         </p>
       </div>
 

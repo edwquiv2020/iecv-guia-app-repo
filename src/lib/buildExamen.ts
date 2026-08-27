@@ -192,8 +192,8 @@ async function buildExamenBase(params: ParametrosExamen, contenido: ContenidoExa
 
   children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
   const infoLinea = opts.tipoPruebaLinea
-    ? `Área o Asignatura: Tecnología e Informática                                          ${opts.tipoPruebaLinea}`
-    : "Área o Asignatura: Tecnología e Informática";
+    ? `Área o Asignatura: ${params.asignatura}                                          ${opts.tipoPruebaLinea}`
+    : `Área o Asignatura: ${params.asignatura}`;
   children.push(p(infoLinea, { after: 160, align: AlignmentType.LEFT }));
   children.push(buildStudentTable(params, opts.conNota));
   children.push(new Paragraph({ text: "", spacing: { after: 200 } }));

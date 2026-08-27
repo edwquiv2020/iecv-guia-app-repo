@@ -188,7 +188,7 @@ function buildHeader(params: ParametrosGuia, logoBuf: Buffer) {
               new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "INSTITUTO DE EDUCACIÓN COMFENALCO VALLE", font: FONT, size: 20, bold: true })] }),
               new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "EDUCACIÓN BÁSICA y MEDIA POR CICLOS (CLEI)", font: FONT, size: 20, bold: true })] }),
               new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: `SEMANA No ${params.semana} / ${params.fechaClase} /   GUÍA DE FORMACIÓN No ${params.guia}`, font: FONT, size: 20, bold: true })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: "ASIGNATURA TECNOLOGIA E INFORMATICA", font: FONT, size: 20, bold: true })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [new TextRun({ text: `ASIGNATURA ${params.asignatura.toUpperCase()}`, font: FONT, size: 20, bold: true })] }),
               new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: `NOMBRE DE LA GUÍA ${params.tema}`, font: FONT, size: 20, bold: true })] }),
             ],
           }),
