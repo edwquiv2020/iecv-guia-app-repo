@@ -38,9 +38,12 @@ await sql`
   on conflict (slug) do nothing
 `;
 
-// Los cursos (temas/módulos generables) todavía solo existen para
-// Tecnología e Informática — las demás asignaturas quedan en el catálogo
-// para asociar docentes, sin cursos propios todavía.
+// Los cursos (temas/módulos generables) casi todos son de Tecnología e
+// Informática todavía — "Fundamentos de Matemáticas" es el primer curso de
+// otra asignatura, con temas cargados vía
+// `node db/seed_temas.mjs fundamentos-matematicas db/malla_fundamentos_matematicas.json`
+// (esa malla es un borrador de IA: url_video/archivo_kahoot llegan en null,
+// pendientes de que un humano los complete antes de usarse con estudiantes).
 await sql`
   insert into cursos (slug, nombre, asignatura_id) values
     ('computadores', 'Computadores', (select id from asignaturas where slug = 'tecnologia-e-informatica')),
@@ -49,7 +52,8 @@ await sql`
     ('word', 'Microsoft Word', (select id from asignaturas where slug = 'tecnologia-e-informatica')),
     ('excel', 'Microsoft Excel', (select id from asignaturas where slug = 'tecnologia-e-informatica')),
     ('powerpoint', 'Microsoft PowerPoint', (select id from asignaturas where slug = 'tecnologia-e-informatica')),
-    ('canva', 'Canva', (select id from asignaturas where slug = 'tecnologia-e-informatica'))
+    ('canva', 'Canva', (select id from asignaturas where slug = 'tecnologia-e-informatica')),
+    ('fundamentos-matematicas', 'Fundamentos de Matemáticas', (select id from asignaturas where slug = 'matematicas'))
   on conflict (slug) do nothing
 `;
 

@@ -1,0 +1,142 @@
+[
+  {
+    "numero": 1,
+    "tema": "Números naturales y operaciones básicas",
+    "subtemas": "Lectura y escritura de números naturales; suma, resta, multiplicación y división; jerarquía de operaciones (orden en que se resuelven).",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 2,
+    "tema": "Números enteros",
+    "subtemas": "Números positivos y negativos; la recta numérica; suma y resta con signos; situaciones cotidianas con enteros (deudas, temperaturas, niveles).",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 3,
+    "tema": "Fracciones: concepto y clasificación",
+    "subtemas": "Qué es una fracción (parte de un todo); fracciones propias, impropias y mixtas; simplificación y fracciones equivalentes.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 4,
+    "tema": "Operaciones con fracciones",
+    "subtemas": "Suma y resta de fracciones (mismo y distinto denominador); multiplicación y división de fracciones.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 5,
+    "tema": "Números decimales",
+    "subtemas": "Lectura y escritura de decimales; ubicación en la recta numérica; comparación de decimales.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 6,
+    "tema": "Operaciones con decimales",
+    "subtemas": "Suma, resta, multiplicación y división de números decimales; aplicación en cuentas de dinero.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 7,
+    "tema": "Relación entre fracciones, decimales y porcentajes",
+    "subtemas": "Cómo convertir una fracción en decimal y en porcentaje, y viceversa; tabla de equivalencias más usadas.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 8,
+    "tema": "Porcentajes",
+    "subtemas": "Cálculo del porcentaje de una cantidad; aumentos y descuentos porcentuales; aplicación en compras, rebajas e impuestos.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 9,
+    "tema": "Razones y proporciones",
+    "subtemas": "Qué es una razón; proporción directa; regla de tres simple aplicada a situaciones de la vida diaria (recetas, mezclas, escalas).",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 10,
+    "tema": "Potenciación y radicación",
+    "subtemas": "Concepto de potencia (base y exponente); propiedades básicas de la potenciación; raíz cuadrada de números perfectos.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 11,
+    "tema": "Introducción al álgebra",
+    "subtemas": "Qué es una variable; lectura de expresiones algebraicas simples; traducir una situación cotidiana a una expresión algebraica.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 12,
+    "tema": "Ecuaciones de primer grado",
+    "subtemas": "Qué es una ecuación; despeje de la incógnita; solución de ecuaciones simples de una variable.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 13,
+    "tema": "Aplicación de ecuaciones a problemas cotidianos",
+    "subtemas": "Plantear una ecuación a partir de un problema en palabras (repartos, edades, gastos) y resolverlo.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 14,
+    "tema": "Unidades de medida y conversiones",
+    "subtemas": "Unidades de longitud, peso y capacidad más usadas; conversión entre unidades (ej. metros a centímetros, kilos a gramos).",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 15,
+    "tema": "Perímetro de figuras planas",
+    "subtemas": "Qué es el perímetro; cálculo del perímetro de cuadrado, rectángulo, triángulo y círculo; aplicación a cercar o enmarcar un espacio.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 16,
+    "tema": "Área de figuras planas",
+    "subtemas": "Qué es el área; fórmulas de área de cuadrado, rectángulo, triángulo y círculo; aplicación a pintar o cubrir una superficie.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 17,
+    "tema": "Volumen de cuerpos geométricos",
+    "subtemas": "Qué es el volumen; fórmulas de volumen de cubo, prisma rectangular y cilindro; aplicación a la capacidad de un recipiente.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 18,
+    "tema": "Estadística descriptiva: recolección y organización de datos",
+    "subtemas": "Qué es una variable estadística; tablas de frecuencia; lectura e interpretación de gráficas de barras y circulares.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 19,
+    "tema": "Medidas de tendencia central",
+    "subtemas": "Media (promedio), mediana y moda; cuándo usar cada una; cálculo a partir de un conjunto de datos cotidianos.",
+    "url_video": null,
+    "archivo_kahoot": null
+  },
+  {
+    "numero": 20,
+    "tema": "Matemática financiera básica",
+    "subtemas": "Interés simple; elaboración de un presupuesto personal; ahorro y planeación de gastos como aplicación de porcentajes y proporciones.",
+    "url_video": null,
+    "archivo_kahoot": null
+  }
+]
