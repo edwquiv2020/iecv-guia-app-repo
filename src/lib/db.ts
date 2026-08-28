@@ -32,7 +32,12 @@ const rawSql =
 
 if (process.env.NODE_ENV !== "production") global._sql = rawSql;
 
-const TIMEOUT_CONSULTA_MS = 15_000;
+// Bajado de 15s a 8s: confirmado (status.supabase.com) que hay un incidente
+// activo del pooler en us-east-1 al momento de escribir esto — con el
+// incidente en curso, a veces hasta el reintento se cuelga, así que cada
+// intento individual necesita fallar más rápido para que 2-3 intentos
+// sigan siendo una espera razonable para quien usa la app.
+const TIMEOUT_CONSULTA_MS = 8_000;
 
 /**
  * Pasó de verdad: un login se quedó colgado 5 minutos hasta que Railway
@@ -63,19 +68,26 @@ export const sql = new Proxy(rawSql, {
 }) as typeof rawSql;
 
 /**
- * Reintenta UNA vez si falla — para operaciones de SOLO LECTURA (o
- * escrituras ya protegidas con `on conflict`, donde repetir es inofensivo).
- * Confirmado en producción: cuando el pooler da una conexión zombie, la
- * siguiente casi siempre sale limpia. No usar para escrituras no
- * idempotentes (ej. un insert sin `on conflict` que no tenga una
- * restricción única detrás) — ahí un reintento después de un timeout
- * ambiguo (¿de verdad no se guardó, o solo no llegó la confirmación?)
- * podría duplicar la fila.
+ * Reintenta si falla (2 intentos extra, con una pequeña espera creciente
+ * entre cada uno para no golpear un pooler ya saturado en el mismo
+ * instante) — para operaciones de SOLO LECTURA (o escrituras ya protegidas
+ * con `on conflict`, donde repetir es inofensivo). Confirmado en
+ * producción: normalmente un solo reintento basta, pero con un incidente
+ * activo del pooler (ver status.supabase.com) a veces hace falta más de
+ * uno. No usar para escrituras no idempotentes (ej. un insert sin
+ * `on conflict` que no tenga una restricción única detrás) — ahí un
+ * reintento después de un timeout ambiguo (¿de verdad no se guardó, o solo
+ * no llegó la confirmación?) podría duplicar la fila.
  */
-export async function conReintento<T>(fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch {
-    return await fn();
+export async function conReintento<T>(fn: () => Promise<T>, intentos = 3): Promise<T> {
+  let ultimoError: unknown;
+  for (let i = 0; i < intentos; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 300 * i));
+    try {
+      return await fn();
+    } catch (err) {
+      ultimoError = err;
+    }
   }
+  throw ultimoError;
 }

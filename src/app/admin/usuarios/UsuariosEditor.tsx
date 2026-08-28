@@ -39,11 +39,32 @@ function SelectorAsignaturas({
   asignaturas,
   seleccionadas,
   onToggle,
+  cargando,
+  error,
+  onReintentar,
 }: {
   asignaturas: Asignatura[];
   seleccionadas: string[];
   onToggle: (asignaturaId: string) => void;
+  cargando?: boolean;
+  error?: string | null;
+  onReintentar?: () => void;
 }) {
+  if (cargando) {
+    return <p className="text-sm text-muted-foreground">Cargando asignaturas…</p>;
+  }
+  if (error) {
+    return (
+      <div className="flex items-center gap-3">
+        <p className="text-sm text-danger">{error}</p>
+        {onReintentar && (
+          <Button type="button" variant="outline" size="sm" onClick={onReintentar}>
+            Reintentar
+          </Button>
+        )}
+      </div>
+    );
+  }
   if (asignaturas.length === 0) {
     return <p className="text-sm text-muted-foreground">No hay asignaturas en el catálogo todavía.</p>;
   }
@@ -66,6 +87,8 @@ function SelectorAsignaturas({
 export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
+  const [cargandoAsignaturas, setCargandoAsignaturas] = useState(true);
+  const [errorAsignaturas, setErrorAsignaturas] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -95,14 +118,31 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
 
   // El catálogo completo de asignaturas para las casillas (no se filtra por
   // docente — eso solo aplica a los cursos que desbloquea cada asignatura).
-  useEffect(() => {
+  // El pooler de la base a veces da una conexión zombie (ver lib/db.ts) —
+  // si /api/catalogo falla, se distingue de "no hay asignaturas" con un
+  // mensaje y botón de reintentar, en vez de dejar las casillas vacías en
+  // silencio (eso fue justo lo que pasó: pareció que no había nada que
+  // asignar, y guardar así mandó una lista vacía).
+  function cargarAsignaturas() {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { asignaturas: Asignatura[] }) => setAsignaturas(data.asignaturas))
-      .catch(() => {
-        // No bloquea la pantalla — solo no se podrán asignar asignaturas hasta recargar.
-      });
-  }, []);
+      .then((data: { asignaturas?: Asignatura[]; error?: string }) => {
+        if (!data.asignaturas) throw new Error(data.error || "Respuesta inválida del catálogo.");
+        setAsignaturas(data.asignaturas);
+      })
+      .catch(() => setErrorAsignaturas("No se pudo cargar el catálogo de asignaturas."))
+      .finally(() => setCargandoAsignaturas(false));
+  }
+  useEffect(cargarAsignaturas, []);
+
+  // Handler del botón "Reintentar" — a diferencia de la carga inicial (que
+  // ya arranca en cargando=true/error=null por el estado inicial), acá sí
+  // hay que resetear a mano antes de repetir el fetch.
+  function reintentarAsignaturas() {
+    setCargandoAsignaturas(true);
+    setErrorAsignaturas(null);
+    cargarAsignaturas();
+  }
 
   function nombresAsignaturas(asignaturaIds: string[]): string[] {
     return asignaturaIds
@@ -241,6 +281,9 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
               <SelectorAsignaturas
                 asignaturas={asignaturas}
                 seleccionadas={form.asignaturaIds}
+                cargando={cargandoAsignaturas}
+                error={errorAsignaturas}
+                onReintentar={reintentarAsignaturas}
                 onToggle={(asignaturaId) =>
                   setForm((prev) => ({
                     ...prev,
@@ -353,6 +396,9 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
           <SelectorAsignaturas
             asignaturas={asignaturas}
             seleccionadas={asignaturasEnEdicion}
+            cargando={cargandoAsignaturas}
+            error={errorAsignaturas}
+            onReintentar={reintentarAsignaturas}
             onToggle={(asignaturaId) =>
               setAsignaturasEnEdicion((prev) =>
                 prev.includes(asignaturaId) ? prev.filter((id) => id !== asignaturaId) : [...prev, asignaturaId]
@@ -363,7 +409,13 @@ export default function UsuariosEditor({ sesionEmail }: { sesionEmail: string })
             <Button type="button" variant="outline" size="sm" onClick={() => setEditando(null)}>
               Cancelar
             </Button>
-            <Button type="button" size="sm" onClick={guardarAsignaturas} disabled={actualizandoEmail === editando?.email}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={guardarAsignaturas}
+              disabled={actualizandoEmail === editando?.email || cargandoAsignaturas || !!errorAsignaturas}
+              title={errorAsignaturas ? "Espera a que cargue el catálogo antes de guardar." : undefined}
+            >
               {actualizandoEmail === editando?.email ? "Guardando…" : "Guardar asignaturas"}
             </Button>
           </DialogFooter>
