@@ -20,7 +20,12 @@ const rawSql =
     ssl: "require",
     max: 5,
     idle_timeout: 20,
-    max_lifetime: 60 * 30,
+    // Bajado de 30 min: si una conexión del pool queda zombie a mitad de
+    // consulta, idle_timeout no la toca (no está "sin uso", está "colgada
+    // esperando"), así que la única forma de que se autorrepare es que
+    // termine su vida y se reemplace. 5 min acota cuánto puede durar el
+    // problema en vez de arrastrarse toda la vida del contenedor.
+    max_lifetime: 60 * 5,
     connect_timeout: 10,
     connection: { statement_timeout: 10_000 },
   });
@@ -56,3 +61,21 @@ export const sql = new Proxy(rawSql, {
     ]);
   },
 }) as typeof rawSql;
+
+/**
+ * Reintenta UNA vez si falla — para operaciones de SOLO LECTURA (o
+ * escrituras ya protegidas con `on conflict`, donde repetir es inofensivo).
+ * Confirmado en producción: cuando el pooler da una conexión zombie, la
+ * siguiente casi siempre sale limpia. No usar para escrituras no
+ * idempotentes (ej. un insert sin `on conflict` que no tenga una
+ * restricción única detrás) — ahí un reintento después de un timeout
+ * ambiguo (¿de verdad no se guardó, o solo no llegó la confirmación?)
+ * podría duplicar la fila.
+ */
+export async function conReintento<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    return await fn();
+  }
+}

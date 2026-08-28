@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, conReintento } from "@/lib/db";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -11,16 +11,22 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado — se requiere rol admin." }, { status: 403 });
   }
 
-  const usuarios = await sql`
-    select
-      u.email, u.nombre, u.activo, u.rol, u.created_at,
-      coalesce(array_agg(da.asignatura_id) filter (where da.asignatura_id is not null), '{}') as "asignaturaIds"
-    from usuarios_autorizados u
-    left join docente_asignaturas da on da.email = u.email
-    group by u.email, u.nombre, u.activo, u.rol, u.created_at
-    order by u.created_at
-  `;
-  return NextResponse.json({ usuarios });
+  try {
+    // Solo lectura — un reintento es seguro (ver conReintento en lib/db.ts).
+    const usuarios = await conReintento(() => sql`
+      select
+        u.email, u.nombre, u.activo, u.rol, u.created_at,
+        coalesce(array_agg(da.asignatura_id) filter (where da.asignatura_id is not null), '{}') as "asignaturaIds"
+      from usuarios_autorizados u
+      left join docente_asignaturas da on da.email = u.email
+      group by u.email, u.nombre, u.activo, u.rol, u.created_at
+      order by u.created_at
+    `);
+    return NextResponse.json({ usuarios });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error desconocido cargando los docentes.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 interface UsuarioInput {
