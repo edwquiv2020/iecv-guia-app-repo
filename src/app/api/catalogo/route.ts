@@ -4,11 +4,7 @@ import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await auth();
-  const esAdmin = session?.user?.rol === "admin";
-  const email = session?.user?.email?.toLowerCase() ?? "";
-
+async function cargarCatalogo(esAdmin: boolean, email: string) {
   const [ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas] = await Promise.all([
     sql`select id, slug, nombre, grados from ciclos where activo order by nombre`,
     // Nota: curso_ciclos todavía no tiene filas cargadas, así que por ahora
@@ -42,5 +38,26 @@ export async function GET() {
           order by a.nombre
         `,
   ]);
-  return NextResponse.json({ ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas });
+  return { ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas };
+}
+
+export async function GET() {
+  const session = await auth();
+  const esAdmin = session?.user?.rol === "admin";
+  const email = session?.user?.email?.toLowerCase() ?? "";
+
+  // Son 5 SELECT de solo lectura en paralelo — si el pooler de Supabase da
+  // una conexión zombie (ver src/lib/db.ts), un solo reintento casi siempre
+  // basta (confirmado en producción: la siguiente conexión suele salir
+  // limpia). No hay riesgo de duplicar nada porque no escribe.
+  try {
+    return NextResponse.json(await cargarCatalogo(esAdmin, email));
+  } catch {
+    try {
+      return NextResponse.json(await cargarCatalogo(esAdmin, email));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido cargando el catálogo.";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
 }
