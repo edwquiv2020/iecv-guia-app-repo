@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import type { Clei, TipoExamen } from "@/lib/types";
-import { cantidadPreguntasPorJornada } from "@/lib/types";
+import { agruparPorAsignatura, cantidadPreguntasPorJornada } from "@/lib/types";
 import { Alert, Button, Field, Fieldset, Input, Select } from "@/components/ui";
 
 function formatearFechaLarga(iso: string): string {
@@ -13,7 +13,7 @@ function formatearFechaLarga(iso: string): string {
 }
 
 interface Ciclo { id: string; slug: string; nombre: string; grados: string[] }
-interface Curso { id: string; slug: string; nombre: string }
+interface Curso { id: string; slug: string; nombre: string; asignaturaNombre: string | null }
 interface Asignatura { id: string; slug: string; nombre: string }
 interface Jornada { id: string; slug: string; nombre: string; dias: string }
 interface Actividad { id: string; nombre: string }
@@ -342,7 +342,11 @@ export default function Examenes() {
             {(id) => (
               <Select id={id} value={cursoId} onChange={(e) => setCursoId(e.target.value)} required>
                 <option value="" disabled>Selecciona un curso…</option>
-                {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                {agruparPorAsignatura(cursos).map((grupo) => (
+                  <optgroup key={grupo.asignatura} label={grupo.asignatura}>
+                    {grupo.items.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </optgroup>
+                ))}
               </Select>
             )}
           </Field>

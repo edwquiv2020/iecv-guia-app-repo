@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import type { Clei } from "@/lib/types";
+import { agruparPorAsignatura } from "@/lib/types";
 import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
 
 function formatearFechas(iso: string): { corta: string; larga: string } {
@@ -21,6 +22,7 @@ interface Curso {
   id: string;
   slug: string;
   nombre: string;
+  asignaturaNombre: string | null;
 }
 interface Tema {
   id: string;
@@ -483,8 +485,12 @@ export default function Home() {
               <>
                 <Select id={id} value={cursoId} onChange={(e) => setCursoId(e.target.value)} required>
                   <option value="" disabled>Selecciona un curso…</option>
-                  {cursos.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  {agruparPorAsignatura(cursos).map((grupo) => (
+                    <optgroup key={grupo.asignatura} label={grupo.asignatura}>
+                      {grupo.items.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </Select>
                 {!semanaProgramadaId && cursoId && calendarioFilas.some((f) => f.curso_id === cursoId) && (

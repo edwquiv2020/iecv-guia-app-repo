@@ -18,6 +18,31 @@ export const ICONOS_PASOS = [
 ] as const;
 export type IconoPaso = (typeof ICONOS_PASOS)[number];
 
+/**
+ * Agrupa cursos (u otros ítems con `asignaturaNombre`, ej. el catálogo de
+ * /api/catalogo) por asignatura, para selects de curso largos — usado en
+ * page.tsx, examenes/page.tsx, horarios/page.tsx y admin/mallas. Grupos
+ * ordenados alfabéticamente; el orden de los cursos dentro de cada grupo
+ * es el que ya trae el arreglo de entrada (la consulta SQL ya los entrega
+ * ordenados por nombre). Sin esto, un selector plano se vuelve ilegible a
+ * medida que se cargan cursos de más asignaturas (hoy Tecnología e
+ * Informática, mañana Matemáticas, Español, etc.).
+ */
+export function agruparPorAsignatura<T extends { asignaturaNombre: string | null }>(
+  items: T[]
+): Array<{ asignatura: string; items: T[] }> {
+  const grupos = new Map<string, T[]>();
+  for (const item of items) {
+    const clave = item.asignaturaNombre ?? "Sin asignatura";
+    const lista = grupos.get(clave);
+    if (lista) lista.push(item);
+    else grupos.set(clave, [item]);
+  }
+  return [...grupos.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([asignatura, items]) => ({ asignatura, items }));
+}
+
 /** Datos que el docente llena en el formulario para UNA guía semanal. */
 export interface ParametrosGuia {
   /** Nombre real de la asignatura (Español, Matemáticas, Tecnología e Informática...) — resuelto en el servidor desde cursos.asignatura_id, nunca a mano por el docente. Define la identidad del docente-IA y el encabezado del Word. */

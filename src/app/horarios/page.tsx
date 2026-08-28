@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Field, Fieldset, Input, Select } from "@/components/ui";
+import { agruparPorAsignatura } from "@/lib/types";
 
 interface Ciclo { id: string; nombre: string; grados: string[] }
 interface Jornada { id: string; nombre: string; dias: string }
-interface Curso { id: string; nombre: string }
+interface Curso { id: string; nombre: string; asignaturaNombre: string | null }
 interface Actividad { id: string; nombre: string }
 interface ArchivoGuia { id: string; nombre: string }
 interface FilaExistente {
@@ -339,7 +340,11 @@ export default function Horarios() {
                   {(id) => (
                     <Select id={id} value={autoCursoId} onChange={(e) => setAutoCursoId(e.target.value)}>
                       <option value="" disabled>Selecciona un curso…</option>
-                      {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      {agruparPorAsignatura(cursos).map((grupo) => (
+                        <optgroup key={grupo.asignatura} label={grupo.asignatura}>
+                          {grupo.items.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        </optgroup>
+                      ))}
                     </Select>
                   )}
                 </Field>
@@ -408,7 +413,11 @@ export default function Horarios() {
                       onChange={(e) => actualizarFilaManual(i, "cursoId", e.target.value)}
                     >
                       <option value="">Curso (opcional)…</option>
-                      {cursos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      {agruparPorAsignatura(cursos).map((grupo) => (
+                        <optgroup key={grupo.asignatura} label={grupo.asignatura}>
+                          {grupo.items.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        </optgroup>
+                      ))}
                     </Select>
                     <Input
                       type="number"

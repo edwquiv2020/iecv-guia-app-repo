@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
+import { agruparPorAsignatura } from "@/lib/types";
 
 interface Curso {
   id: string;
   nombre: string;
+  asignaturaNombre: string | null;
 }
 
 interface Tema {
@@ -313,8 +315,12 @@ export default function MallasEditor() {
           }}
         >
           <option value="">— Selecciona un curso —</option>
-          {cursos.map((c) => (
-            <option key={c.id} value={c.id}>{c.nombre}</option>
+          {agruparPorAsignatura(cursos).map((grupo) => (
+            <optgroup key={grupo.asignatura} label={grupo.asignatura}>
+              {grupo.items.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </optgroup>
           ))}
         </Select>
       </Fieldset>
