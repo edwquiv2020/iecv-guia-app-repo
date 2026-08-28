@@ -9,7 +9,12 @@ declare global {
 // máquina se suspende o cambia de red — sin esto, una consulta puede quedar
 // colgada para siempre en vez de fallar con un error visible.
 // connect_timeout: si abrir una conexión nueva falla, falla rápido.
-export const sql =
+// statement_timeout: se conecta al pooler de Supabase (pgbouncer, puerto
+// 6543) — cuando el POSTGRES REAL sí llega a ejecutar la consulta pero se
+// demora, esto la mata a los 10s. No cubre el caso confirmado abajo (el
+// pooler nunca llega a pasarle la consulta a un backend), por eso se
+// complementa con el timeout de aplicación.
+const rawSql =
   global._sql ??
   postgres(process.env.DATABASE_URL!, {
     ssl: "require",
@@ -17,6 +22,37 @@ export const sql =
     idle_timeout: 20,
     max_lifetime: 60 * 30,
     connect_timeout: 10,
+    connection: { statement_timeout: 10_000 },
   });
 
-if (process.env.NODE_ENV !== "production") global._sql = sql;
+if (process.env.NODE_ENV !== "production") global._sql = rawSql;
+
+const TIMEOUT_CONSULTA_MS = 15_000;
+
+/**
+ * Pasó de verdad: un login se quedó colgado 5 minutos hasta que Railway
+ * cortó la conexión (HTTP 499) — el pooler de Supabase aceptó la conexión
+ * pero nunca llegó a pasarle la consulta a un backend real, así que ni
+ * `statement_timeout` (que solo cuenta tiempo de ejecución) ni
+ * `idle_timeout` (que solo recicla conexiones sin uso) se enteraron. postgres.js
+ * no trae un timeout por consulta — este Proxy envuelve cada llamada
+ * `` sql`...` `` en una carrera contra un timeout de aplicación, para que
+ * cualquier ruta que use la base falle rápido y visible en vez de colgar al
+ * usuario varios minutos. Envuelve solo la LLAMADA como template tag
+ * (`sql\`...\``, el 99% del uso real en este proyecto); sql.json/sql.unsafe/
+ * sql.begin siguen intactos vía el `get` trap por defecto del Proxy.
+ */
+export const sql = new Proxy(rawSql, {
+  apply(target, thisArg, args: Parameters<typeof rawSql>) {
+    const query = Reflect.apply(target, thisArg, args);
+    return Promise.race([
+      query,
+      new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error(`La base de datos no respondió en ${TIMEOUT_CONSULTA_MS / 1000}s (posible conexión zombie con el pooler) — vuelve a intentarlo.`)),
+          TIMEOUT_CONSULTA_MS
+        );
+      }),
+    ]);
+  },
+}) as typeof rawSql;
