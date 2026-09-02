@@ -4,6 +4,8 @@
 -- (calendario_clases) que asigna un tema a una fecha/ciclo/jornada concretos.
 
 drop table if exists generaciones_log cascade;
+drop table if exists seguimiento_registros cascade;
+drop table if exists estudiantes cascade;
 drop table if exists docente_asignaturas cascade;
 drop table if exists usuarios_autorizados cascade;
 drop table if exists guia_archivos cascade;
@@ -209,3 +211,56 @@ create index temas_curso_idx on temas (curso_id, numero);
 create index calendario_clases_lookup_idx on calendario_clases (ciclo_id, jornada_id, semana_academica);
 create index guia_archivos_guia_idx on guia_archivos (guia_id);
 create index generaciones_log_email_ruta_idx on generaciones_log (email, ruta, created_at);
+
+-- Seguimiento de estudiantes: aspectos personales y sociales por fuera de
+-- lo cognitivo (puntualidad, presentación, convivencia...), calificados de
+-- 1 a 5 clase a clase — ver src/lib/seguimiento.ts para la lista fija de
+-- criterios y la agregación en nota definitiva por período. Privado por
+-- docente: docente_email en ambas tablas, nunca compartido entre cuentas
+-- (a diferencia del catálogo académico de arriba).
+create table estudiantes (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  ciclo_id uuid references ciclos(id),
+  jornada_id uuid references jornadas(id),
+  docente_email text not null references usuarios_autorizados(email) on delete cascade,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Un registro = una clase puntual para un estudiante, no una evaluación de
+-- período completo — el docente va calificando clase a clase (incluso
+-- parcial, no los 10 criterios siempre) y la nota definitiva de un período
+-- se calcula agregando todos sus registros con ese `periodo` (ver
+-- agregarRegistros en src/lib/seguimiento.ts). `periodo` es texto libre
+-- (ej. "Periodo 2 · 2026"), no una tabla de catálogo — se agrupa por su
+-- valor literal, igual que hoy se agrupan las guías por semana_academica.
+create table seguimiento_registros (
+  id uuid primary key default gen_random_uuid(),
+  estudiante_id uuid not null references estudiantes(id) on delete cascade,
+  periodo text not null,
+  fecha date not null,
+  docente_email text not null references usuarios_autorizados(email) on delete cascade,
+  puntualidad smallint check (puntualidad between 1 and 5),
+  presentacion smallint check (presentacion between 1 and 5),
+  asistencia smallint check (asistencia between 1 and 5),
+  responsabilidad smallint check (responsabilidad between 1 and 5),
+  participacion smallint check (participacion between 1 and 5),
+  comunicacion smallint check (comunicacion between 1 and 5),
+  convivencia smallint check (convivencia between 1 and 5),
+  conducto smallint check (conducto between 1 and 5),
+  relacionamiento smallint check (relacionamiento between 1 and 5),
+  pertenencia smallint check (pertenencia between 1 and 5),
+  nota text,
+  created_at timestamptz not null default now(),
+  constraint seguimiento_registros_algun_criterio check (
+    num_nonnulls(
+      puntualidad, presentacion, asistencia, responsabilidad, participacion,
+      comunicacion, convivencia, conducto, relacionamiento, pertenencia
+    ) > 0
+  )
+);
+
+create index estudiantes_docente_idx on estudiantes (docente_email);
+create index seguimiento_registros_estudiante_periodo_idx on seguimiento_registros (estudiante_id, periodo);
+create index seguimiento_registros_docente_idx on seguimiento_registros (docente_email);
