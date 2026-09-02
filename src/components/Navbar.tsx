@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Generar guía" },
   { href: "/examenes", label: "Exámenes" },
   { href: "/horarios", label: "Horarios" },
+  { href: "/seguimiento", label: "Seguimiento" },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [

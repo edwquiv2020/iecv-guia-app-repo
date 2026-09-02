@@ -60,6 +60,22 @@ contenido pedagógico, igual que hacía la skill en el chat.
   sin tocar la base de datos a mano. Con guardia explícita: nadie puede
   desactivarse ni quitarse el rol admin a sí mismo, para no bloquear el
   acceso por accidente.
+- **Seguimiento de estudiantes** (`/seguimiento`): registro clase a clase
+  de 10 aspectos personales y sociales (puntualidad, presentación,
+  asistencia, responsabilidad, participación; comunicación, convivencia,
+  conducto regular, relacionamiento, sentido de pertenencia — ver
+  `src/lib/seguimiento.ts`), cada uno de 1 a 5. Un registro de clase puede
+  traer solo algunos criterios (el flujo normal es "una clase a la vez");
+  al cierre de un período, la nota definitiva de cada estudiante se
+  calcula automáticamente promediando todo lo registrado en ese período
+  (`agregarRegistros`, usado tanto en pantalla como en la exportación a
+  CSV). **Privado por docente**: cada estudiante y cada registro quedan
+  asociados a quien los creó (`docente_email`) — un docente nunca ve ni
+  puede tocar los estudiantes de otro, sin necesidad de rol admin. No hay
+  edición in-place de un registro de clase: corregir uno equivocado es
+  borrarlo y crear uno nuevo, para que el historial no oculte qué se
+  cambió.
+
 - **Sincronización de mallas desde Google Drive** (botón "Sincronizar
   desde Drive" en `/admin/mallas`, ver sección propia abajo): el admin
   elige explícitamente el archivo/pestaña de `01_MALLAS_CONTENIDO/` (no
@@ -81,6 +97,12 @@ CI: lint, typecheck, tests y build en cada push/PR (`.github/workflows/ci.yml`).
    `02_GUIAS_GENERADAS/` en Drive.
 2. **Subida automática a Kahoot/Moodle.** Fuera de alcance a propósito —
    la app entrega el kit de subida manual, nunca sube nada por su cuenta.
+3. **Sugerencia de calificación por IA en Seguimiento.** El prototipo
+   inicial (una Bitácora del Estudiante hecha como artifact independiente)
+   tenía un botón para pedirle a la IA una sugerencia de puntaje a partir
+   de una nota libre. Se dejó fuera de esta primera versión nativa a
+   propósito: la calificación de aspectos personales/sociales la hace el
+   docente directamente, sin intermediar un modelo.
 
 Nota: el borrado de filas del calendario (`DELETE /api/calendario`) sigue
 abierto a cualquier docente autorizado — es parte del flujo normal de
@@ -119,6 +141,7 @@ node db/migrate_guia_archivos.mjs  # migración aditiva: persistencia de guías/
 node db/migrate_roles.mjs    # migración aditiva: columna rol (docente/admin)
 node db/migrate_rate_limit.mjs  # migración aditiva: tabla generaciones_log (límite diario)
 node db/migrate_asignaturas.mjs  # migración aditiva: tabla asignaturas + cursos.asignatura_id + docente_asignaturas
+node db/migrate_seguimiento.mjs  # migración aditiva: tablas estudiantes + seguimiento_registros (privado por docente)
 node db/seed.mjs             # jornadas y ciclos base
 node db/seed_horarios.mjs    # bloques de horario por jornada
 node db/seed_temas.mjs <curso-slug> db/malla_<curso>.json  # malla de un curso
