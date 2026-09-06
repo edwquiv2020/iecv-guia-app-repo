@@ -225,8 +225,32 @@ create table estudiantes (
   jornada_id uuid references jornadas(id),
   docente_email text not null references usuarios_autorizados(email) on delete cascade,
   activo boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Ficha completa de matrícula (agregada por migrate_ficha_estudiante.mjs)
+  -- — todo opcional, no rompe estudiantes creados solo con el roster básico.
+  -- Datos personales:
+  tipo_documento text,
+  numero_documento text,
+  fecha_nacimiento date,
+  lugar_nacimiento text,
+  genero text,
+  direccion text,
+  telefono text,
+  eps text,
+  rh text,
+  -- Datos del acudiente (uno solo, contacto principal):
+  acudiente_nombre text,
+  acudiente_parentesco text,
+  acudiente_telefono text,
+  acudiente_direccion text,
+  -- Datos académicos adicionales (ciclo/jornada ya estaban arriba):
+  curso_id uuid references cursos(id),
+  -- Foto: solo la ruta en Supabase Storage (bucket fotos-estudiantes, ver
+  -- src/lib/storage.ts) — nunca el binario en la base de datos.
+  foto_path text
 );
+
+create index estudiantes_curso_idx on estudiantes (curso_id);
 
 -- Un registro = una clase puntual para un estudiante, no una evaluación de
 -- período completo — el docente va calificando clase a clase (incluso

@@ -75,6 +75,16 @@ contenido pedagógico, igual que hacía la skill en el chat.
   edición in-place de un registro de clase: corregir uno equivocado es
   borrarlo y crear uno nuevo, para que el historial no oculte qué se
   cambió.
+- **Ficha de estudiantes** (`/estudiantes`): registro de matrícula completo
+  sobre la misma tabla `estudiantes` de Seguimiento — datos personales
+  (documento, fecha y lugar de nacimiento, género, dirección, teléfono,
+  EPS, RH), datos del acudiente (nombre, parentesco, teléfono, dirección),
+  datos académicos (CLEI, jornada y curso, reutilizando los catálogos ya
+  existentes) y una foto. La foto se sube a Supabase Storage (bucket
+  `fotos-estudiantes`, ver `src/lib/storage.ts`) — en Postgres solo se
+  guarda la ruta, nunca el binario; el bucket debe crearse una vez a mano
+  en el dashboard de Supabase (privado), igual que `guia-archivos`.
+  **Privado por docente**, igual que Seguimiento.
 
 - **Sincronización de mallas desde Google Drive** (botón "Sincronizar
   desde Drive" en `/admin/mallas`, ver sección propia abajo): el admin
@@ -142,6 +152,7 @@ node db/migrate_roles.mjs    # migración aditiva: columna rol (docente/admin)
 node db/migrate_rate_limit.mjs  # migración aditiva: tabla generaciones_log (límite diario)
 node db/migrate_asignaturas.mjs  # migración aditiva: tabla asignaturas + cursos.asignatura_id + docente_asignaturas
 node db/migrate_seguimiento.mjs  # migración aditiva: tablas estudiantes + seguimiento_registros (privado por docente)
+node db/migrate_ficha_estudiante.mjs  # migración aditiva: ficha completa de estudiantes (personales, acudiente, curso, foto)
 node db/seed.mjs             # jornadas y ciclos base
 node db/seed_horarios.mjs    # bloques de horario por jornada
 node db/seed_temas.mjs <curso-slug> db/malla_<curso>.json  # malla de un curso
@@ -339,6 +350,9 @@ src/app/api/temas/route.ts             CRUD de temas (malla) por curso
 src/app/api/mallas/sincronizar-drive/route.ts  trae la malla de un curso desde Drive hacia Postgres
 src/app/api/usuarios/route.ts          lista/alta de docentes autorizados (admin-only)
 src/app/api/catalogo/route.ts          ciclos, cursos, jornadas, actividades
+src/app/estudiantes/page.tsx           ficha de matrícula (personales, acudiente, académicos, foto)
+src/app/api/estudiantes/route.ts       lista (con ficha completa) y crea estudiantes
+src/app/api/estudiantes/[id]/route.ts  GET ficha, PUT ficha completa, PATCH rápido (activo/roster)
 src/lib/types.ts                       tipos compartidos
 src/lib/anthropic.ts                   generación de contenido con IA (guías, DUA, exámenes, Kahoot)
 src/lib/images.ts                      wrapper Node -> Python (imagen motivacional)
