@@ -81,7 +81,7 @@ const CONTENIDO_TOOL = {
       },
       talleres: {
         type: "array",
-        description: "2 talleres para CLEI III, 3 talleres para CLEI IV/V/VI.",
+        description: "2 talleres para CLEI II y III, 3 talleres para CLEI IV/V/VI.",
         items: {
           type: "object",
           properties: {

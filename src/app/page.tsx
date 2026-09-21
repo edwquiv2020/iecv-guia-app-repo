@@ -50,10 +50,10 @@ interface FilaCalendario {
   guia_dua_generada: boolean;
 }
 
-/** "Ciclo III" -> "III". Los ciclos que no calzan con el tipo Clei (hoy solo Ciclo II) se filtran fuera. */
+/** "Ciclo III" -> "III". Los ciclos que no calzan con el tipo Clei se filtran fuera. */
 function cleiDesdeCiclo(nombreCiclo: string): Clei | null {
   const codigo = nombreCiclo.replace("Ciclo", "").trim();
-  return (["III", "IV", "V", "VI"] as const).includes(codigo as Clei) ? (codigo as Clei) : null;
+  return (["II", "III", "IV", "V", "VI"] as const).includes(codigo as Clei) ? (codigo as Clei) : null;
 }
 
 /** ['8°','9°'] -> "8-9". Quita el símbolo de grado y une con guion. */
@@ -422,7 +422,7 @@ export default function Home() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Generador de Guía de Formación — IECV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          CLEI III–VI · FTO-EDU-FOR-96 V3
+          CLEI II–VI · FTO-EDU-FOR-96 V3
         </p>
       </div>
 
