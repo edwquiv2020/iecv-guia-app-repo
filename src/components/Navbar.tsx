@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
+  { href: "/admin/catalogo", label: "Catálogo" },
   { href: "/admin/mallas", label: "Mallas" },
   { href: "/admin/usuarios", label: "Docentes" },
 ];
