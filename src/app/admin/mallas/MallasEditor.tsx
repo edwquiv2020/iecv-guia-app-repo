@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
-import { agruparPorAsignatura } from "@/lib/types";
+import { ETIQUETA_NIVEL, NIVELES, agruparPorAsignatura, type Nivel } from "@/lib/types";
 
 interface Curso {
   id: string;
@@ -27,6 +27,12 @@ interface FormState {
   archivoKahoot: string;
 }
 
+interface TemaPropuesto {
+  numero: number;
+  tema: string;
+  subtemas: string;
+}
+
 interface ArchivoDrive {
   id: string;
   name: string;
@@ -43,6 +49,8 @@ const FORM_VACIO: FormState = {
 export default function MallasEditor() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [cursoId, setCursoId] = useState("");
+  // Un mismo curso puede tener una malla por nivel; las que ya existían quedaron como Básico.
+  const [nivel, setNivel] = useState<Nivel>("basico");
   const [temas, setTemas] = useState<Tema[]>([]);
   const [cargandoTemas, setCargandoTemas] = useState(false);
 
@@ -71,6 +79,16 @@ export default function MallasEditor() {
   const [cargandoPestanas, setCargandoPestanas] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
 
+  // Generación de la malla completa con IA: primero una propuesta (que el
+  // admin puede ajustar o descartar) y solo al confirmar se guarda.
+  const [mostrarIA, setMostrarIA] = useState(false);
+  const [temaGeneral, setTemaGeneral] = useState("");
+  const [clasesIA, setClasesIA] = useState("");
+  const [indicacionesIA, setIndicacionesIA] = useState("");
+  const [generandoIA, setGenerandoIA] = useState(false);
+  const [propuesta, setPropuesta] = useState<TemaPropuesto[] | null>(null);
+  const [guardandoIA, setGuardandoIA] = useState(false);
+
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
@@ -80,9 +98,10 @@ export default function MallasEditor() {
 
   // Se limpia la malla anterior en el mismo render en que cambia cursoId
   // (no en un efecto), para no mostrarla de refilón mientras carga la nueva.
-  const [temasCursoId, setTemasCursoId] = useState(cursoId);
-  if (cursoId !== temasCursoId) {
-    setTemasCursoId(cursoId);
+  const claveMalla = `${cursoId}|${nivel}`;
+  const [temasClave, setTemasClave] = useState(claveMalla);
+  if (claveMalla !== temasClave) {
+    setTemasClave(claveMalla);
     setTemas([]);
   }
 
@@ -93,12 +112,12 @@ export default function MallasEditor() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCargandoTemas(true);
     setError(null);
-    fetch(`/api/temas?cursoId=${cursoId}`)
+    fetch(`/api/temas?cursoId=${cursoId}&nivel=${nivel}`)
       .then((r) => r.json())
       .then((data: { temas: Tema[] }) => setTemas(data.temas))
       .catch(() => setError("No se pudieron cargar los temas de este curso."))
       .finally(() => setCargandoTemas(false));
-  }, [cursoId]);
+  }, [cursoId, nivel]);
 
   const siguienteNumero = useMemo(() => {
     if (temas.length === 0) return 1;
@@ -107,7 +126,7 @@ export default function MallasEditor() {
 
   function recargarTemas() {
     if (!cursoId) return;
-    fetch(`/api/temas?cursoId=${cursoId}`)
+    fetch(`/api/temas?cursoId=${cursoId}&nivel=${nivel}`)
       .then((r) => r.json())
       .then((data: { temas: Tema[] }) => setTemas(data.temas));
   }
@@ -171,6 +190,7 @@ export default function MallasEditor() {
           cursoId,
           fileId: archivoSeleccionado,
           pestana: pestanaSeleccionada || undefined,
+          nivel,
         }),
       });
       const data = await res.json();
@@ -185,6 +205,97 @@ export default function MallasEditor() {
       setError("Error de conexión al sincronizar desde Drive.");
     } finally {
       setSincronizando(false);
+    }
+  }
+
+  function abrirIA() {
+    setError(null);
+    setExito(null);
+    setMostrarIA(true);
+    setPropuesta(null);
+  }
+
+  function cerrarIA() {
+    setMostrarIA(false);
+    setPropuesta(null);
+  }
+
+  async function generarPropuestaIA(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setExito(null);
+    const clases = parseInt(clasesIA, 10);
+    if (!temaGeneral.trim()) {
+      setError("Escribe el tema general del curso.");
+      return;
+    }
+    if (!clases || clases < 1) {
+      setError("Escribe el número de clases.");
+      return;
+    }
+    setGenerandoIA(true);
+    setPropuesta(null);
+    try {
+      const res = await fetch("/api/mallas/generar-ia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cursoId, nivel, temaGeneral, clases, indicaciones: indicacionesIA }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setError(data?.error || "No se pudo generar la malla.");
+        return;
+      }
+      setPropuesta(data.propuesta);
+    } catch {
+      setError("Error de conexión al generar la malla.");
+    } finally {
+      setGenerandoIA(false);
+    }
+  }
+
+  function editarPropuesta(indice: number, cambios: Partial<TemaPropuesto>) {
+    setPropuesta((prev) => prev && prev.map((t, i) => (i === indice ? { ...t, ...cambios } : t)));
+  }
+
+  function quitarDePropuesta(indice: number) {
+    // Se renumera a partir del primer número propuesto para no dejar huecos.
+    setPropuesta((prev) => {
+      if (!prev) return prev;
+      const desde = prev[0].numero;
+      return prev.filter((_, i) => i !== indice).map((t, i) => ({ ...t, numero: desde + i }));
+    });
+  }
+
+  async function guardarPropuestaIA() {
+    if (!propuesta || propuesta.length === 0) return;
+    if (propuesta.some((t) => !t.tema.trim() || !t.subtemas.trim())) {
+      setError("Todos los temas necesitan título y al menos un subtema (o quita el tema que sobre).");
+      return;
+    }
+    setError(null);
+    setGuardandoIA(true);
+    try {
+      const res = await fetch("/api/mallas/guardar-lote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cursoId, nivel, temas: propuesta.map(({ tema, subtemas }) => ({ tema, subtemas })) }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setError(data?.error || "No se pudo guardar la malla.");
+        return;
+      }
+      setExito(`Malla guardada: ${data.filas} tema(s) nuevos (${data.desde} a ${data.hasta}) en el nivel ${ETIQUETA_NIVEL[nivel]}. Completa los videos y Kahoot con "Editar".`);
+      cerrarIA();
+      setTemaGeneral("");
+      setClasesIA("");
+      setIndicacionesIA("");
+      recargarTemas();
+    } catch {
+      setError("Error de conexión al guardar la malla.");
+    } finally {
+      setGuardandoIA(false);
     }
   }
 
@@ -326,11 +437,46 @@ export default function MallasEditor() {
       </Fieldset>
 
       {cursoId && (
+        <Fieldset className="mt-4" legend="Nivel de la malla">
+          <div className="flex flex-wrap gap-2">
+            {NIVELES.map((n) => (
+              <Button
+                key={n}
+                type="button"
+                size="sm"
+                variant={nivel === n ? "default" : "outline"}
+                onClick={() => {
+                  setNivel(n);
+                  cerrarForm();
+                  cerrarSyncDrive();
+                  cerrarIA();
+                }}
+              >
+                {ETIQUETA_NIVEL[n]}
+              </Button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Un mismo curso puede tener una malla por nivel. Las mallas que ya existían quedaron como Básico.
+          </p>
+        </Fieldset>
+      )}
+
+      {cursoId && (
         <div className="mt-6">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <h2 className="text-lg font-medium text-foreground">Temas de la malla</h2>
-            {!mostrarForm && !mostrarSyncDrive && (
+            <h2 className="text-lg font-medium text-foreground">Temas de la malla — {ETIQUETA_NIVEL[nivel]}</h2>
+            {!mostrarForm && !mostrarSyncDrive && !mostrarIA && (
               <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={abrirIA}
+                  title="Genera con IA la malla completa (un tema por clase) a partir del tema general y el número de clases."
+                >
+                  Generar malla con IA
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -401,10 +547,98 @@ export default function MallasEditor() {
             </div>
           )}
 
+          {mostrarIA && (
+            <div className="mt-4 space-y-4 rounded-xl border border-brand/25 bg-brand-subtle/60 p-5">
+              <p className="text-sm font-medium text-brand-subtle-foreground">
+                Generar malla con IA — nivel {ETIQUETA_NIVEL[nivel]}
+              </p>
+              <p className="text-xs text-brand-subtle-foreground/80">
+                La IA propone un tema por clase. Nada se guarda hasta que revises la propuesta y la confirmes.
+                {temas.length > 0
+                  ? ` Este nivel ya tiene ${temas.length} tema(s): los nuevos se agregan al final, sin tocar los existentes.`
+                  : ""}
+                {" "}Los videos y Kahoot quedan vacíos para completarlos después.
+              </p>
+
+              {!propuesta && (
+                <form onSubmit={generarPropuestaIA} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    <Field label="Tema general" className="sm:col-span-3">
+                      {(id) => (
+                        <Input id={id} value={temaGeneral} onChange={(e) => setTemaGeneral(e.target.value)} placeholder="ej. Microsoft Excel para la vida laboral" />
+                      )}
+                    </Field>
+                    <Field label="Número de clases" className="sm:col-span-1">
+                      {(id) => (
+                        <Input id={id} type="number" min={1} max={40} value={clasesIA} onChange={(e) => setClasesIA(e.target.value)} placeholder="ej. 10" />
+                      )}
+                    </Field>
+                  </div>
+                  <Field label="Indicaciones para la IA" hint="(opcional)">
+                    {(id) => (
+                      <Textarea
+                        id={id}
+                        rows={3}
+                        value={indicacionesIA}
+                        onChange={(e) => setIndicacionesIA(e.target.value)}
+                        placeholder="ej. Estudiantes adultos que nunca han usado un computador; enfocar en tareas de una tienda pequeña."
+                      />
+                    )}
+                  </Field>
+                  <div className="flex gap-3">
+                    <Button type="submit" size="sm" disabled={generandoIA}>
+                      {generandoIA ? "Generando… (puede tardar ~20-40 s)" : "Generar propuesta"}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={cerrarIA} disabled={generandoIA}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {propuesta && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">
+                    Propuesta: {propuesta.length} tema(s) — ajusta lo que quieras antes de guardar
+                  </p>
+                  {propuesta.map((t, i) => (
+                    <div key={t.numero} className="rounded-lg border border-border bg-surface p-3">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-2 w-8 shrink-0 text-sm font-medium text-foreground">{t.numero}.</span>
+                        <div className="flex-1 space-y-2">
+                          <Input value={t.tema} onChange={(e) => editarPropuesta(i, { tema: e.target.value })} aria-label={`Tema ${t.numero}`} />
+                          <Textarea rows={3} value={t.subtemas} onChange={(e) => editarPropuesta(i, { subtemas: e.target.value })} aria-label={`Subtemas del tema ${t.numero}`} />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => quitarDePropuesta(i)}
+                          className="mt-2 text-sm text-danger underline underline-offset-2"
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap gap-3">
+                    <Button type="button" size="sm" onClick={guardarPropuestaIA} disabled={guardandoIA || propuesta.length === 0}>
+                      {guardandoIA ? "Guardando…" : `Guardar malla (${propuesta.length} temas)`}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPropuesta(null)} disabled={guardandoIA}>
+                      Volver a generar
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={cerrarIA} disabled={guardandoIA}>
+                      Descartar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {cargandoTemas && <p className="mt-3 text-sm text-muted-foreground">Cargando temas…</p>}
 
-          {!cargandoTemas && temas.length === 0 && !mostrarForm && (
-            <p className="mt-3 text-sm text-muted-foreground">Este curso todavía no tiene temas cargados.</p>
+          {!cargandoTemas && temas.length === 0 && !mostrarForm && !mostrarIA && (
+            <p className="mt-3 text-sm text-muted-foreground">Este curso todavía no tiene temas cargados en el nivel {ETIQUETA_NIVEL[nivel]}.</p>
           )}
 
           {mostrarForm && (

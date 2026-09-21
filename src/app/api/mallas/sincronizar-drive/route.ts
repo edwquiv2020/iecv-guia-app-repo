@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { auth } from "@/auth";
 import { leerMallaDesdeXlsx } from "@/lib/googleDrive";
+import { esNivel } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
   const cursoId = body?.cursoId as string | undefined;
   const fileId = body?.fileId as string | undefined;
   const pestana = body?.pestana as string | undefined;
+  const nivel = (body?.nivel as string | undefined) ?? "basico";
+  if (!esNivel(nivel)) {
+    return NextResponse.json({ error: "Nivel inválido." }, { status: 400 });
+  }
   if (!cursoId || !fileId) {
     return NextResponse.json({ error: "Faltan cursoId o fileId." }, { status: 400 });
   }
@@ -48,9 +53,9 @@ export async function POST(request: NextRequest) {
 
     for (const t of temas) {
       await sql`
-        insert into temas (curso_id, numero, tema, subtemas, url_video, archivo_kahoot)
-        values (${cursoId}, ${t.numero}, ${t.tema}, ${t.subtemas}, ${t.url_video}, ${t.archivo_kahoot})
-        on conflict (curso_id, numero) do update set
+        insert into temas (curso_id, nivel, numero, tema, subtemas, url_video, archivo_kahoot)
+        values (${cursoId}, ${nivel}, ${t.numero}, ${t.tema}, ${t.subtemas}, ${t.url_video}, ${t.archivo_kahoot})
+        on conflict (curso_id, nivel, numero) do update set
           tema = excluded.tema, subtemas = excluded.subtemas,
           url_video = excluded.url_video, archivo_kahoot = excluded.archivo_kahoot
       `;

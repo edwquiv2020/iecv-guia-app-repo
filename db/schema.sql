@@ -112,7 +112,9 @@ create table temas (
   archivo_kahoot text,
   activo boolean not null default true,
   created_at timestamptz not null default now(),
-  unique (curso_id, numero)
+  -- Un mismo curso puede tener varias mallas, una por nivel (ver db/migrate_niveles.mjs).
+  nivel text not null default 'basico' check (nivel in ('basico', 'intermedio', 'avanzado')),
+  unique (curso_id, nivel, numero)
 );
 
 create table jornadas (
