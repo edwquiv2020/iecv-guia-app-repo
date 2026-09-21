@@ -47,9 +47,9 @@ async function pasoParagraph(n: number, texto: string, iconoBuf: Buffer | null) 
 
 const FONT = "Arial";
 
-/** Ilustración de INICIO: mismo aspecto que antes (260x217), más grande. */
-const ILUSTRACION_ANCHO = 430;
-const ILUSTRACION_ALTO = Math.round((430 * 217) / 260);
+/** Ilustración de INICIO: 12 cm x 8 cm (a 96 px/pulgada), la proporción real 3:2 de las fotos del banco (888x590) — sin deformarlas. */
+const ILUSTRACION_ANCHO = Math.round((12 / 2.54) * 96); // 454 px
+const ILUSTRACION_ALTO = Math.round((8 / 2.54) * 96); // 302 px
 
 function p(text: string, opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number; before?: number; size?: number; bold?: boolean; italics?: boolean } = {}) {
   return new Paragraph({

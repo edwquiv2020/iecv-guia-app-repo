@@ -120,12 +120,14 @@ describe("buildGuiaDocx", () => {
       expect(cuenta("32")).toBe(2); // INICIO y DESARROLLO en 16 pt
     });
 
-    it("la ilustración de INICIO es más grande que antes (430 px de ancho, mismo aspecto)", async () => {
+    it("la ilustración de INICIO mide 12 x 8 cm (proporción 3:2 de las fotos, sin deformar)", async () => {
       const xml = await xmlEstandar();
-      const extent = xml.match(/<wp:extent cx="(\d+)" cy="(\d+)"/g)!.map((m) => m.match(/cx="(\d+)" cy="(\d+)"/)!.slice(1).map(Number));
-      const ilustracion = extent.find(([cx]) => cx === 430 * 9525)!;
+      const extents = [...xml.matchAll(/<wp:extent cx="(\d+)" cy="(\d+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      const EMU_POR_CM = 360000;
+      const ilustracion = extents.find(([cx]) => Math.abs(cx / EMU_POR_CM - 12) < 0.05);
       expect(ilustracion).toBeDefined();
-      expect(ilustracion[0] / ilustracion[1]).toBeCloseTo(260 / 217, 1);
+      expect(ilustracion![1] / EMU_POR_CM).toBeCloseTo(8, 0);
+      expect(ilustracion![0] / ilustracion![1]).toBeCloseTo(888 / 590, 1);
     });
 
     it("la rúbrica trae los 6 criterios generales de la plantilla y luego los del tema", async () => {
