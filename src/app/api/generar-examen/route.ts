@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ContenidoDiagnostico, ContenidoExamen, ParametrosExamen, PreguntaExamenInput, TipoExamen } from "@/lib/types";
+import { esNivel } from "@/lib/types";
 import { generarContenidoDiagnostico, generarContenidoExamen } from "@/lib/anthropic";
 import { buildDiagnosticoDocx, buildExamenDocx, type ImagenPreguntaExamen } from "@/lib/buildExamen";
 import { buildKitSubidaExamenDocx } from "@/lib/buildKit";
@@ -29,6 +30,9 @@ function validar(body: unknown): { ok: true; data: ParamsExamenRequest } | { ok:
     if (b[campo] === undefined || b[campo] === null || b[campo] === "") {
       return { ok: false, error: `Falta el campo requerido: ${String(campo)}` };
     }
+  }
+  if (b.nivel !== undefined && !esNivel(b.nivel)) {
+    return { ok: false, error: "Nivel inválido." };
   }
   const tiposValidos: TipoExamen[] = ["diagnostico", "intermedio", "final"];
   if (!tiposValidos.includes(b.tipo as TipoExamen)) {
@@ -77,7 +81,8 @@ async function temasCubiertos(params: ParamsExamenRequest): Promise<string[]> {
     where ciclo_id = ${params.cicloId} and jornada_id = ${params.jornadaId}
       and semana_academica = ${params.semana} and curso_id = ${params.cursoId}
   `;
-  const nivel: string | null = filaExamen?.nivel ?? null;
+  // Si la semana aún no está programada, vale el nivel que eligió quien genera el examen.
+  const nivel: string | null = filaExamen?.nivel ?? params.nivel ?? null;
   const filas = await sql`
     select t.tema, t.subtemas
     from calendario_clases cc

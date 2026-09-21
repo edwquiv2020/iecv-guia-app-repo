@@ -12,7 +12,7 @@ export async function GET() {
   try {
     // Son 5 SELECT de solo lectura en paralelo — un reintento es seguro
     // (ver conReintento en lib/db.ts).
-    const [ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas] = await conReintento(() =>
+    const [ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas, usuarioFila] = await conReintento(() =>
       Promise.all([
         sql`select id, slug, nombre, grados from ciclos where activo order by nombre`,
         // Nota: curso_ciclos todavía no tiene filas cargadas, así que por
@@ -56,9 +56,13 @@ export async function GET() {
               where a.activa and da.email = ${email}
               order by a.nombre
             `,
+        // Nombre con que se precargan "Docente" en guías y exámenes: el que el
+        // admin registró en Docentes, o el de la cuenta de Google.
+        sql`select nombre from usuarios_autorizados where email = ${email}`,
       ])
     );
-    return NextResponse.json({ ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas });
+    const usuario = { nombre: (usuarioFila[0]?.nombre || session?.user?.name || "").toString().toUpperCase() };
+    return NextResponse.json({ ciclos, cursos, jornadas, actividades, asignaturas, misAsignaturas, usuario });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido cargando el catálogo.";
     return NextResponse.json({ error: message }, { status: 500 });

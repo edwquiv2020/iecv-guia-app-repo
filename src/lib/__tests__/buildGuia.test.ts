@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
+import JSZip from "jszip";
 import { buildGuiaDocx } from "@/lib/buildGuia";
 import type { ContenidoGuia, ParametrosGuia } from "@/lib/types";
 
@@ -72,5 +73,33 @@ describe("buildGuiaDocx", () => {
     // Un .docx es un .zip — todo zip empieza con la firma "PK".
     expect(docxBuf.subarray(0, 2).toString("ascii")).toBe("PK");
     expect(docxBuf.length).toBeGreaterThan(10_000);
+  });
+
+  // La tabla de datos del estudiante es la del formato original: la sede y el
+  // docente salen del formulario (antes estaban fijos en el código para todos).
+  it("la tabla de datos usa la sede y el docente recibidos, en negrita, y marca TI/CC con casillas", async () => {
+    const logoBuf = await fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg"));
+    const ilustracionBuf = await fs.readFile(path.join(process.cwd(), "assets", "banco_fotos", "tortuga.png"));
+    const docxBuf = await buildGuiaDocx({ ...params, sede: "PALMIRA", docente: "MARÍA PÉREZ" }, contenido, { logoBuf, ilustracionBuf });
+    const xml = await (await JSZip.loadAsync(docxBuf)).file("word/document.xml")!.async("string");
+    const texto = xml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(texto).toContain("SEDE: PALMIRA");
+    expect(texto).toContain("NOMBRE DEL DOCENTE: MARÍA PÉREZ");
+    expect(texto).not.toContain("EDWARD QUIÑONES");
+    expect(texto).not.toContain("CALI");
+    expect(texto).toContain("TI ☐");
+    expect(texto).toContain("CC ☐");
+    expect(texto).not.toContain("TI [");
+    // el valor de la sede va en negrita (como en la guía de ejemplo)
+    expect(xml).toMatch(/<w:b\/>[\s\S]{0,120}<w:t[^>]*>PALMIRA<\/w:t>/);
+  });
+
+  it("sin sede/docente la tabla queda con esas celdas vacías (nunca con el nombre de otra persona)", async () => {
+    const logoBuf = await fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg"));
+    const ilustracionBuf = await fs.readFile(path.join(process.cwd(), "assets", "banco_fotos", "tortuga.png"));
+    const docxBuf = await buildGuiaDocx(params, contenido, { logoBuf, ilustracionBuf });
+    const texto = (await (await JSZip.loadAsync(docxBuf)).file("word/document.xml")!.async("string")).replace(/<[^>]+>/g, " ");
+    expect(texto).not.toContain("EDWARD");
+    expect(texto).not.toContain("CALI");
   });
 });

@@ -107,6 +107,8 @@ const SHADE_VERDE = "E2EFDA";
 function box(titulo: string, cuerpo: string[], shade: string) {
   return new Table({
     width: { size: 10500, type: WidthType.DXA },
+    // Sin columnWidths, Pages/Google Docs/vistas previas toman una columna angosta por defecto.
+    columnWidths: [10500],
     rows: [
       new TableRow({
         children: [
@@ -136,6 +138,7 @@ function fichaResumen(items: ContenidoGuia["fichaResumen"]) {
   const w = Math.floor(10500 / Math.max(items.length, 1));
   return new Table({
     width: { size: 10500, type: WidthType.DXA },
+    columnWidths: items.map(() => w),
     rows: [
       new TableRow({
         children: items.map((it) => new TableCell({
@@ -223,12 +226,13 @@ function labelCell(text: string, w: number, span = 1, extra?: Paragraph[]) {
       : [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] })],
   });
 }
+// Los valores diligenciados van en negrita, igual que en la guía de ejemplo del colegio.
 function valueCell(text: string, w: number, span = 1) {
   return new TableCell({
     width: { size: w, type: WidthType.DXA },
     columnSpan: span,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
-    children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20 })] })],
+    children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: 20, bold: true })] })],
   });
 }
 
@@ -241,13 +245,13 @@ function buildStudentTable(params: ParametrosGuia) {
       new TableRow({ children: [labelCell("PRIMER APELLIDO: ", W1), labelCell("SEGUNDO APELLIDO: ", W2), labelCell("NOMBRE: ", W3)] }),
       new TableRow({
         children: [
-          labelCell("GRUPO/ CLEI/ JORNADA", W1, 1, [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: params.grupoCleiJornada, font: FONT, size: 20 })] })]),
+          labelCell("GRUPO/ CLEI/ JORNADA", W1, 1, [new Paragraph({ children: [new TextRun({ text: params.grupoCleiJornada, font: FONT, size: 20, bold: true })] })]),
           new TableCell({
             width: { size: W2, type: WidthType.DXA },
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
             children: [
               new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TIPO DE DOCUMENTO", font: FONT, size: 20, bold: true })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TI [   ]        CC [   ]", font: FONT, size: 20 })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TI ☐        CC ☐", font: FONT, size: 20 })] }),
             ],
           }),
           new TableCell({
@@ -260,8 +264,8 @@ function buildStudentTable(params: ParametrosGuia) {
           }),
         ],
       }),
-      new TableRow({ children: [labelCell("SEDE:", W1), valueCell("CALI", W2 + W3, 2)] }),
-      new TableRow({ children: [labelCell("NOMBRE DEL DOCENTE:", W1), valueCell("EDWARD QUIÑONES VALENZUELA", W2 + W3, 2)] }),
+      new TableRow({ children: [labelCell("SEDE:", W1), valueCell(params.sede?.trim() ?? "", W2 + W3, 2)] }),
+      new TableRow({ children: [labelCell("NOMBRE DEL DOCENTE:", W1), valueCell(params.docente?.trim() ?? "", W2 + W3, 2)] }),
     ],
   });
 }

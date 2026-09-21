@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import type { Clei, TipoExamen } from "@/lib/types";
-import { PREGUNTAS_DIAGNOSTICO, agruparPorAsignatura, cantidadPreguntasPorJornada } from "@/lib/types";
+import { ETIQUETA_NIVEL, NIVELES, PREGUNTAS_DIAGNOSTICO, esNivel, agruparPorAsignatura, cantidadPreguntasPorJornada, type Nivel } from "@/lib/types";
 import { Alert, Button, Field, Fieldset, Input, Select } from "@/components/ui";
 
 function formatearFechaLarga(iso: string): string {
@@ -25,6 +25,7 @@ interface FilaCalendario {
   curso_id: string | null;
   actividad_nombre: string;
   curso_nombre: string | null;
+  nivel: string;
 }
 
 const ACTIVIDAD_POR_TIPO: Record<TipoExamen, string> = {
@@ -69,7 +70,9 @@ export default function Examenes() {
   const [semana, setSemana] = useState(1);
   const [fechaAplicacionIso, setFechaAplicacionIso] = useState("");
   const [sede, setSede] = useState("CALI");
-  const [docente, setDocente] = useState("EDWARD QUIÑONES VALENZUELA");
+  const [docente, setDocente] = useState("");
+  // Solo se usa en semanas que todavía no están programadas en Horarios (si lo están, manda el nivel de esa fila).
+  const [nivel, setNivel] = useState<Nivel>("basico");
 
   const [preguntaImagenes, setPreguntaImagenes] = useState<Record<number, File | null>>({});
   const [preguntaDescripciones, setPreguntaDescripciones] = useState<Record<number, string>>({});
@@ -82,7 +85,8 @@ export default function Examenes() {
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[]; misAsignaturas: Asignatura[] }) => {
+      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[]; misAsignaturas: Asignatura[]; usuario?: { nombre: string } }) => {
+        if (data.usuario?.nombre) setDocente(data.usuario.nombre);
         setCiclos(data.ciclos.filter((c) => cleiDesdeCiclo(c.nombre) !== null));
         setCursos(data.cursos);
         setJornadas(data.jornadas);
@@ -151,6 +155,7 @@ export default function Examenes() {
     setSemana(fila.semana);
     setFechaAplicacionIso(fila.fecha.slice(0, 10));
     if (fila.curso_id) setCursoId(fila.curso_id);
+    if (esNivel(fila.nivel)) setNivel(fila.nivel);
   }
 
   function onTipoChange(t: TipoExamen) {
@@ -207,6 +212,7 @@ export default function Examenes() {
         cicloId, jornadaId,
         cursoId: cursoId || undefined,
         cursoNombre: curso?.nombre,
+        nivel: tipo === "diagnostico" ? undefined : nivel,
         asignaturaId: tipo === "diagnostico" ? asignaturaId : undefined,
       };
 
@@ -253,7 +259,7 @@ export default function Examenes() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   cicloId, jornadaId, origen: "ad_hoc",
-                  filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(semana), fecha: fechaAplicacionIso, actividadId }],
+                  filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(semana), fecha: fechaAplicacionIso, actividadId, nivel }],
                 }),
               });
               const dataCal = await resCal.json().catch(() => null);
@@ -384,6 +390,19 @@ export default function Examenes() {
         <Field label="Grupo / CLEI / Jornada">
           {(id) => <Input id={id} value={grupoCleiJornada || "Elige ciclo y jornada arriba"} disabled />}
         </Field>
+
+        {tipo !== "diagnostico" && (
+          <Field
+            label="Nivel de la malla"
+            hint={semanaProgramadaId ? "(lo define la semana programada)" : "(de qué nivel del curso se evalúan los temas)"}
+          >
+            {(id) => (
+              <Select id={id} value={nivel} onChange={(e) => setNivel(e.target.value as Nivel)} disabled={!!semanaProgramadaId}>
+                {NIVELES.map((n) => <option key={n} value={n}>{ETIQUETA_NIVEL[n]}</option>)}
+              </Select>
+            )}
+          </Field>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Semana No">

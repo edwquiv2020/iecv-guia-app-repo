@@ -332,4 +332,29 @@ describe("POST /api/generar-examen", () => {
     }));
     expect(res.status).toBe(200);
   });
+
+  it("Intermedio con la semana sin programar: usa el nivel elegido en el formulario", async () => {
+    sql.mockImplementation((strings: TemplateStringsArray, ...vals: unknown[]) => {
+      const q = strings.join("?");
+      if (q.includes("asignaturas")) return Promise.resolve([{ nombre: "Tecnología e Informática" }]);
+      if (q.includes("select nivel from calendario_clases")) return Promise.resolve([]);
+      if (q.includes("select t.tema")) {
+        expect(vals).toContain("avanzado");
+        return Promise.resolve([{ tema: "T", subtemas: "x" }]);
+      }
+      return Promise.resolve([]);
+    });
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...intermedioParams, nivel: "avanzado" }),
+    }));
+    expect(res.status).toBe(200);
+  });
+
+  it("rechaza con 400 un nivel inválido", async () => {
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...intermedioParams, nivel: "experto" }),
+    }));
+    expect(res.status).toBe(400);
+    expect(generarContenidoExamen).not.toHaveBeenCalled();
+  });
 });
