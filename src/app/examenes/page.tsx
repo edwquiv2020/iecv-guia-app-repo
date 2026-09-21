@@ -134,6 +134,13 @@ export default function Examenes() {
 
   const filasDelTipo = calendarioFilas.filter((f) => f.actividad_nombre === ACTIVIDAD_POR_TIPO[tipo]);
 
+  // Igual que en la pantalla de guías: una semana es una sola fila del
+  // calendario, crear una "nueva" encima de una ocupada la pisaría.
+  const semanaOcupada = !semanaProgramadaId ? calendarioFilas.find((f) => f.semana === Number(semana)) : undefined;
+  const mensajeSemanaOcupada = semanaOcupada
+    ? `La semana ${semana} ya tiene ${semanaOcupada.curso_nombre ? `una clase (${semanaOcupada.curso_nombre})` : semanaOcupada.actividad_nombre} para este ciclo y jornada — elígela en "Semana programada" para regenerarla, o cambia el número de semana.`
+    : null;
+
   function onSemanaProgramadaChange(filaId: string) {
     setSemanaProgramadaId(filaId);
     if (!filaId) return;
@@ -168,6 +175,10 @@ export default function Examenes() {
     setError(null);
     setExito(null);
 
+    if (mensajeSemanaOcupada) {
+      setError(mensajeSemanaOcupada);
+      return;
+    }
     if ((tipo === "intermedio" || tipo === "final") && !cursoId) {
       setError("Elige el curso a evaluar.");
       return;
@@ -242,6 +253,7 @@ export default function Examenes() {
                 }),
               });
               const dataCal = await resCal.json().catch(() => null);
+              if (resCal.status === 409) mensajeCalendario = " (⚠ no se registró en el calendario: esa semana ya estaba ocupada)";
               calendarioClaseId = dataCal?.idsPorSemana?.[Number(semana)] ?? null;
               if (dataCal?.filasGuardadas > 0) mensajeCalendario = " (semana registrada en el calendario)";
             }
@@ -430,10 +442,11 @@ export default function Examenes() {
           </div>
         </details>
 
+        {mensajeSemanaOcupada && !error && <Alert tone="warning">{mensajeSemanaOcupada}</Alert>}
         {error && <Alert tone="danger">{error}</Alert>}
         {exito && <Alert tone="success">{exito}</Alert>}
 
-        <Button type="submit" size="xl" disabled={enviando} className="w-full">
+        <Button type="submit" size="xl" disabled={enviando || !!mensajeSemanaOcupada} className="w-full">
           {enviando ? "Generando examen… (puede tardar ~20-30s)" : `Generar ${ETIQUETA_TIPO[tipo]}`}
         </Button>
       </form>

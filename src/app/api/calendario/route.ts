@@ -76,6 +76,34 @@ export async function POST(request: NextRequest) {
   const origen = body?.origen === "ad_hoc" ? "ad_hoc" : "horario";
 
   try {
+    // Una semana (ciclo + jornada + semana) es UNA sola fila. Antes, crear
+    // al vuelo una clase en una semana ya ocupada reutilizaba esa fila en
+    // silencio y la guía nueva se registraba encima de la existente (pasó
+    // de verdad: una guía de Matemáticas pisó la de Excel de la semana 1).
+    // Ahora se rechaza — para regenerar hay que elegir la semana ya
+    // programada, donde sí hay confirmación explícita.
+    if (origen === "ad_hoc") {
+      const semanas = filas.map((f) => f.semana);
+      const ocupadas = await sql`
+        select cc.semana_academica as semana, cu.nombre as curso, a.nombre as actividad
+        from calendario_clases cc
+        left join cursos cu on cu.id = cc.curso_id
+        join actividades a on a.id = cc.actividad_id
+        where cc.ciclo_id = ${cicloId} and cc.jornada_id = ${jornadaId}
+          and cc.semana_academica in ${sql(semanas)}
+      `;
+      if (ocupadas.length > 0) {
+        const detalle = ocupadas.map((o) => `semana ${o.semana} (${o.curso ?? o.actividad})`).join(", ");
+        return NextResponse.json(
+          {
+            error: `Ya existe una clase en ${detalle} para este ciclo y jornada — elígela en "Semana programada" para regenerarla, o usa otro número de semana.`,
+            ocupadas,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     if (origen === "horario" && !confirmar) {
       // Si alguna semana del lote ya tiene una fila 'ad_hoc' (creada al vuelo
       // desde el generador de guías), no la sobrescribimos en silencio —

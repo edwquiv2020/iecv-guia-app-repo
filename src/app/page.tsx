@@ -239,6 +239,11 @@ export default function Home() {
     setError(null);
     setExito(null);
 
+    if (mensajeSemanaOcupada) {
+      setError(mensajeSemanaOcupada);
+      return;
+    }
+
     if (!quiereEstandar && !quiereDua) {
       setError("Elige al menos un tipo de guía: Estándar, DUA, o ambas.");
       return;
@@ -350,6 +355,7 @@ export default function Home() {
                 }),
               });
               const dataCal = await resCal.json().catch(() => null);
+              if (resCal.status === 409) mensajeCalendario = " (⚠ no se registró en el calendario: esa semana ya estaba ocupada)";
               calendarioClaseId = dataCal?.idsPorSemana?.[Number(semana)] ?? null;
               if (dataCal?.filasGuardadas > 0) mensajeCalendario = " (clase registrada en el calendario)";
             }
@@ -397,6 +403,15 @@ export default function Home() {
   const subtemasList = subtemasTexto.split("\n").map((s) => s.trim()).filter(Boolean);
 
   const filaSeleccionada = semanaProgramadaId ? calendarioFilas.find((f) => f.id === semanaProgramadaId) : undefined;
+  // Una semana (ciclo + jornada + semana) es una sola fila del calendario:
+  // crear una clase "nueva" en una semana ya ocupada la pisaría (pasó de
+  // verdad con una guía de Matemáticas sobre la de Excel). Se bloquea antes
+  // de gastar una generación con IA — para regenerar hay que elegir la
+  // semana en "Semana programada", que sí pide confirmación.
+  const semanaOcupada = !semanaProgramadaId ? calendarioFilas.find((f) => f.semana === Number(semana)) : undefined;
+  const mensajeSemanaOcupada = semanaOcupada
+    ? `La semana ${semana} ya tiene una clase (${semanaOcupada.curso_nombre ?? semanaOcupada.actividad_nombre}) para este ciclo y jornada — elígela en "Semana programada" para regenerarla, o cambia el número de semana.`
+    : null;
   const tiposYaGenerados: string[] = [];
   if (filaSeleccionada?.guia_estandar_generada && quiereEstandar) tiposYaGenerados.push("Estándar");
   if (filaSeleccionada?.guia_dua_generada && quiereDua) tiposYaGenerados.push("DUA");
@@ -692,10 +707,11 @@ export default function Home() {
           )}
         </Field>
 
+        {mensajeSemanaOcupada && !error && <Alert tone="warning">{mensajeSemanaOcupada}</Alert>}
         {error && <Alert tone="danger">{error}</Alert>}
         {exito && <Alert tone="success">{exito}</Alert>}
 
-        <Button type="submit" size="xl" disabled={enviando} className="w-full">
+        <Button type="submit" size="xl" disabled={enviando || !!mensajeSemanaOcupada} className="w-full">
           {enviando ? "Generando guía… (puede tardar ~20-30s)" : "Generar guía en Word"}
         </Button>
       </form>
