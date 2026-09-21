@@ -68,17 +68,33 @@ function reiniciarPool(usado: typeof cliente) {
 export const sql = new Proxy(function () {} as unknown as typeof cliente, {
   apply(_target, thisArg, args: unknown[]) {
     const usado = cliente;
-    const query = Reflect.apply(usado as unknown as (...a: unknown[]) => unknown, thisArg, args) as Promise<unknown>;
-    let timer: ReturnType<typeof setTimeout>;
-    return Promise.race([
-      query,
-      new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          reiniciarPool(usado);
-          reject(new Error(`La base de datos no respondió en ${TIMEOUT_CONSULTA_MS / 1000}s (posible conexión zombie con el pooler) — vuelve a intentarlo.`));
-        }, TIMEOUT_CONSULTA_MS);
-      }),
-    ]).finally(() => clearTimeout(timer));
+    const query = Reflect.apply(usado as unknown as (...a: unknown[]) => unknown, thisArg, args) as
+      | (Promise<unknown> & { then: Promise<unknown>["then"] })
+      | unknown;
+    // IMPORTANTE: se devuelve el MISMO objeto Query de postgres.js (no una
+    // Promise nueva). Las consultas también se usan como fragmentos dentro de
+    // otras (`sql\`... ${sql\`...\`}\``) y postgres.js los reconoce con
+    // `instanceof Query` — una Promise envolvente los volvía parámetros ($1)
+    // y rompía /api/calendario y /api/generar-guia. El timeout se aplica solo
+    // cuando la consulta se ESPERA, reemplazando su `then` (await/catch/
+    // finally pasan todos por ahí).
+    if (query && typeof (query as Promise<unknown>).then === "function") {
+      const q = query as Promise<unknown>;
+      const thenOriginal = q.then.bind(q);
+      q.then = ((onOk?: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) => {
+        let timer: ReturnType<typeof setTimeout>;
+        const limite = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reiniciarPool(usado);
+            reject(new Error(`La base de datos no respondió en ${TIMEOUT_CONSULTA_MS / 1000}s (posible conexión zombie con el pooler) — vuelve a intentarlo.`));
+          }, TIMEOUT_CONSULTA_MS);
+        });
+        return Promise.race([thenOriginal(), limite])
+          .finally(() => clearTimeout(timer))
+          .then(onOk, onErr);
+      }) as typeof q.then;
+    }
+    return query;
   },
   get(_target, prop) {
     const valor = Reflect.get(cliente, prop);
