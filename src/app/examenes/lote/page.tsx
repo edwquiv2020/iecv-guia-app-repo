@@ -7,26 +7,28 @@ import { Alert, Badge, Button, Field, Fieldset, Input } from "@/components/ui";
 import { ETIQUETA_NIVEL, esNivel } from "@/lib/types";
 import { cleiDesdeCiclo, motivoNoGenerable, paramsExamenIntermedio, rutaEnZip, type FilaLote } from "@/lib/loteExamenes";
 
-interface Ciclo { id: string; nombre: string; grados: string[] }
-interface Jornada { id: string; nombre: string; dias: string }
 interface FilaApi {
   id: string;
   semana: number;
   fecha: string;
-  actividad_nombre: string;
+  nivel: string;
   curso_id: string | null;
   curso_nombre: string | null;
-  nivel: string;
+  ciclo_id: string;
+  ciclo_nombre: string;
+  ciclo_grados: string[];
+  jornada_id: string;
+  jornada_nombre: string;
+  jornada_dias: string;
   examen_generado: boolean;
 }
+interface ComboApi { ciclo_id: string; ciclo_nombre: string; jornada_id: string; jornada_nombre: string }
 
 type Estado =
   | { tipo: "pendiente" }
   | { tipo: "generando" }
   | { tipo: "listo"; advertencia?: string; guardado: boolean }
   | { tipo: "error"; mensaje: string };
-
-const ACTIVIDAD_INTERMEDIO = "EXAMEN INTERMEDIO";
 
 function descargar(nombre: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
@@ -58,37 +60,29 @@ export default function LoteIntermedios() {
   useEffect(() => {
     async function cargar() {
       try {
-        const cat = (await (await fetch("/api/catalogo")).json()) as {
-          ciclos: Ciclo[]; jornadas: Jornada[]; usuario?: { nombre: string };
-        };
+        // Dos peticiones en total (nunca una por ciclo/jornada: saturaba la base de datos).
+        const [rCat, rLote] = await Promise.all([fetch("/api/catalogo"), fetch("/api/examenes/lote")]);
+        const cat = (await rCat.json()) as { usuario?: { nombre: string } };
+        const data = (await rLote.json()) as { filas?: FilaApi[]; combos?: ComboApi[]; error?: string };
+        if (!rLote.ok || !data.filas || !data.combos) throw new Error(data.error || "Respuesta inválida.");
         if (cat.usuario?.nombre) setDocente(cat.usuario.nombre);
-        const ciclos = cat.ciclos.filter((c) => cleiDesdeCiclo(c.nombre) !== null);
-        const combos = ciclos.flatMap((c) => cat.jornadas.map((j) => ({ c, j })));
-        const respuestas = await Promise.all(
-          combos.map(async ({ c, j }) => {
-            const r = await fetch(`/api/calendario?cicloId=${c.id}&jornadaId=${j.id}`);
-            const data = (await r.json()) as { filas?: FilaApi[] };
-            return { c, j, filas: (data.filas ?? []).filter((f) => f.actividad_nombre === ACTIVIDAD_INTERMEDIO) };
-          })
-        );
-        const lote: FilaLote[] = [];
-        const sinProgramar: string[] = [];
-        for (const { c, j, filas: fs } of respuestas) {
-          if (fs.length === 0) sinProgramar.push(`${c.nombre} — ${j.nombre}`);
-          for (const f of fs) {
-            lote.push({
-              id: f.id, semana: f.semana, fecha: f.fecha.slice(0, 10), cursoId: f.curso_id, cursoNombre: f.curso_nombre,
-              nivel: f.nivel, examenGenerado: f.examen_generado,
-              cicloId: c.id, cicloNombre: c.nombre, cicloGrados: c.grados, jornadaId: j.id, jornadaNombre: j.nombre, jornadaDias: j.dias,
-            });
-          }
-        }
+
+        const lote: FilaLote[] = data.filas.map((f) => ({
+          id: f.id, semana: f.semana, fecha: f.fecha.slice(0, 10), cursoId: f.curso_id, cursoNombre: f.curso_nombre,
+          nivel: f.nivel, examenGenerado: f.examen_generado,
+          cicloId: f.ciclo_id, cicloNombre: f.ciclo_nombre, cicloGrados: f.ciclo_grados,
+          jornadaId: f.jornada_id, jornadaNombre: f.jornada_nombre, jornadaDias: f.jornada_dias,
+        }));
+        const conFila = new Set(lote.map((f) => `${f.cicloId}|${f.jornadaId}`));
+        const sinProgramar = data.combos
+          .filter((c) => cleiDesdeCiclo(c.ciclo_nombre) !== null && !conFila.has(`${c.ciclo_id}|${c.jornada_id}`))
+          .map((c) => `${c.ciclo_nombre} — ${c.jornada_nombre}`);
         setFilas(lote);
         setFaltantes(sinProgramar);
         // Por defecto: lo que aún no se ha generado y se puede generar.
         setSeleccion(new Set(lote.filter((f) => !f.examenGenerado && !motivoNoGenerable(f)).map((f) => f.id)));
-      } catch {
-        setError("No se pudo cargar el calendario.");
+      } catch (e) {
+        setError(`No se pudo cargar los exámenes programados${e instanceof Error ? `: ${e.message}` : "."}`);
       } finally {
         setCargando(false);
       }
@@ -198,7 +192,7 @@ export default function LoteIntermedios() {
 
       {error && <div className="mt-4"><Alert tone="danger">{error}</Alert></div>}
       {aviso && <div className="mt-4"><Alert tone="warning">{aviso}</Alert></div>}
-      {cargando && <p className="mt-4 text-sm text-muted-foreground">Leyendo el calendario de todos los ciclos y jornadas…</p>}
+      {cargando && <p className="mt-4 text-sm text-muted-foreground">Leyendo los exámenes programados…</p>}
 
       {!cargando && (
         <>
