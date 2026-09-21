@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
            cc.origen, cc.nivel, cc.curso_id, cc.tema_id, a.nombre as actividad_nombre,
            c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre,
            exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'estandar' and g.estado = 'generada') as guia_estandar_generada,
-           exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'dua' and g.estado = 'generada') as guia_dua_generada
+           exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'dua' and g.estado = 'generada') as guia_dua_generada,
+           exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo in ('diagnostico', 'intermedio', 'final') and g.estado = 'generada') as examen_generado
     from calendario_clases cc
     join actividades a on a.id = cc.actividad_id
     left join cursos c on c.id = cc.curso_id

@@ -148,3 +148,20 @@ describe("POST /api/calendario — nivel de la malla", () => {
     expect(insertsNivel).toEqual(["avanzado"]);
   });
 });
+
+describe("GET /api/calendario", () => {
+  it("expone si ya hay un examen generado en cada semana (examen_generado)", async () => {
+    const { GET } = await import("../route");
+    sql.mockImplementation((...args: unknown[]) => {
+      const t = textoDe(args);
+      if (t.includes("from calendario_clases cc")) return Promise.resolve([{ id: "f1", examen_generado: true }]);
+      return Promise.resolve([]);
+    });
+    const res = await GET(new NextRequest("http://localhost/api/calendario?cicloId=c&jornadaId=j"));
+    expect((await res.json()).filas[0].examen_generado).toBe(true);
+    const consulta = textoDe(sql.mock.calls[0]);
+    expect(consulta).toContain("as examen_generado");
+    expect(consulta).toMatch(/tipo in \('diagnostico', 'intermedio', 'final'\)/);
+  });
+});
+

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import type { Clei, TipoExamen } from "@/lib/types";
@@ -293,6 +294,9 @@ export default function Examenes() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Generador de Exámenes — IECV</h1>
         <p className="mt-1 text-sm text-muted-foreground">Diagnóstico · Intermedio · Final</p>
+        <Link href="/examenes/lote" className="mt-2 inline-block text-sm text-brand underline underline-offset-2">
+          Generar los Intermedios de todos los ciclos y jornadas →
+        </Link>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
