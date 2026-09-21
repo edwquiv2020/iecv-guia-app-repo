@@ -167,7 +167,7 @@ export async function buildExamenDesdePlantilla(
     const pPr = p.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)![0];
     const texto =
       `Con el objeto de identificar los conocimientos, competencias y/o habilidades adquiridas que posee sobre la Asignatura y/o CLEI, le invitamos a responder el siguiente examen que consta de ${cantidad} preguntas de selección múltiple con única respuesta. ` +
-      `Para desarrollarlo, debe leer los enunciados y de las cuatro opciones de respuesta, seleccionar una y señalar en la tabla de respuestas la correcta, rellenando el circulo. ` +
+      `Para desarrollarlo, debe leer los enunciados y de las cuatro opciones de respuesta, seleccionar una y señalar en la tabla de respuestas la correcta, rellenando el círculo. ` +
       `Valoración de cada pregunta: ${valoracion}`;
     return `<w:p>${pPr}<w:r>${RPR_TEXTO}<w:t xml:space="preserve">${esc(texto)}</w:t></w:r></w:p>`;
   });
@@ -175,7 +175,7 @@ export async function buildExamenDesdePlantilla(
   // ---- 4. Tabla de datos (la etiqueta del original queda; se agrega el valor)
   const [dia = "", mes = "", anio = ""] = params.fechaAplicacion.split("/");
   const valores: Record<string, { texto: string; parrafo?: number }> = {
-    "1,0": { texto: params.clei, parrafo: 1 }, // CLEI (la celda es angosta: solo el ciclo, ej. "III")
+    "1,0": { texto: params.grupoCleiJornada, parrafo: 1 }, // CLEI: texto completo, ej. "6-7/III/SEMANAL 1"
     "2,1": { texto: dia }, // DÍA
     "2,2": { texto: mes }, // MES
     "2,3": { texto: anio }, // AÑO

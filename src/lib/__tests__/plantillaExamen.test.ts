@@ -84,7 +84,8 @@ describe("buildExamenDocx (plantilla FTO-EDU-FOR-98)", () => {
     const { texto } = await abrir(await buildExamenDocx(params(10), contenido(10)));
     expect(texto).toContain("Área o Asignatura: Tecnología e Informática");
     expect(texto).toContain("Tipo de prueba: (Intermedio)");
-    expect(texto).toMatch(/CLEI\s+III/);
+    expect(texto).toMatch(/CLEI\s+6-7\/III\/SEMANAL 1/);
+    expect(texto).toContain("rellenando el círculo");
     expect(texto).toMatch(/DÍA:\s+24/);
     expect(texto).toMatch(/MES:\s+10/);
     expect(texto).toMatch(/AÑO:\s+2026/);
