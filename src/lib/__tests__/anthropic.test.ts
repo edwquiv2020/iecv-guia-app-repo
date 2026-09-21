@@ -308,10 +308,24 @@ describe("generarContenidoExamen", () => {
 
     const resultado = await generarContenidoExamen(paramsIntermedio, ["FUNCIÓN SI — Sintaxis y condiciones"]);
 
-    expect(resultado.preguntas).toEqual(preguntas);
+    // Mismas preguntas y misma respuesta correcta (por texto); solo cambia la letra donde queda.
+    expect(resultado.preguntas.map((p) => p.enunciado)).toEqual(preguntas.map((p) => p.enunciado));
+    resultado.preguntas.forEach((p, i) => expect(p.opciones[p.correcta]).toBe(preguntas[i].opciones[preguntas[i].correcta]));
     const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
     expect(prompt).toContain("FUNCIÓN SI — Sintaxis y condiciones");
     expect(prompt).toContain("Microsoft Excel");
+  });
+
+  it("reparte la letra correcta de forma pareja aunque la IA ponga todas en la misma", async () => {
+    const preguntas = preguntasExamenValidas(10).map((p) => {
+      const correcta = p.opciones[p.correcta];
+      const otras = p.opciones.filter((_, i) => i !== p.correcta);
+      return { ...p, opciones: [otras[0], correcta, otras[1], otras[2]] as typeof p.opciones, correcta: 1 };
+    });
+    mockCreate.mockResolvedValue(toolUseResponse({ preguntas }));
+    const resultado = await generarContenidoExamen(paramsIntermedio, []);
+    const conteo = [0, 1, 2, 3].map((l) => resultado.preguntas.filter((p) => p.correcta === l).length);
+    conteo.forEach((c) => { expect(c).toBeGreaterThanOrEqual(2); expect(c).toBeLessThanOrEqual(3); });
   });
 
   it("reintenta y falla si alguna pregunta queda sin las 4 opciones", async () => {
