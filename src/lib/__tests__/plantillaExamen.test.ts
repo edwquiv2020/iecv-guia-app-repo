@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { buildExamenDocx } from "@/lib/buildExamen";
+import { buildExamenDocx, buildDiagnosticoDocx } from "@/lib/buildExamen";
 import type { ContenidoExamen, ParametrosExamen } from "@/lib/types";
 
 // El instrumento FTO-EDU-FOR-98 se arma desde el ARCHIVO ORIGINAL de la
@@ -125,5 +125,42 @@ describe("buildExamenDocx (plantilla FTO-EDU-FOR-98)", () => {
 
   it("rechaza cantidades de preguntas que no existen en el formato (solo 5 o 10)", async () => {
     await expect(buildExamenDocx(params(7), contenido(7))).rejects.toThrow(/5 o 10/);
+  });
+});
+
+describe("buildDiagnosticoDocx (plantilla FTO-EDU-FOR-82)", () => {
+  const preguntas = Array.from({ length: 7 }, (_, i) => ({ enunciado: `¿Qué sabe usted del tema ${i + 1} & <más>?` }));
+  const paramsDiag = { ...params(10), tipo: "diagnostico" as const, cursoNombre: undefined };
+
+  it("título, código y pie del FOR-82, con las 7 preguntas abiertas numeradas y el texto original", async () => {
+    const { zip, texto } = await abrir(await buildDiagnosticoDocx(paramsDiag, { preguntas }));
+    const encabezado = (await zip.file("word/header1.xml")!.async("string")).replace(/<[^>]+>/g, " ");
+    expect(encabezado).toContain("DIAGNÓSTICO DE PRESABERES COLEGIO");
+    expect(encabezado).not.toContain("INSTRUMENTO");
+    const pie = (await zip.file("word/footer1.xml")!.async("string")).replace(/<[^>]+>/g, " ").replace(/\s+/g, "");
+    expect(pie).toContain("FTO-EDU-FOR-82V2");
+    expect(texto).toContain("solicitamos responda las preguntas de manera clara y con letra legible:");
+    for (let n = 1; n <= 7; n++) expect(texto).toContain(` ${n}. ¿Qué sabe usted del tema ${n} &amp;`.replace("&amp;", "&"));
+    expect(texto).toContain("Área o Asignatura: Tecnología e Informática");
+    expect(texto).not.toContain("Tipo de prueba");
+  });
+
+  it("no tiene tabla de respuestas, opciones, valoración ni NOTA; sin imágenes de tablas del FOR-98", async () => {
+    const { zip, xml, texto } = await abrir(await buildDiagnosticoDocx(paramsDiag, { preguntas }));
+    expect(texto).not.toMatch(/Valoración|NOTA|selección múltiple|tabla de respuestas/);
+    expect(xml).not.toContain("Tabla de respuestas");
+    expect(zip.file("word/media/image1.png")).toBeNull();
+    expect(zip.file("word/media/image2.png")).toBeNull();
+    expect(zip.file("word/media/tabla_respuestas.png")).toBeNull();
+    expect(zip.file("word/media/image3.png")).not.toBeNull(); // logo
+    expect(await zip.file("word/_rels/document.xml.rels")!.async("string")).not.toMatch(/image[12]\.png/);
+  });
+
+  it("rellena los datos: CLEI completo, fecha, sede y docente", async () => {
+    const { texto } = await abrir(await buildDiagnosticoDocx(paramsDiag, { preguntas }));
+    expect(texto).toMatch(/CLEI\s+6-7\/III\/SEMANAL 1/);
+    expect(texto).toMatch(/DÍA:\s+24/);
+    expect(texto).toMatch(/SEDE:\s+CALI/);
+    expect(texto).toContain("EDWARD QUIÑONES VALENZUELA");
   });
 });

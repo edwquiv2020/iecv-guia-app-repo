@@ -265,17 +265,26 @@ describe("generarContenidoDiagnostico", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("en éxito devuelve las preguntas del diagnóstico", async () => {
-    const preguntas = preguntasExamenValidas(10);
+  it("en éxito devuelve 7 preguntas abiertas (solo enunciado, sin opciones)", async () => {
+    const preguntas = Array.from({ length: 7 }, (_, i) => ({ enunciado: `¿Pregunta abierta ${i + 1}?` }));
     mockCreate.mockResolvedValue(toolUseResponse({ preguntas }));
     const resultado = await generarContenidoDiagnostico(paramsExamenBase);
     expect(resultado.preguntas).toEqual(preguntas);
+    const llamada = mockCreate.mock.calls[0][0];
+    expect(llamada.tools[0].input_schema.properties.preguntas.maxItems).toBe(7);
+    expect(Object.keys(llamada.tools[0].input_schema.properties.preguntas.items.properties)).toEqual(["enunciado"]);
   });
 
-  it("reintenta y falla si la cantidad de preguntas no coincide con cantidadPreguntas", async () => {
-    mockCreate.mockResolvedValue(toolUseResponse({ preguntas: preguntasExamenValidas(7) }));
+  it("reintenta y falla si no llegan exactamente 7 preguntas", async () => {
+    mockCreate.mockResolvedValue(toolUseResponse({ preguntas: [{ enunciado: "¿Una sola?" }] }));
     await expect(generarContenidoDiagnostico(paramsExamenBase)).rejects.toThrow(/incompleto/);
     expect(mockCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it("reintenta y falla si algún enunciado viene vacío", async () => {
+    const preguntas = Array.from({ length: 7 }, (_, i) => ({ enunciado: i === 3 ? "  " : `¿Pregunta ${i + 1}?` }));
+    mockCreate.mockResolvedValue(toolUseResponse({ preguntas }));
+    await expect(generarContenidoDiagnostico(paramsExamenBase)).rejects.toThrow(/pregunta 4/);
   });
 });
 
