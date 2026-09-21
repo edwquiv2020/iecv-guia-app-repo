@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
-import { buildGuiaDocx } from "@/lib/buildGuia";
+import { buildGuiaDocx, buildGuiaDuaDocx, CRITERIOS_INSTITUCIONALES } from "@/lib/buildGuia";
 import type { ContenidoGuia, ParametrosGuia } from "@/lib/types";
 
 // Smoke test del ensamblado del .docx — mismo fixture que test_build.ts (el
@@ -101,5 +101,60 @@ describe("buildGuiaDocx", () => {
     const texto = (await (await JSZip.loadAsync(docxBuf)).file("word/document.xml")!.async("string")).replace(/<[^>]+>/g, " ");
     expect(texto).not.toContain("EDWARD");
     expect(texto).not.toContain("CALI");
+  });
+
+  // Plantilla FTO-EDU-FOR-96: Arial 10 y los 6 criterios generales de la rúbrica.
+  describe("formato de la plantilla original", () => {
+    async function xmlEstandar() {
+      const logoBuf = await fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg"));
+      const ilustracionBuf = await fs.readFile(path.join(process.cwd(), "assets", "banco_fotos", "tortuga.png"));
+      const buf = await buildGuiaDocx({ ...params, sede: "CALI", docente: "X" }, contenido, { logoBuf, ilustracionBuf });
+      return (await JSZip.loadAsync(buf)).file("word/document.xml")!.async("string");
+    }
+
+    it("el texto del cuerpo y los títulos van en Arial 10 (sz 20), no en 12/13/16", async () => {
+      const xml = await xmlEstandar();
+      const tamanos = new Set([...xml.matchAll(/<w:sz w:val="(\d+)"/g)].map((m) => m[1]));
+      expect(tamanos.has("20")).toBe(true);
+      // ningún texto de cuerpo/título en 12, 13 u 16 pt (24/26/32 half-points)
+      for (const grande of ["24", "26", "32"]) {
+        const fuera = [...xml.matchAll(new RegExp(`<w:sz w:val="${grande}"`, "g"))].length;
+        // "ESTRUCTURA DE LA GUÍA DE FORMACIÓN" conserva 12 pt (una sola vez)
+        expect(fuera).toBeLessThanOrEqual(grande === "24" ? 1 : 0);
+      }
+    });
+
+    it("la rúbrica trae los 6 criterios generales de la plantilla y luego los del tema", async () => {
+      const xml = await xmlEstandar();
+      const texto = xml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+      expect(CRITERIOS_INSTITUCIONALES).toHaveLength(6);
+      for (const [criterio, superior, alto, basico, bajo] of CRITERIOS_INSTITUCIONALES) {
+        for (const celda of [criterio, superior, alto, basico, bajo]) expect(texto).toContain(celda);
+        expect(new Set([superior, alto, basico, bajo]).size).toBe(4); // niveles distintos
+      }
+      expect(texto).toContain("Uso del navegador"); // criterio propio del tema, después de los generales
+      expect(texto.indexOf("Usa adecuadamente el cuaderno")).toBeLessThan(texto.indexOf("Uso del navegador"));
+      expect(texto).not.toContain("Reconocimiento de herramientas de la cinta");
+    });
+
+    it("la guía DUA conserva su letra grande (12 pt) por accesibilidad", async () => {
+      const logoBuf = await fs.readFile(path.join(process.cwd(), "assets", "logo_comfenalco.jpg"));
+      const ilustracionBuf = await fs.readFile(path.join(process.cwd(), "assets", "banco_fotos", "tortuga.png"));
+      const buf = await buildGuiaDuaDocx(
+        { ...params, sede: "CALI", docente: "X" },
+        {
+          saludoMotivacion: "Hola", introduccion: "Intro", competencia: "C", desempeno: "D", objetivoGuia: "Objetivo", reflexionInicial: "R",
+          parteDeLoQueYaSabes: "P", subtemaTitulo: "Sub", funcionExplicita: "F",
+          repeticiones: [{ instruccion: "a" }, { instruccion: "b" }, { instruccion: "c" }, { instruccion: "d" }],
+          tallerSituacionPropia: { opcionA: "A", opcionB: "B" },
+          listaVerificacion: ["v"], antesDeCerrarPregunta: "?", fichaResumen: "f",
+          rubricaCriteriosEspecificos: [], bibliografia: [{ autor: "A", anio: "2026", titulo: "T" }],
+        },
+        { logoBuf, ilustracionBuf }
+      );
+      const xml = await (await JSZip.loadAsync(buf)).file("word/document.xml")!.async("string");
+      expect(xml).toContain('<w:sz w:val="24"');
+      expect(xml).toContain('<w:sz w:val="26"');
+    });
   });
 });
