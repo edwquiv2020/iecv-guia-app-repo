@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { cantidadPreguntasPorJornada, duracionPorClei } from "@/lib/types";
 
 describe("duracionPorClei", () => {
-  it("CLEI III: 1 hora, 3 páginas máx, 2 talleres", () => {
-    expect(duracionPorClei("III")).toEqual({
+  it.each(["II", "III"] as const)("CLEI %s: 1 hora, 3 páginas máx, 2 talleres", (clei) => {
+    expect(duracionPorClei(clei)).toEqual({
       duracion: "1 hora (60 minutos).",
       maxPaginas: "Máximo 3",
       numTalleres: 2,

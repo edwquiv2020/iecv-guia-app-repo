@@ -1,7 +1,7 @@
 // Tipos compartidos entre el formulario, la generación de contenido con IA
 // y el armado del documento Word.
 
-export type Clei = "III" | "IV" | "V" | "VI";
+export type Clei = "II" | "III" | "IV" | "V" | "VI";
 
 /**
  * Íconos reales de Microsoft (Fluent UI System Icons) disponibles para
@@ -72,7 +72,7 @@ export interface ParametrosGuia {
 
 /** Duración/máximo de páginas derivados del CLEI (regla fija de la skill original). */
 export function duracionPorClei(clei: Clei): { duracion: string; maxPaginas: string; numTalleres: number } {
-  if (clei === "III") {
+  if (clei === "II" || clei === "III") {
     return { duracion: "1 hora (60 minutos).", maxPaginas: "Máximo 3", numTalleres: 2 };
   }
   return { duracion: "2 horas (120 minutos).", maxPaginas: "Máximo 5", numTalleres: 3 };

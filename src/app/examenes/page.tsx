@@ -41,7 +41,7 @@ const ETIQUETA_TIPO: Record<TipoExamen, string> = {
 
 function cleiDesdeCiclo(nombreCiclo: string): Clei | null {
   const codigo = nombreCiclo.replace("Ciclo", "").trim();
-  return (["III", "IV", "V", "VI"] as const).includes(codigo as Clei) ? (codigo as Clei) : null;
+  return (["II", "III", "IV", "V", "VI"] as const).includes(codigo as Clei) ? (codigo as Clei) : null;
 }
 function gradosATexto(grados: string[]): string {
   return grados.map((g) => g.replace("°", "")).join("-");
