@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ContenidoKahoot, ParametrosExamen, ContenidoExamen, ContenidoDiagnostico, PreguntaExamenInput } from "./types";
+import { rebalancearClaves } from "./rebalancearClaves";
 import { PREGUNTAS_DIAGNOSTICO, duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS, TIEMPOS_KAHOOT } from "./types";
 
 const BANCO_KEYS = [
@@ -829,7 +830,8 @@ export async function generarContenidoExamen(
       continue;
     }
 
-    return data;
+    // La IA sesga la letra correcta hacia unas pocas letras: se reparte de forma pareja.
+    return { ...data, preguntas: rebalancearClaves(data.preguntas) };
   }
 
   throw ultimoError ?? new Error("No se pudo generar el examen.");
