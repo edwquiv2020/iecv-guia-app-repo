@@ -77,6 +77,7 @@ export default function Examenes() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+  const [advertencias, setAdvertencias] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/catalogo")
@@ -175,6 +176,7 @@ export default function Examenes() {
     e.preventDefault();
     setError(null);
     setExito(null);
+    setAdvertencias([]);
 
     if (mensajeSemanaOcupada) {
       setError(mensajeSemanaOcupada);
@@ -222,6 +224,7 @@ export default function Examenes() {
       if (!res.ok || !data) throw new Error(data?.error || "Error generando el examen.");
 
       const archivos: Array<{ nombre: string; contenidoBase64: string }> = data.archivos;
+      setAdvertencias(Array.isArray(data.advertencias) ? data.advertencias : []);
       if (archivos.length === 1) {
         const archivo = archivos[0];
         const bytes = Uint8Array.from(atob(archivo.contenidoBase64), (c) => c.charCodeAt(0));
@@ -449,6 +452,7 @@ export default function Examenes() {
         {mensajeSemanaOcupada && !error && <Alert tone="warning">{mensajeSemanaOcupada}</Alert>}
         {error && <Alert tone="danger">{error}</Alert>}
         {exito && <Alert tone="success">{exito}</Alert>}
+        {advertencias.map((a) => <Alert key={a} tone="warning">{a}</Alert>)}
 
         <Button type="submit" size="xl" disabled={enviando || !!mensajeSemanaOcupada} className="w-full">
           {enviando ? "Generando examen… (puede tardar ~20-30s)" : `Generar ${ETIQUETA_TIPO[tipo]}`}

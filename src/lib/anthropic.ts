@@ -770,7 +770,7 @@ Entrega el resultado exclusivamente llamando a la herramienta entregar_examen.`;
 function userPromptExamen(params: ParametrosExamen, preguntasInput: PreguntaExamenInput[], temasCubiertos: string[]): string {
   const temasTexto = temasCubiertos.length > 0
     ? temasCubiertos.map((t, i) => `${i + 1}. ${t}`).join("\n")
-    : "(sin temas registrados en el catálogo — usa el nombre del curso como única referencia)";
+    : "(sin temas registrados en el calendario — usa el nombre del curso como única referencia y limítate a sus conceptos básicos e introductorios, sin suponer contenido avanzado)";
   return `Genera el examen ${params.tipo === "intermedio" ? "Intermedio" : "Final"} de ${params.cursoNombre ?? "este curso"}:
 
 - Asignatura: ${params.asignatura}
