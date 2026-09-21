@@ -14,9 +14,8 @@ declare global {
 // demora, esto la mata a los 10s. No cubre el caso confirmado abajo (el
 // pooler nunca llega a pasarle la consulta a un backend), por eso se
 // complementa con el timeout de aplicación.
-const rawSql =
-  global._sql ??
-  postgres(process.env.DATABASE_URL!, {
+function crearCliente() {
+  return postgres(process.env.DATABASE_URL!, {
     ssl: "require",
     max: 5,
     idle_timeout: 20,
@@ -29,43 +28,63 @@ const rawSql =
     connect_timeout: 10,
     connection: { statement_timeout: 10_000 },
   });
+}
 
-if (process.env.NODE_ENV !== "production") global._sql = rawSql;
+let cliente = global._sql ?? crearCliente();
+if (process.env.NODE_ENV !== "production") global._sql = cliente;
 
-// Bajado de 15s a 8s: confirmado (status.supabase.com) que hay un incidente
-// activo del pooler en us-east-1 al momento de escribir esto — con el
-// incidente en curso, a veces hasta el reintento se cuelga, así que cada
-// intento individual necesita fallar más rápido para que 2-3 intentos
-// sigan siendo una espera razonable para quien usa la app.
+// Bajado de 15s a 8s: con el pooler de Supabase inestable, cada intento
+// individual necesita fallar rápido para que 2-3 intentos sigan siendo una
+// espera razonable para quien usa la app.
 const TIMEOUT_CONSULTA_MS = 8_000;
+
+/**
+ * Autorreparación del pool: cuando una consulta se cuelga por completo, es
+ * casi seguro que TODAS las conexiones del pool quedaron zombie a la vez
+ * (pasó de verdad en producción: 100% de fallos hasta reiniciar el
+ * contenedor, mientras una conexión nueva desde afuera respondía en <100ms).
+ * En vez de esperar al reinicio manual, se destruye el cliente viejo y se
+ * crea uno nuevo con conexiones frescas. `usado` evita que varias
+ * consultas colgadas a la vez reinicien el pool en cadena.
+ */
+function reiniciarPool(usado: typeof cliente) {
+  if (cliente !== usado) return;
+  cliente = crearCliente();
+  if (process.env.NODE_ENV !== "production") global._sql = cliente;
+  usado.end({ timeout: 0 }).catch(() => {});
+}
 
 /**
  * Pasó de verdad: un login se quedó colgado 5 minutos hasta que Railway
  * cortó la conexión (HTTP 499) — el pooler de Supabase aceptó la conexión
  * pero nunca llegó a pasarle la consulta a un backend real, así que ni
  * `statement_timeout` (que solo cuenta tiempo de ejecución) ni
- * `idle_timeout` (que solo recicla conexiones sin uso) se enteraron. postgres.js
- * no trae un timeout por consulta — este Proxy envuelve cada llamada
- * `` sql`...` `` en una carrera contra un timeout de aplicación, para que
- * cualquier ruta que use la base falle rápido y visible en vez de colgar al
- * usuario varios minutos. Envuelve solo la LLAMADA como template tag
- * (`sql\`...\``, el 99% del uso real en este proyecto); sql.json/sql.unsafe/
- * sql.begin siguen intactos vía el `get` trap por defecto del Proxy.
+ * `idle_timeout` (que solo recicla conexiones sin uso) se enteraron.
+ * postgres.js no trae un timeout por consulta — este Proxy envuelve cada
+ * llamada `` sql`...` `` en una carrera contra un timeout de aplicación, y
+ * si vence reinicia el pool (ver reiniciarPool). El resto de miembros
+ * (sql.json/unsafe/begin...) se reenvían al cliente vigente.
  */
-export const sql = new Proxy(rawSql, {
-  apply(target, thisArg, args: Parameters<typeof rawSql>) {
-    const query = Reflect.apply(target, thisArg, args);
+export const sql = new Proxy(function () {} as unknown as typeof cliente, {
+  apply(_target, thisArg, args: unknown[]) {
+    const usado = cliente;
+    const query = Reflect.apply(usado as unknown as (...a: unknown[]) => unknown, thisArg, args) as Promise<unknown>;
+    let timer: ReturnType<typeof setTimeout>;
     return Promise.race([
       query,
       new Promise((_, reject) => {
-        setTimeout(
-          () => reject(new Error(`La base de datos no respondió en ${TIMEOUT_CONSULTA_MS / 1000}s (posible conexión zombie con el pooler) — vuelve a intentarlo.`)),
-          TIMEOUT_CONSULTA_MS
-        );
+        timer = setTimeout(() => {
+          reiniciarPool(usado);
+          reject(new Error(`La base de datos no respondió en ${TIMEOUT_CONSULTA_MS / 1000}s (posible conexión zombie con el pooler) — vuelve a intentarlo.`));
+        }, TIMEOUT_CONSULTA_MS);
       }),
-    ]);
+    ]).finally(() => clearTimeout(timer));
   },
-}) as typeof rawSql;
+  get(_target, prop) {
+    const valor = Reflect.get(cliente, prop);
+    return typeof valor === "function" ? valor.bind(cliente) : valor;
+  },
+}) as typeof cliente;
 
 /**
  * Reintenta si falla (2 intentos extra, con una pequeña espera creciente
