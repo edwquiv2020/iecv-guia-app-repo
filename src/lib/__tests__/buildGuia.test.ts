@@ -112,16 +112,22 @@ describe("buildGuiaDocx", () => {
       return (await JSZip.loadAsync(buf)).file("word/document.xml")!.async("string");
     }
 
-    it("el texto del cuerpo y los títulos van en Arial 10 (sz 20), no en 12/13/16", async () => {
+    it("la letra vuelve a ser la de siempre: cuerpo en 12 pt, sin texto en 10 pt salvo tablas", async () => {
       const xml = await xmlEstandar();
-      const tamanos = new Set([...xml.matchAll(/<w:sz w:val="(\d+)"/g)].map((m) => m[1]));
-      expect(tamanos.has("20")).toBe(true);
-      // ningún texto de cuerpo/título en 12, 13 u 16 pt (24/26/32 half-points)
-      for (const grande of ["24", "26", "32"]) {
-        const fuera = [...xml.matchAll(new RegExp(`<w:sz w:val="${grande}"`, "g"))].length;
-        // "ESTRUCTURA DE LA GUÍA DE FORMACIÓN" conserva 12 pt (una sola vez)
-        expect(fuera).toBeLessThanOrEqual(grande === "24" ? 1 : 0);
-      }
+      const cuenta = (v: string) => [...xml.matchAll(new RegExp(`<w:sz w:val="${v}"`, "g"))].length;
+      expect(cuenta("24")).toBeGreaterThan(10); // cuerpo y numerales en 12 pt
+      expect(cuenta("26")).toBeGreaterThan(3); // numerales en 13 pt
+      expect(cuenta("32")).toBe(2); // INICIO y DESARROLLO en 16 pt
+    });
+
+    it("la ilustración de INICIO mide 12 x 8 cm (proporción 3:2 de las fotos, sin deformar)", async () => {
+      const xml = await xmlEstandar();
+      const extents = [...xml.matchAll(/<wp:extent cx="(\d+)" cy="(\d+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      const EMU_POR_CM = 360000;
+      const ilustracion = extents.find(([cx]) => Math.abs(cx / EMU_POR_CM - 12) < 0.05);
+      expect(ilustracion).toBeDefined();
+      expect(ilustracion![1] / EMU_POR_CM).toBeCloseTo(8, 0);
+      expect(ilustracion![0] / ilustracion![1]).toBeCloseTo(888 / 590, 1);
     });
 
     it("la rúbrica trae los 6 criterios generales de la plantilla y luego los del tema", async () => {
