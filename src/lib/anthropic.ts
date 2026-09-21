@@ -616,6 +616,38 @@ function lineaImagenesPreguntas(preguntasInput: PreguntaExamenInput[], cantidadP
   return `Estas preguntas llevan imagen de apoyo — redáctalas alrededor de lo que describe cada imagen:\n${lineas.join("\n")}\nLas demás preguntas (sin mención arriba) no llevan imagen — redáctalas de forma autocontenida.`;
 }
 
+/**
+ * A veces el modelo devuelve la forma equivocada aunque el contenido sea bueno
+ * (sobre todo con código Python, por las comillas y saltos de línea): la lista
+ * de preguntas como TEXTO JSON, una pregunta como texto, o las opciones como
+ * texto. Se interpreta lo interpretable antes de validar; si no se puede, la
+ * validación lo rechaza como siempre.
+ */
+export function normalizarContenidoExamen(data: unknown): ContenidoExamen {
+  const parseSiTexto = (v: unknown): unknown => {
+    if (typeof v !== "string") return v;
+    try { return JSON.parse(v); } catch { return v; }
+  };
+  const bruto = (data ?? {}) as { preguntas?: unknown };
+  const lista = parseSiTexto(bruto.preguntas);
+  if (!Array.isArray(lista)) return bruto as ContenidoExamen;
+  const preguntas = lista.map((p) => {
+    const q = parseSiTexto(p) as { opciones?: unknown };
+    if (q && typeof q === "object") {
+      const opciones = parseSiTexto(q.opciones);
+      return { ...q, opciones: typeof opciones === "string" ? opciones.split(/\r?\n/).map((o) => o.replace(/^\s*[A-Da-d][.)]\s*/, "").trim()).filter(Boolean) : opciones };
+    }
+    return q;
+  });
+  return { ...(bruto as object), preguntas } as ContenidoExamen;
+}
+
+/** En un reintento se le dice al modelo qué falló en el intento anterior. */
+function correccionReintento(errorPrevio: Error | null): string {
+  if (!errorPrevio) return "";
+  return `\n\nATENCIÓN: tu respuesta anterior fue rechazada (${errorPrevio.message}). Entrega \`preguntas\` como un ARRAY real (no como texto), con exactamente el número de preguntas pedido y, en cada una, \`opciones\` como un ARRAY de exactamente 4 textos.`;
+}
+
 function validarContenidoExamen(data: ContenidoExamen, cantidadPreguntas: number): string[] {
   const faltantes: string[] = [];
   if (!Array.isArray(data.preguntas) || data.preguntas.length !== cantidadPreguntas) {
@@ -807,12 +839,13 @@ export async function generarContenidoExamen(
   );
 
   let ultimoError: Error | null = null;
-  for (let intento = 1; intento <= 2; intento++) {
+  for (let intento = 1; intento <= 3; intento++) {
+    const correccion = correccionReintento(ultimoError);
     const message = await client.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 8192,
       system: systemPromptExamen(params.tipo, params.asignatura),
-      messages: [{ role: "user", content: userPromptExamen(params, preguntasInput, temasCubiertos) }],
+      messages: [{ role: "user", content: userPromptExamen(params, preguntasInput, temasCubiertos) + correccion }],
       tools: [tool],
       tool_choice: { type: "tool", name: "entregar_examen" },
     });
@@ -823,10 +856,10 @@ export async function generarContenidoExamen(
       continue;
     }
 
-    const data = toolUse.input as ContenidoExamen;
+    const data = normalizarContenidoExamen(toolUse.input);
     const faltantes = validarContenidoExamen(data, params.cantidadPreguntas);
     if (faltantes.length > 0) {
-      ultimoError = new Error(`El examen quedó incompleto: ${faltantes.join(", ")}.`);
+      ultimoError = new Error(`El examen quedó incompleto: ${faltantes.join(", ")} (recibido: ${Array.isArray(data.preguntas) ? `${data.preguntas.length} preguntas` : `preguntas de tipo ${typeof data.preguntas}`}; corte: ${message.stop_reason}).`);
       continue;
     }
 

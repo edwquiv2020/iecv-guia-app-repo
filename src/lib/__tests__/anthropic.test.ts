@@ -333,6 +333,44 @@ describe("generarContenidoExamen", () => {
     preguntas[0] = { ...preguntas[0], opciones: ["Solo una"] as unknown as [string, string, string, string] };
     mockCreate.mockResolvedValue(toolUseResponse({ preguntas }));
     await expect(generarContenidoExamen(paramsIntermedio, [])).rejects.toThrow(/incompleto/);
-    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(mockCreate).toHaveBeenCalledTimes(3);
+  });
+
+  // Con código Python el modelo a veces devuelve la forma equivocada aunque el contenido sea bueno.
+  it("acepta la lista de preguntas devuelta como texto JSON", async () => {
+    const preguntas = preguntasExamenValidas(10);
+    mockCreate.mockResolvedValue(toolUseResponse({ preguntas: JSON.stringify(preguntas) }));
+    const r = await generarContenidoExamen(paramsIntermedio, []);
+    expect(r.preguntas).toHaveLength(10);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("acepta preguntas y opciones devueltas como texto", async () => {
+    const preguntas = preguntasExamenValidas(10).map((p, i) =>
+      i % 2 === 0 ? JSON.stringify(p) : { ...p, opciones: p.opciones.map((o, j) => `${"ABCD"[j]}. ${o}`).join("\n") }
+    );
+    mockCreate.mockResolvedValue(toolUseResponse({ preguntas }));
+    const r = await generarContenidoExamen(paramsIntermedio, []);
+    expect(r.preguntas).toHaveLength(10);
+    r.preguntas.forEach((p) => expect(p.opciones).toHaveLength(4));
+    expect(r.preguntas[1].opciones[0]).toBe(preguntasExamenValidas(10)[1].opciones[0]); // sin la letra "A."
+  });
+
+  it("si el primer intento sale mal, el reintento le dice al modelo qué falló y se recupera", async () => {
+    mockCreate
+      .mockResolvedValueOnce(toolUseResponse({ preguntas: preguntasExamenValidas(3) }))
+      .mockResolvedValueOnce(toolUseResponse({ preguntas: preguntasExamenValidas(10) }));
+    const r = await generarContenidoExamen(paramsIntermedio, []);
+    expect(r.preguntas).toHaveLength(10);
+    expect(mockCreate.mock.calls[0][0].messages[0].content).not.toContain("ATENCIÓN");
+    const segundo = mockCreate.mock.calls[1][0].messages[0].content as string;
+    expect(segundo).toContain("ATENCIÓN");
+    expect(segundo).toContain("deben ser exactamente 10");
+    expect(segundo).toContain("ARRAY");
+  });
+
+  it("el mensaje de error indica qué se recibió y por qué cortó el modelo", async () => {
+    mockCreate.mockResolvedValue({ ...toolUseResponse({ preguntas: preguntasExamenValidas(3) }), stop_reason: "tool_use" });
+    await expect(generarContenidoExamen(paramsIntermedio, [])).rejects.toThrow(/recibido: 3 preguntas; corte: tool_use/);
   });
 });
