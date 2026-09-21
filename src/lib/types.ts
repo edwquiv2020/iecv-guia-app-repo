@@ -68,6 +68,9 @@ export interface ParametrosGuia {
   horaMaxima: string; // "23:59"
   /** Id del curso en el catálogo (Supabase) — si viene, se usa para consultar los tipos de taller usados recientemente y no repetirlos. Opcional por compatibilidad. */
   cursoId?: string;
+  /** Sede y nombre del docente que aparecen en la tabla de datos de la guía (el formulario los precarga; editables). */
+  sede?: string;
+  docente?: string;
   // Video de apoyo: el docente lo aporta manualmente (verificar que exista y
   // sea apropiado es responsabilidad humana — ver nota en SKILL.md original).
   videoApoyo: {
@@ -264,6 +267,8 @@ export interface ParametrosExamen {
   fechaAplicacion: string; // dd/mm/aaaa
   sede: string;
   docente: string;
+  /** Nivel de la malla del curso evaluado (para semanas que todavía no están programadas en Horarios). */
+  nivel?: Nivel;
   /** Solo intermedio/final — Diagnóstico no evalúa un curso específico. */
   cursoId?: string;
   cursoNombre?: string;

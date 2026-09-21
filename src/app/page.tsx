@@ -92,6 +92,8 @@ export default function Home() {
   const [archivoKahoot, setArchivoKahoot] = useState<string | null>(null);
   const [fechaCargueIso, setFechaCargueIso] = useState("");
   const [horaMaxima, setHoraMaxima] = useState("23:59");
+  const [sede, setSede] = useState("CALI");
+  const [docente, setDocente] = useState("");
   const [videoTitulo, setVideoTitulo] = useState("");
   const [videoCanal, setVideoCanal] = useState("");
   const [videoDuracion, setVideoDuracion] = useState("");
@@ -110,7 +112,8 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/catalogo")
       .then((r) => r.json())
-      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[] }) => {
+      .then((data: { ciclos: Ciclo[]; cursos: Curso[]; jornadas: Jornada[]; actividades: Actividad[]; usuario?: { nombre: string } }) => {
+        if (data.usuario?.nombre) setDocente(data.usuario.nombre);
         setCiclos(data.ciclos.filter((c) => cleiDesdeCiclo(c.nombre) !== null));
         setCursos(data.cursos);
         setJornadas(data.jornadas);
@@ -292,6 +295,8 @@ export default function Home() {
         subtemas,
         fechaCargue,
         horaMaxima,
+        sede: sede.trim(),
+        docente: docente.trim(),
         videoApoyo: { titulo: videoTitulo, canal: videoCanal, duracion: videoDuracion, url: videoUrl },
         tipos,
         cursoId: cursoId || undefined,
@@ -577,6 +582,15 @@ export default function Home() {
             {(id) => (
               <Input id={id} type="number" min={1} value={guia} onChange={(e) => setGuia(Number(e.target.value))} />
             )}
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Sede" hint="(aparece en la tabla de datos de la guía)">
+            {(id) => <Input id={id} value={sede} onChange={(e) => setSede(e.target.value)} />}
+          </Field>
+          <Field label="Docente" hint="(precargado con tu nombre, editable)">
+            {(id) => <Input id={id} value={docente} onChange={(e) => setDocente(e.target.value)} />}
           </Field>
         </div>
 
