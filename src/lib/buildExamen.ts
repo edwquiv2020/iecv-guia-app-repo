@@ -3,6 +3,7 @@ import {
   Header, Footer, ImageRun, AlignmentType, WidthType, VerticalAlign, ShadingType,
 } from "docx";
 import type { ParametrosExamen, ContenidoExamen } from "./types";
+import { buildExamenDesdePlantilla } from "./plantillaExamen";
 
 // Puerto a Word de los dos formatos reales del colegio:
 // - FTO-EDU-FOR-82 "Diagnóstico de Presaberes Colegio" (solo Diagnóstico).
@@ -232,15 +233,12 @@ export async function buildDiagnosticoDocx(params: ParametrosExamen, contenido: 
   });
 }
 
-/** Instrumento de Evaluación (FTO-EDU-FOR-98) — Intermedio o Final, un curso específico. */
+/**
+ * Instrumento de Evaluación (FTO-EDU-FOR-98) — Intermedio o Final, un curso
+ * específico. Se construye desde el archivo original de la institución (ver
+ * plantillaExamen.ts), no con el armado genérico de este archivo.
+ */
 export async function buildExamenDocx(params: ParametrosExamen, contenido: ContenidoExamen, imagenes: ImagenPreguntaExamen[] = []): Promise<Buffer> {
   if (params.tipo === "diagnostico") throw new Error("Usa buildDiagnosticoDocx() para el tipo 'diagnostico'.");
-  const etiqueta = params.tipo === "intermedio" ? "Intermedio" : "Final";
-  return buildExamenBase(params, contenido, imagenes, {
-    tituloForm: "INSTRUMENTO DE EVALUACIÓN COLEGIO",
-    formCode: "FTO-EDU-FOR-98 V1",
-    tipoPruebaLinea: `Tipo de prueba: (${etiqueta})`,
-    introTexto: `Con el objeto de identificar los conocimientos, competencias y/o habilidades adquiridas que posee sobre la Asignatura y/o CLEI, le invitamos a responder el siguiente examen que consta de ${params.cantidadPreguntas} preguntas de selección múltiple con única respuesta. Para desarrollarlo, debe leer los enunciados y de las cuatro opciones de respuesta, seleccionar una y señalar en la tabla de respuestas la correcta. Valoración de cada pregunta: ${params.valoracionPregunta}.`,
-    conNota: true,
-  });
+  return buildExamenDesdePlantilla(params, contenido, imagenes);
 }
