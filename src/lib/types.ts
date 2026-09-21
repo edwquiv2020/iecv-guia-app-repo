@@ -1,6 +1,14 @@
 // Tipos compartidos entre el formulario, la generación de contenido con IA
 // y el armado del documento Word.
 
+/** Niveles de una malla: un mismo curso puede tener una malla por nivel. */
+export const NIVELES = ["basico", "intermedio", "avanzado"] as const;
+export type Nivel = (typeof NIVELES)[number];
+export const ETIQUETA_NIVEL: Record<Nivel, string> = { basico: "Básico", intermedio: "Intermedio", avanzado: "Avanzado" };
+export function esNivel(valor: unknown): valor is Nivel {
+  return typeof valor === "string" && (NIVELES as readonly string[]).includes(valor);
+}
+
 export type Clei = "II" | "III" | "IV" | "V" | "VI";
 
 /**

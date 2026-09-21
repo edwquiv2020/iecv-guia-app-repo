@@ -19,7 +19,7 @@ for (const t of temas) {
   await sql`
     insert into temas (curso_id, numero, tema, subtemas, url_video, archivo_kahoot)
     values (${curso.id}, ${t.numero}, ${t.tema}, ${t.subtemas}, ${t.url_video}, ${t.archivo_kahoot})
-    on conflict (curso_id, numero) do update set
+    on conflict (curso_id, nivel, numero) do update set
       tema = excluded.tema, subtemas = excluded.subtemas,
       url_video = excluded.url_video, archivo_kahoot = excluded.archivo_kahoot
   `;

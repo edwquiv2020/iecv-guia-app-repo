@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       }
       const posicion = (contadorPorCurso.get(cursoId) ?? 0) + 1;
       contadorPorCurso.set(cursoId, posicion);
-      const [tema] = await sql`select id from temas where curso_id = ${cursoId} and numero = ${posicion} and activo`;
+      const [tema] = await sql`select id from temas where curso_id = ${cursoId} and nivel = 'basico' and numero = ${posicion} and activo`;
       return tema?.id ?? null;
     }
 
