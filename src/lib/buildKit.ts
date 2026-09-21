@@ -106,7 +106,7 @@ export async function buildKitSubidaExamenDocx(
   params: ParametrosExamen,
   /** null = Diagnóstico de preguntas abiertas: no hay clave de respuestas. */
   contenido: ContenidoExamen | null,
-  opts: { nombreArchivoExamen: string }
+  opts: { nombreArchivoExamen: string; advertencias?: string[] }
 ): Promise<Buffer> {
   const etiquetaTipo = params.tipo === "diagnostico" ? "DIAGNÓSTICO DE PRESABERES" : params.tipo === "intermedio" ? "EXAMEN INTERMEDIO" : "EXAMEN FINAL";
   const nombreSeccion = params.cursoNombre
@@ -122,6 +122,7 @@ export async function buildKitSubidaExamenDocx(
         : "Este diagnóstico se aplica en papel y se responde por escrito. Sube el archivo a Moodle solo como evidencia/registro — no hay Kahoot para exámenes.",
       { after: 300 }
     ),
+    ...(opts.advertencias ?? []).map((a) => p(`⚠ ${a}`, { bold: true, after: 300 })),
     p("Nombre de sección sugerido en Moodle:", { bold: true, after: 60 }),
     p(nombreSeccion, { after: 300 }),
     new Table({

@@ -80,6 +80,12 @@ async function temasCubiertos(params: ParamsExamenRequest): Promise<string[]> {
   return filas.map((f) => `${f.tema} — ${f.subtemas}`);
 }
 
+/** Aviso cuando el calendario no tiene temas registrados del curso hasta esa semana: la IA solo puede guiarse por el nombre del curso. */
+export function mensajeSinTemas(params: Pick<ParamsExamenRequest, "tipo" | "cursoNombre" | "semana">): string {
+  const alcance = params.tipo === "final" ? "todo el curso" : `hasta la semana ${params.semana}`;
+  return `No hay temas registrados en el calendario para ${params.cursoNombre ?? "este curso"} (${alcance}), así que las preguntas se basaron solo en el nombre del curso y pueden no corresponder a lo que realmente se dictó. Revísalas antes de aplicar el examen, o programa las clases del curso en Horarios y vuelve a generarlo.`;
+}
+
 export async function POST(request: NextRequest) {
   let body: unknown;
   let preguntasInput: PreguntaExamenInput[] = [];
@@ -170,6 +176,7 @@ export async function POST(request: NextRequest) {
     const formCode = esDiagnostico ? "FTO-EDU-FOR-82_V2" : "FTO-EDU-FOR-98_V1";
     const nombreExamen = `${formCode}_${etiquetaTipo}_Semana${params.semana}_CLEI_${params.clei}_${params.jornada.replace(/\s+/g, "")}.docx`;
 
+    const advertencias: string[] = [];
     let contenido: ContenidoExamen | ContenidoDiagnostico;
     let docxBuf: Buffer;
     let kitBuf: Buffer;
@@ -180,13 +187,15 @@ export async function POST(request: NextRequest) {
       docxBuf = await buildDiagnosticoDocx(params, diagnostico);
       kitBuf = await buildKitSubidaExamenDocx(params, null, { nombreArchivoExamen: nombreExamen });
     } else {
-      const examen = await generarContenidoExamen(params, await temasCubiertos(params), preguntasInput);
+      const temas = await temasCubiertos(params);
+      if (temas.length === 0) advertencias.push(mensajeSinTemas(params));
+      const examen = await generarContenidoExamen(params, temas, preguntasInput);
       const imagenes: ImagenPreguntaExamen[] = preguntasInput
         .filter((p): p is PreguntaExamenInput & { imagen: NonNullable<PreguntaExamenInput["imagen"]> } => !!p.imagen)
         .map((p) => ({ index: p.index, buffer: p.imagen.buffer, tipo: p.imagen.tipo }));
       contenido = examen;
       docxBuf = await buildExamenDocx(params, examen, imagenes);
-      kitBuf = await buildKitSubidaExamenDocx(params, examen, { nombreArchivoExamen: nombreExamen });
+      kitBuf = await buildKitSubidaExamenDocx(params, examen, { nombreArchivoExamen: nombreExamen, advertencias });
     }
 
     const archivos = [
@@ -194,7 +203,7 @@ export async function POST(request: NextRequest) {
       { nombre: `KIT_SUBIDA_${etiquetaTipo}_Semana${params.semana}_CLEI_${params.clei}.docx`, contenidoBase64: kitBuf.toString("base64") },
     ];
 
-    return NextResponse.json({ archivos, contenido });
+    return NextResponse.json({ archivos, contenido, advertencias });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido generando el examen.";
     return NextResponse.json({ error: message }, { status: 500 });

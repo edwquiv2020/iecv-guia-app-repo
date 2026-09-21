@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import type { ContenidoExamen } from "@/lib/types";
@@ -252,5 +253,47 @@ describe("POST /api/generar-examen", () => {
     const res = await POST(request);
     expect(res.status).toBe(429);
     delete process.env.LIMITE_GENERACIONES_DIA;
+  });
+
+  it("Intermedio con temas en el calendario: sin advertencias", async () => {
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(intermedioParams),
+    }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).advertencias).toEqual([]);
+  });
+
+  it("Intermedio sin temas en el calendario: genera igual pero avisa (respuesta y kit)", async () => {
+    sql.mockImplementation((strings: TemplateStringsArray) =>
+      Promise.resolve(strings.join(" ").includes("asignaturas") ? [{ nombre: "Tecnología e Informática" }] : [])
+    );
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(intermedioParams),
+    }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.advertencias).toHaveLength(1);
+    expect(data.advertencias[0]).toMatch(/No hay temas registrados.*Microsoft Excel.*hasta la semana 5/);
+    expect(generarContenidoExamen).toHaveBeenCalledWith(expect.anything(), [], expect.anything());
+    const kit = await JSZip.loadAsync(Buffer.from(data.archivos[1].contenidoBase64, "base64"));
+    const kitTexto = (await kit.file("word/document.xml")!.async("string")).replace(/<[^>]+>/g, " ");
+    expect(kitTexto).toContain("No hay temas registrados");
+  });
+
+  it("Final sin temas: el aviso habla de todo el curso", async () => {
+    sql.mockImplementation((strings: TemplateStringsArray) =>
+      Promise.resolve(strings.join(" ").includes("asignaturas") ? [{ nombre: "Tecnología e Informática" }] : [])
+    );
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...intermedioParams, tipo: "final" }),
+    }));
+    expect((await res.json()).advertencias[0]).toContain("todo el curso");
+  });
+
+  it("Diagnóstico: nunca lleva advertencia de temas", async () => {
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(diagnosticoParams),
+    }));
+    expect((await res.json()).advertencias).toEqual([]);
   });
 });
