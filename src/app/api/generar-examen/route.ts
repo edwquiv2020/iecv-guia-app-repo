@@ -69,12 +69,22 @@ async function leerFormData(request: NextRequest): Promise<{ body: unknown; preg
 /** Temas del curso ya cubiertos hasta la fecha del examen (calendario_clases con guía generada). */
 async function temasCubiertos(params: ParamsExamenRequest): Promise<string[]> {
   if (!params.cursoId) return [];
+  // Un mismo curso puede estar programado en varios niveles: el examen evalúa
+  // solo los temas del nivel de SU semana (la fila del examen guarda el nivel).
+  // Si esa semana aún no está en el calendario, se consideran todos los niveles.
+  const [filaExamen] = await sql`
+    select nivel from calendario_clases
+    where ciclo_id = ${params.cicloId} and jornada_id = ${params.jornadaId}
+      and semana_academica = ${params.semana} and curso_id = ${params.cursoId}
+  `;
+  const nivel: string | null = filaExamen?.nivel ?? null;
   const filas = await sql`
     select t.tema, t.subtemas
     from calendario_clases cc
     join temas t on t.id = cc.tema_id
     where cc.ciclo_id = ${params.cicloId} and cc.jornada_id = ${params.jornadaId}
       and cc.curso_id = ${params.cursoId} and cc.semana_academica <= ${params.semana}
+      and (${nivel}::text is null or cc.nivel = ${nivel})
     order by cc.semana_academica
   `;
   return filas.map((f) => `${f.tema} — ${f.subtemas}`);
