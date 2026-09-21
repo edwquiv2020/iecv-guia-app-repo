@@ -682,7 +682,7 @@ export async function generarContenidoDiagnostico(
   for (let intento = 1; intento <= 2; intento++) {
     const message = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: systemPromptDiagnostico(params.asignatura),
       messages: [{ role: "user", content: userPromptDiagnostico(params, preguntasInput) }],
       tools: [tool],
@@ -774,7 +774,7 @@ export async function generarContenidoExamen(
   for (let intento = 1; intento <= 2; intento++) {
     const message = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: systemPromptExamen(params.tipo, params.asignatura),
       messages: [{ role: "user", content: userPromptExamen(params, preguntasInput, temasCubiertos) }],
       tools: [tool],
