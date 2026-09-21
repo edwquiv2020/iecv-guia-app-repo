@@ -27,7 +27,7 @@ interface ComboApi { ciclo_id: string; ciclo_nombre: string; jornada_id: string;
 type Estado =
   | { tipo: "pendiente" }
   | { tipo: "generando" }
-  | { tipo: "listo"; advertencia?: string; guardado: boolean }
+  | { tipo: "listo"; advertencia?: string; guardado: boolean; errorGuardado?: string }
   | { tipo: "error"; mensaje: string };
 
 function descargar(nombre: string, blob: Blob) {
@@ -155,19 +155,25 @@ export default function LoteIntermedios() {
         setArchivosZip((n) => n + archivos.length);
 
         // Registro en el sistema (Storage + "generado" en Horarios), igual que al generarlo uno por uno.
-        let guardado = true;
-        try {
-          const g = await fetch("/api/guias", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ calendarioClaseId: fila.id, tipo: "intermedio", archivoPath: archivos[0]?.nombre, archivos, contenido: data.contenido }),
-          });
-          guardado = g.ok;
-        } catch {
-          guardado = false;
+        // Es idempotente (reemplaza lo anterior), así que se reintenta hasta 3 veces si falla.
+        let guardado = false;
+        let errorGuardado: string | undefined;
+        for (let intento = 1; intento <= 3 && !guardado; intento++) {
+          try {
+            const g = await fetch("/api/guias", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ calendarioClaseId: fila.id, tipo: "intermedio", archivoPath: archivos[0]?.nombre, archivos, contenido: data.contenido }),
+            });
+            guardado = g.ok;
+            if (!g.ok) errorGuardado = (await g.json().catch(() => null))?.error ?? `HTTP ${g.status}`;
+          } catch (e) {
+            errorGuardado = e instanceof Error ? e.message : "Error de red";
+          }
+          if (!guardado && intento < 3) await new Promise((r) => setTimeout(r, 1500 * intento));
         }
         generadosOk.add(fila.id);
         const advertencia = Array.isArray(data.advertencias) && data.advertencias.length > 0 ? String(data.advertencias[0]) : undefined;
-        setEstados((prev) => ({ ...prev, [fila.id]: { tipo: "listo", advertencia, guardado } }));
+        setEstados((prev) => ({ ...prev, [fila.id]: { tipo: "listo", advertencia, guardado, errorGuardado } }));
       } catch (e) {
         setEstados((prev) => ({ ...prev, [fila.id]: { tipo: "error", mensaje: e instanceof Error ? e.message : "Error inesperado." } }));
       }
@@ -248,7 +254,7 @@ export default function LoteIntermedios() {
                         {est?.tipo === "listo" && (
                           <div className="space-y-1">
                             <Badge tone="success">Listo</Badge>
-                            {!est.guardado && <div className="text-xs text-warning">Generado, pero no se pudo guardar en el sistema (está en el ZIP).</div>}
+                            {!est.guardado && <div className="text-xs text-warning">Generado, pero no se pudo guardar en el sistema (está en el ZIP){est.errorGuardado ? `: ${est.errorGuardado}` : ""}. Vuelve a generarlo para guardarlo.</div>}
                             {est.advertencia && <div className="text-xs text-warning">⚠ Sin temas registrados en el calendario para este curso: revisa las preguntas.</div>}
                           </div>
                         )}
