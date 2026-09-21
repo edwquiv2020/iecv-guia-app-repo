@@ -38,6 +38,19 @@ function mimeTypePorNombre(nombre: string): string {
     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }
 
+/**
+ * Supabase Storage rechaza claves con tildes/ñ o símbolos ("Invalid key: …SÁBADO1.docx"),
+ * y los exámenes de las jornadas de sábado las llevan en el nombre. La ruta en Storage se
+ * limpia (SÁBADO → SABADO); el nombre que ve el usuario al descargar sigue siendo el original
+ * (queda en guia_archivos.nombre_archivo).
+ */
+export function claveStorage(nombre: string): string {
+  return nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "_");
+}
+
 /** Sube un archivo generado (base64) al bucket, bajo `{tipo}/{guiaId}/{nombre}`. */
 export async function subirArchivoGuia(
   guiaId: string,
@@ -45,7 +58,7 @@ export async function subirArchivoGuia(
   nombre: string,
   contenidoBase64: string
 ): Promise<{ storagePath: string; mimeType: string }> {
-  const storagePath = `${tipo}/${guiaId}/${nombre}`;
+  const storagePath = `${tipo}/${guiaId}/${claveStorage(nombre)}`;
   const bytes = Buffer.from(contenidoBase64, "base64");
   const mimeType = mimeTypePorNombre(nombre);
   // Subir es idempotente (upsert), así que se puede reintentar sin riesgo: en

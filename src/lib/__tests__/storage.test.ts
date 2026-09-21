@@ -5,7 +5,7 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ storage: { from: () => ({ upload: (...a: unknown[]) => upload(...a), remove: vi.fn() }) } }),
 }));
 
-const { subirArchivoGuia } = await import("@/lib/storage");
+const { subirArchivoGuia, claveStorage } = await import("@/lib/storage");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -33,5 +33,20 @@ describe("subirArchivoGuia", () => {
     upload.mockResolvedValue({ error: { message: "quota" } });
     await expect(subirArchivoGuia("g1", "intermedio", "examen.docx", "aG9sYQ==")).rejects.toThrow(/examen\.docx a Storage: quota/);
     expect(upload).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("claveStorage (Storage rechaza tildes y símbolos en la clave)", () => {
+  it("quita tildes y ñ, y cambia símbolos por guion bajo", () => {
+    expect(claveStorage("FTO-EDU-FOR-98_V1_Examen_Intermedio_Semana29_CLEI_III_SÁBADO1.docx")).toBe("FTO-EDU-FOR-98_V1_Examen_Intermedio_Semana29_CLEI_III_SABADO1.docx");
+    expect(claveStorage("Diagnóstico Año 2026 (v2).docx")).toBe("Diagnostico_Ano_2026_v2_.docx");
+    expect(claveStorage("KIT_SUBIDA_Semana8.docx")).toBe("KIT_SUBIDA_Semana8.docx");
+  });
+
+  it("sube con la clave limpia pero el tipo y la guía intactos", async () => {
+    upload.mockResolvedValue({ error: null });
+    const r = await subirArchivoGuia("g1", "intermedio", "Examen_SÁBADO1.docx", "aG9sYQ==");
+    expect(r.storagePath).toBe("intermedio/g1/Examen_SABADO1.docx");
+    expect(upload.mock.calls[0][0]).toBe("intermedio/g1/Examen_SABADO1.docx");
   });
 });
