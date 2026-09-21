@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { ParametrosExamen, PreguntaExamenInput, TipoExamen } from "@/lib/types";
+import type { ContenidoDiagnostico, ContenidoExamen, ParametrosExamen, PreguntaExamenInput, TipoExamen } from "@/lib/types";
 import { generarContenidoDiagnostico, generarContenidoExamen } from "@/lib/anthropic";
 import { buildDiagnosticoDocx, buildExamenDocx, type ImagenPreguntaExamen } from "@/lib/buildExamen";
 import { buildKitSubidaExamenDocx } from "@/lib/buildKit";
@@ -165,23 +165,29 @@ export async function POST(request: NextRequest) {
   const params: ParamsExamenRequest = { ...datosFormulario, asignatura };
 
   try {
-    const contenido = params.tipo === "diagnostico"
-      ? await generarContenidoDiagnostico(params, preguntasInput)
-      : await generarContenidoExamen(params, await temasCubiertos(params), preguntasInput);
-
-    const imagenes: ImagenPreguntaExamen[] = preguntasInput
-      .filter((p): p is PreguntaExamenInput & { imagen: NonNullable<PreguntaExamenInput["imagen"]> } => !!p.imagen)
-      .map((p) => ({ index: p.index, buffer: p.imagen.buffer, tipo: p.imagen.tipo }));
-
-    const etiquetaTipo = params.tipo === "diagnostico" ? "Diagnostico" : params.tipo === "intermedio" ? "Examen_Intermedio" : "Examen_Final";
-    const formCode = params.tipo === "diagnostico" ? "FTO-EDU-FOR-82_V2" : "FTO-EDU-FOR-98_V1";
+    const esDiagnostico = params.tipo === "diagnostico";
+    const etiquetaTipo = esDiagnostico ? "Diagnostico" : params.tipo === "intermedio" ? "Examen_Intermedio" : "Examen_Final";
+    const formCode = esDiagnostico ? "FTO-EDU-FOR-82_V2" : "FTO-EDU-FOR-98_V1";
     const nombreExamen = `${formCode}_${etiquetaTipo}_Semana${params.semana}_CLEI_${params.clei}_${params.jornada.replace(/\s+/g, "")}.docx`;
 
-    const docxBuf = params.tipo === "diagnostico"
-      ? await buildDiagnosticoDocx(params, contenido, imagenes)
-      : await buildExamenDocx(params, contenido, imagenes);
-
-    const kitBuf = await buildKitSubidaExamenDocx(params, contenido, { nombreArchivoExamen: nombreExamen });
+    let contenido: ContenidoExamen | ContenidoDiagnostico;
+    let docxBuf: Buffer;
+    let kitBuf: Buffer;
+    if (esDiagnostico) {
+      // Preguntas abiertas (7, como el formato original): sin imágenes de apoyo ni clave de respuestas.
+      const diagnostico = await generarContenidoDiagnostico(params);
+      contenido = diagnostico;
+      docxBuf = await buildDiagnosticoDocx(params, diagnostico);
+      kitBuf = await buildKitSubidaExamenDocx(params, null, { nombreArchivoExamen: nombreExamen });
+    } else {
+      const examen = await generarContenidoExamen(params, await temasCubiertos(params), preguntasInput);
+      const imagenes: ImagenPreguntaExamen[] = preguntasInput
+        .filter((p): p is PreguntaExamenInput & { imagen: NonNullable<PreguntaExamenInput["imagen"]> } => !!p.imagen)
+        .map((p) => ({ index: p.index, buffer: p.imagen.buffer, tipo: p.imagen.tipo }));
+      contenido = examen;
+      docxBuf = await buildExamenDocx(params, examen, imagenes);
+      kitBuf = await buildKitSubidaExamenDocx(params, examen, { nombreArchivoExamen: nombreExamen });
+    }
 
     const archivos = [
       { nombre: nombreExamen, contenidoBase64: docxBuf.toString("base64") },

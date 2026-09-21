@@ -62,7 +62,9 @@ function esZipValido(base64: string): boolean {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  generarContenidoDiagnostico.mockResolvedValue(contenidoConPreguntas(10));
+  generarContenidoDiagnostico.mockResolvedValue({
+    preguntas: Array.from({ length: 7 }, (_, i) => ({ enunciado: `¿Pregunta abierta ${i + 1}?` })),
+  });
   generarContenidoExamen.mockResolvedValue(contenidoConPreguntas(10));
   // La resolución de asignatura (join con `asignaturas`) necesita `nombre`;
   // el resto (conteo del límite diario, insertar en generaciones_log,
@@ -182,20 +184,30 @@ describe("POST /api/generar-examen", () => {
     expect(data.error).toMatch(/incompleto/);
   });
 
-  it("acepta multipart/form-data con imagen + descripción de una pregunta", async () => {
+  it("Diagnóstico: ignora imágenes de apoyo (preguntas abiertas) y solo pasa los params", async () => {
     const form = new FormData();
     form.set("params", JSON.stringify(diagnosticoParams));
     const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]); // firma PNG mínima
     form.set("preguntaImg_1", new File([bytes], "captura.png", { type: "image/png" }));
+
+    const res = await POST(new NextRequest(new Request("http://localhost/api/generar-examen", { method: "POST", body: form })));
+    expect(res.status).toBe(200);
+    expect(generarContenidoDiagnostico).toHaveBeenCalledTimes(1);
+    expect(generarContenidoDiagnostico).toHaveBeenCalledWith(expect.objectContaining({ tipo: "diagnostico" }));
+  });
+
+  it("Intermedio: acepta multipart/form-data con imagen + descripción de una pregunta", async () => {
+    const form = new FormData();
+    form.set("params", JSON.stringify(intermedioParams));
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    form.set("preguntaImg_1", new File([bytes], "captura.png", { type: "image/png" }));
     form.set("preguntaDesc_1", "Captura de la barra de fórmulas de Excel.");
 
-    const nativeRequest = new Request("http://localhost/api/generar-examen", { method: "POST", body: form });
-    const request = new NextRequest(nativeRequest);
-
-    const res = await POST(request);
+    const res = await POST(new NextRequest(new Request("http://localhost/api/generar-examen", { method: "POST", body: form })));
     expect(res.status).toBe(200);
-    expect(generarContenidoDiagnostico).toHaveBeenCalledWith(
-      expect.objectContaining({ tipo: "diagnostico" }),
+    expect(generarContenidoExamen).toHaveBeenCalledWith(
+      expect.objectContaining({ tipo: "intermedio" }),
+      expect.anything(),
       [expect.objectContaining({ index: 1, descripcionImagen: "Captura de la barra de fórmulas de Excel." })]
     );
   });

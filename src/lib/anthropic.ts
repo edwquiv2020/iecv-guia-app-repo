@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ContenidoKahoot, ParametrosExamen, ContenidoExamen, PreguntaExamenInput } from "./types";
-import { duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS, TIEMPOS_KAHOOT } from "./types";
+import type { ParametrosGuia, ContenidoGuia, ContenidoDua, ContenidoKahoot, ParametrosExamen, ContenidoExamen, ContenidoDiagnostico, PreguntaExamenInput } from "./types";
+import { PREGUNTAS_DIAGNOSTICO, duracionPorClei, BIBLIOGRAFIA_TEORICA_ESTANDAR, BIBLIOGRAFIA_TEORICA_DUA, ICONOS_PASOS, TIEMPOS_KAHOOT } from "./types";
 
 const BANCO_KEYS = [
   "tortuga", "buho", "leon", "elefante", "aguila", "delfin", "lobo",
@@ -630,6 +630,46 @@ function validarContenidoExamen(data: ContenidoExamen, cantidadPreguntas: number
   return faltantes;
 }
 
+function contenidoDiagnosticoTool() {
+  return {
+    name: "entregar_diagnostico",
+    description: "Entrega las preguntas abiertas del Diagnóstico de Presaberes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        preguntas: {
+          type: "array",
+          minItems: PREGUNTAS_DIAGNOSTICO,
+          maxItems: PREGUNTAS_DIAGNOSTICO,
+          description: `Exactamente ${PREGUNTAS_DIAGNOSTICO} preguntas ABIERTAS (respuesta escrita corta), EN ORDEN, de menor a mayor dificultad.`,
+          items: {
+            type: "object",
+            properties: {
+              enunciado: {
+                type: "string",
+                description: "Pregunta abierta, clara y breve (una o dos frases), que el estudiante responde por escrito en 1 a 3 renglones. Sin opciones de respuesta. Sin markdown.",
+              },
+            },
+            required: ["enunciado"],
+          },
+        },
+      },
+      required: ["preguntas"],
+    },
+  };
+}
+
+function validarContenidoDiagnostico(data: ContenidoDiagnostico): string[] {
+  if (!Array.isArray(data.preguntas) || data.preguntas.length !== PREGUNTAS_DIAGNOSTICO) {
+    return [`preguntas (deben ser exactamente ${PREGUNTAS_DIAGNOSTICO})`];
+  }
+  const faltantes: string[] = [];
+  data.preguntas.forEach((p, i) => {
+    if (!p.enunciado || p.enunciado.trim() === "") faltantes.push(`pregunta ${i + 1} (enunciado)`);
+  });
+  return faltantes;
+}
+
 function systemPromptDiagnostico(asignatura: string): string {
   return `Actúas como docente experto en ${asignatura} del Instituto de
 Educación Comfenalco Valle (IECV), programa de Educación Básica y Media por
@@ -637,54 +677,49 @@ Ciclos (CLEI) para jóvenes y adultos, sede Cali. Redactas el Diagnóstico de
 Presaberes (formato FTO-EDU-FOR-82), aplicado el primer día del período,
 ANTES de dictar cualquier contenido del curso.
 
+Es un cuestionario de PREGUNTAS ABIERTAS: el estudiante responde por escrito,
+con sus propias palabras, en pocos renglones. No hay opciones de respuesta,
+ni verdadero/falso, ni clave de respuestas.
+
 Regla central: NO evalúas un curso puntual (aún no se ha dictado nada) —
-evalúas conocimiento general y previo de ${asignatura} que un adulto podría
+exploras conocimiento general y previo de ${asignatura} que un adulto podría
 ya tener por experiencia de vida, laboral o escolar previa a este período —
 nociones y cultura general del área, nunca procedimientos técnicos
 específicos de un tema puntual que todavía no se ha dictado. Elige tú, según
 la asignatura, qué cuenta como "conocimiento general esperado" de un adulto
-en ese campo.
+en ese campo. Ordena las preguntas de más sencilla a más exigente, y que
+ninguna se pueda responder solo con "sí" o "no".
 
 Tono: situaciones cotidianas o laborales de adultos, nunca escolares. Sin
-markdown en los textos. Exactamente 4 opciones por pregunta (A-D), sin
-"ninguna de las anteriores".
+markdown en los textos.
 
 Entrega el resultado exclusivamente llamando a la herramienta entregar_diagnostico.`;
 }
 
-function userPromptDiagnostico(params: ParametrosExamen, preguntasInput: PreguntaExamenInput[]): string {
+function userPromptDiagnostico(params: ParametrosExamen): string {
   return `Genera el Diagnóstico de Presaberes de ${params.asignatura}:
 
 - CLEI: ${params.clei}
 - Jornada: ${params.jornada}
-- Cantidad de preguntas: ${params.cantidadPreguntas}
-- Fecha de aplicación: ${params.fechaAplicacion}
-
-${lineaImagenesPreguntas(preguntasInput, params.cantidadPreguntas)}`;
+- Cantidad de preguntas: ${PREGUNTAS_DIAGNOSTICO} (abiertas)
+- Fecha de aplicación: ${params.fechaAplicacion}`;
 }
 
 /** Diagnóstico de Presaberes — sin curso específico, conocimiento general de la asignatura elegida. */
-export async function generarContenidoDiagnostico(
-  params: ParametrosExamen,
-  preguntasInput: PreguntaExamenInput[] = []
-): Promise<ContenidoExamen> {
+export async function generarContenidoDiagnostico(params: ParametrosExamen): Promise<ContenidoDiagnostico> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Falta ANTHROPIC_API_KEY en el entorno.");
 
   const client = new Anthropic({ apiKey });
-  const tool = contenidoExamenTool(
-    "entregar_diagnostico",
-    params.cantidadPreguntas,
-    "Entrega las preguntas del Diagnóstico de Presaberes."
-  );
+  const tool = contenidoDiagnosticoTool();
 
   let ultimoError: Error | null = null;
   for (let intento = 1; intento <= 2; intento++) {
     const message = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 8192,
+      max_tokens: 4096,
       system: systemPromptDiagnostico(params.asignatura),
-      messages: [{ role: "user", content: userPromptDiagnostico(params, preguntasInput) }],
+      messages: [{ role: "user", content: userPromptDiagnostico(params) }],
       tools: [tool],
       tool_choice: { type: "tool", name: "entregar_diagnostico" },
     });
@@ -695,14 +730,14 @@ export async function generarContenidoDiagnostico(
       continue;
     }
 
-    const data = toolUse.input as ContenidoExamen;
-    const faltantes = validarContenidoExamen(data, params.cantidadPreguntas);
+    const data = toolUse.input as ContenidoDiagnostico;
+    const faltantes = validarContenidoDiagnostico(data);
     if (faltantes.length > 0) {
       ultimoError = new Error(`El diagnóstico quedó incompleto: ${faltantes.join(", ")}.`);
       continue;
     }
 
-    return data;
+    return { preguntas: data.preguntas.map((p) => ({ enunciado: p.enunciado.trim() })) };
   }
 
   throw ultimoError ?? new Error("No se pudo generar el diagnóstico.");

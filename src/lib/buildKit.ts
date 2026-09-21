@@ -104,7 +104,8 @@ const LETRAS_KIT = ["A", "B", "C", "D"] as const;
 
 export async function buildKitSubidaExamenDocx(
   params: ParametrosExamen,
-  contenido: ContenidoExamen,
+  /** null = Diagnóstico de preguntas abiertas: no hay clave de respuestas. */
+  contenido: ContenidoExamen | null,
   opts: { nombreArchivoExamen: string }
 ): Promise<Buffer> {
   const etiquetaTipo = params.tipo === "diagnostico" ? "DIAGNÓSTICO DE PRESABERES" : params.tipo === "intermedio" ? "EXAMEN INTERMEDIO" : "EXAMEN FINAL";
@@ -116,7 +117,9 @@ export async function buildKitSubidaExamenDocx(
     p("KIT DE SUBIDA MANUAL A MOODLE", { bold: true, size: 16, after: 60 }),
     p(`${etiquetaTipo} — CLEI ${params.clei} — ${params.grupoCleiJornada} — ${params.fechaAplicacion}`, { after: 200 }),
     p(
-      "Este examen se aplica y califica en papel (hoja de respuestas). Sube el archivo a Moodle solo como evidencia/registro — no hay Kahoot para exámenes.",
+      contenido
+        ? "Este examen se aplica y califica en papel (hoja de respuestas). Sube el archivo a Moodle solo como evidencia/registro — no hay Kahoot para exámenes."
+        : "Este diagnóstico se aplica en papel y se responde por escrito. Sube el archivo a Moodle solo como evidencia/registro — no hay Kahoot para exámenes.",
       { after: 300 }
     ),
     p("Nombre de sección sugerido en Moodle:", { bold: true, after: 60 }),
@@ -128,8 +131,12 @@ export async function buildKitSubidaExamenDocx(
       ],
     }),
     p("", { after: 300 }),
-    p("CLAVE DE RESPUESTAS (uso exclusivo del docente — no compartir con estudiantes)", { bold: true, after: 100 }),
-    claveRespuestasTable(contenido),
+    ...(contenido
+      ? [
+          p("CLAVE DE RESPUESTAS (uso exclusivo del docente — no compartir con estudiantes)", { bold: true, after: 100 }),
+          claveRespuestasTable(contenido),
+        ]
+      : [p("El Diagnóstico de Presaberes es de preguntas abiertas: no tiene clave de respuestas. El docente lee las respuestas para conocer el punto de partida del grupo.", { after: 100 })]),
   ];
 
   const doc = new Document({

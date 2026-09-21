@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import type { Clei, TipoExamen } from "@/lib/types";
-import { agruparPorAsignatura, cantidadPreguntasPorJornada } from "@/lib/types";
+import { PREGUNTAS_DIAGNOSTICO, agruparPorAsignatura, cantidadPreguntasPorJornada } from "@/lib/types";
 import { Alert, Button, Field, Fieldset, Input, Select } from "@/components/ui";
 
 function formatearFechaLarga(iso: string): string {
@@ -129,8 +129,9 @@ export default function Examenes() {
   }
 
   const jornadaActual = jornadas.find((j) => j.id === jornadaId);
-  const cantidadPreguntas = jornadaActual ? cantidadPreguntasPorJornada(jornadaActual.dias) : 10;
-  const valoracionPregunta = Math.round((5 / cantidadPreguntas) * 100) / 100;
+  // El Diagnóstico son 7 preguntas abiertas (sin valoración); Intermedio/Final, 5 o 10 según la jornada.
+  const cantidadPreguntas = tipo === "diagnostico" ? PREGUNTAS_DIAGNOSTICO : jornadaActual ? cantidadPreguntasPorJornada(jornadaActual.dias) : 10;
+  const valoracionPregunta = tipo === "diagnostico" ? 0 : Math.round((5 / cantidadPreguntas) * 100) / 100;
 
   const filasDelTipo = calendarioFilas.filter((f) => f.actividad_nombre === ACTIVIDAD_POR_TIPO[tipo]);
 
@@ -402,10 +403,12 @@ export default function Examenes() {
         </div>
 
         <div className="rounded-lg border border-border bg-surface-muted px-3.5 py-2.5 text-sm text-muted-foreground">
-          {cantidadPreguntas} preguntas · valoración {valoracionPregunta} c/u
-          {jornadaActual ? "" : " (elige la jornada para calcular esto)"}
+          {tipo === "diagnostico"
+            ? `${cantidadPreguntas} preguntas abiertas (respuesta escrita) · no se califica con valoración`
+            : `${cantidadPreguntas} preguntas · valoración ${valoracionPregunta} c/u${jornadaActual ? "" : " (elige la jornada para calcular esto)"}`}
         </div>
 
+        {tipo !== "diagnostico" && (
         <details className="group rounded-xl border border-border bg-surface p-5">
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-foreground marker:hidden">
             <span>
@@ -441,6 +444,7 @@ export default function Examenes() {
             ))}
           </div>
         </details>
+        )}
 
         {mensajeSemanaOcupada && !error && <Alert tone="warning">{mensajeSemanaOcupada}</Alert>}
         {error && <Alert tone="danger">{error}</Alert>}

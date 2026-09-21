@@ -234,6 +234,14 @@ export function cantidadPreguntasPorJornada(diasJornada: string): number {
   return /s[áa]bado/i.test(diasJornada) ? 5 : 10;
 }
 
+/** El Diagnóstico de Presaberes (FTO-EDU-FOR-82) trae siempre 7 preguntas abiertas numeradas, como el formato original. */
+export const PREGUNTAS_DIAGNOSTICO = 7;
+
+/** Contenido del Diagnóstico de Presaberes: preguntas abiertas (respuesta escrita), sin opciones ni clave. */
+export interface ContenidoDiagnostico {
+  preguntas: Array<{ enunciado: string }>;
+}
+
 /** Datos que el docente llena en el formulario para UN examen (Diagnóstico, Intermedio o Final). */
 export interface ParametrosExamen {
   /** Nombre real de la asignatura — resuelto en el servidor: desde cursos.asignatura_id si hay cursoId (Intermedio/Final), o desde el selector de Asignatura del formulario si es Diagnóstico (no tiene curso). */
