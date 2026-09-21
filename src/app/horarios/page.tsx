@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Field, Fieldset, Input, Select } from "@/components/ui";
-import { agruparPorAsignatura } from "@/lib/types";
+import { ETIQUETA_NIVEL, NIVELES, agruparPorAsignatura, esNivel, type Nivel } from "@/lib/types";
 
 interface Ciclo { id: string; nombre: string; grados: string[] }
 interface Jornada { id: string; nombre: string; dias: string }
@@ -16,6 +16,7 @@ interface FilaExistente {
   fecha: string;
   actividad_nombre: string;
   origen: "horario" | "ad_hoc";
+  nivel: string;
   curso_nombre: string | null;
   tema_numero: number | null;
   tema_nombre: string | null;
@@ -29,6 +30,8 @@ interface FilaNueva {
   guia: number;
   fecha: string; // yyyy-mm-dd
   actividadId: string;
+  /** Nivel de la malla con que se programa este curso. */
+  nivel: Nivel;
 }
 interface Conflicto { semana: number; fecha: string; guia: number }
 
@@ -102,6 +105,8 @@ export default function Horarios() {
 
   // Modo automático
   const [autoCursoId, setAutoCursoId] = useState("");
+  // El nivel se elige aquí, al programar el curso: define de qué malla salen los temas.
+  const [autoNivel, setAutoNivel] = useState<Nivel>("basico");
   const [autoFechaInicio, setAutoFechaInicio] = useState("");
   const [autoSemanaInicial, setAutoSemanaInicial] = useState(1);
   const [autoGuiaInicial, setAutoGuiaInicial] = useState(0);
@@ -115,7 +120,7 @@ export default function Horarios() {
 
   // Modo manual
   const [filasManual, setFilasManual] = useState<FilaNueva[]>([
-    { cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: "" },
+    { cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: "", nivel: "basico" },
   ]);
 
   const [guardando, setGuardando] = useState(false);
@@ -135,7 +140,7 @@ export default function Horarios() {
         setActividades(data.actividades);
         const clases = data.actividades.find((a) => a.nombre === "CLASES");
         if (clases) {
-          setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: clases.id }]);
+          setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: clases.id, nivel: "basico" }]);
         }
       });
   }, []);
@@ -179,12 +184,13 @@ export default function Horarios() {
         guia: autoGuiaInicial + i,
         fecha: sumarDias(autoFechaInicio, i * autoIntervaloDias),
         actividadId: autoActividadesPorFila[i] ?? actividadClasesId,
+        nivel: autoNivel,
       }));
 
   function agregarFilaManual() {
     setFilasManual((prev) => [...prev, {
       cursoId: "", semana: (prev.at(-1)?.semana ?? 0) + 1, guia: (prev.at(-1)?.guia ?? 0) + 1,
-      fecha: "", actividadId: actividadClasesId,
+      fecha: "", actividadId: actividadClasesId, nivel: prev.at(-1)?.nivel ?? "basico",
     }]);
   }
   function quitarFilaManual(i: number) {
@@ -207,7 +213,7 @@ export default function Horarios() {
       setError("Completa la fecha y el tipo de actividad en todas las filas antes de guardar.");
       return;
     }
-    const filasFmt = filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, actividadId: f.actividadId }));
+    const filasFmt = filas.map((f) => ({ cursoId: f.cursoId || null, semana: f.semana, guia: f.guia, fecha: f.fecha, actividadId: f.actividadId, nivel: f.nivel }));
     // Jornada principal + las gemelas marcadas para copiar el mismo horario.
     // Se reintenta con confirmar=true en TODAS por igual — para las que ya
     // se guardaron bien en un intento previo, reenviar los mismos datos es
@@ -250,7 +256,7 @@ export default function Horarios() {
       setExito(`${mensaje}.`);
       setConflictos(null);
       cargarExistentes();
-      setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: actividadClasesId }]);
+      setFilasManual([{ cursoId: "", semana: 1, guia: 0, fecha: "", actividadId: actividadClasesId, nivel: "basico" }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -345,6 +351,13 @@ export default function Horarios() {
                           {grupo.items.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                         </optgroup>
                       ))}
+                    </Select>
+                  )}
+                </Field>
+                <Field label="Nivel de la malla" hint="Define de qué malla salen los temas.">
+                  {(id) => (
+                    <Select id={id} value={autoNivel} onChange={(e) => setAutoNivel(e.target.value as Nivel)}>
+                      {NIVELES.map((n) => <option key={n} value={n}>{ETIQUETA_NIVEL[n]}</option>)}
                     </Select>
                   )}
                 </Field>
@@ -444,7 +457,16 @@ export default function Horarios() {
                     />
                     <Select
                       size="sm"
-                      className="col-span-2 sm:col-span-4"
+                      className="col-span-1 sm:col-span-2"
+                      value={f.nivel}
+                      onChange={(e) => actualizarFilaManual(i, "nivel", e.target.value)}
+                      aria-label="Nivel de la malla"
+                    >
+                      {NIVELES.map((n) => <option key={n} value={n}>{ETIQUETA_NIVEL[n]}</option>)}
+                    </Select>
+                    <Select
+                      size="sm"
+                      className="col-span-1 sm:col-span-2"
                       value={f.actividadId}
                       onChange={(e) => actualizarFilaManual(i, "actividadId", e.target.value)}
                     >
@@ -529,7 +551,12 @@ export default function Horarios() {
                           {f.origen === "ad_hoc" && <Badge tone="warning">manual</Badge>}
                         </div>
                       </td>
-                      <td className="p-3 text-foreground">{f.curso_nombre ?? "—"}</td>
+                      <td className="p-3 text-foreground">
+                        {f.curso_nombre ?? "—"}
+                        {f.curso_nombre && esNivel(f.nivel) && f.nivel !== "basico" && (
+                          <span className="ml-2 rounded-full bg-info-subtle px-2 py-0.5 text-xs font-medium text-info-subtle-foreground">{ETIQUETA_NIVEL[f.nivel]}</span>
+                        )}
+                      </td>
                       <td className="p-3 text-foreground">{f.tema_numero ? `${f.tema_numero}. ${f.tema_nombre}` : <span className="text-muted-foreground">—</span>}</td>
                       <td className="p-3">
                         <div className="flex flex-col gap-1.5">

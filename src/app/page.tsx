@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import type { Clei } from "@/lib/types";
-import { agruparPorAsignatura } from "@/lib/types";
+import { ETIQUETA_NIVEL, NIVELES, agruparPorAsignatura, esNivel, type Nivel } from "@/lib/types";
 import { Alert, Button, Field, Fieldset, Input, Select, Textarea } from "@/components/ui";
 
 function formatearFechas(iso: string): { corta: string; larga: string } {
@@ -40,6 +40,7 @@ interface FilaCalendario {
   guia: number;
   fecha: string;
   origen: "horario" | "ad_hoc";
+  nivel: string;
   curso_id: string | null;
   tema_id: string | null;
   actividad_nombre: string;
@@ -71,6 +72,8 @@ export default function Home() {
   const [jornadaId, setJornadaId] = useState("");
   const [cursoId, setCursoId] = useState("");
   const [temaId, setTemaId] = useState("");
+  // Nivel de la malla de la que se elige el tema. Con una semana programada lo fija el calendario; en una clase nueva lo elige quien genera.
+  const [nivel, setNivel] = useState<Nivel>("basico");
   const [pendingTemaId, setPendingTemaId] = useState<string | null>(null);
   const [catalogoError, setCatalogoError] = useState<string | null>(null);
 
@@ -119,9 +122,10 @@ export default function Home() {
   // Temas del curso elegido — se resetean en el mismo render en que cambia
   // cursoId (no en un efecto) para no mostrar de refilón la malla del curso
   // anterior mientras llega la nueva.
-  const [temasCursoId, setTemasCursoId] = useState(cursoId);
-  if (cursoId !== temasCursoId) {
-    setTemasCursoId(cursoId);
+  const claveTemas = `${cursoId}|${nivel}`;
+  const [temasClave, setTemasClave] = useState(claveTemas);
+  if (claveTemas !== temasClave) {
+    setTemasClave(claveTemas);
     setTemas([]);
     if (!cursoId) setTemaId("");
   }
@@ -130,11 +134,11 @@ export default function Home() {
   // pendiente apenas llega la malla de ese curso.
   useEffect(() => {
     if (!cursoId) return;
-    fetch(`/api/temas?cursoId=${cursoId}`)
+    fetch(`/api/temas?cursoId=${cursoId}&nivel=${nivel}`)
       .then((r) => r.json())
       .then((data: { temas: Tema[] }) => setTemas(data.temas))
       .catch(() => setCatalogoError("No se pudo cargar la malla de temas de ese curso."));
-  }, [cursoId]);
+  }, [cursoId, nivel]);
 
   useEffect(() => {
     if (!pendingTemaId || temas.length === 0) return;
@@ -197,6 +201,7 @@ export default function Home() {
     }
     if (fila.curso_id) {
       setCursoId(fila.curso_id);
+      setNivel(esNivel(fila.nivel) ? fila.nivel : "basico");
       setPendingTemaId(fila.tema_id);
     }
   }
@@ -351,7 +356,7 @@ export default function Home() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   cicloId, jornadaId, origen: "ad_hoc",
-                  filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(guia), fecha: fechaClaseIso, actividadId: actividadClasesId, temaId: temaId || null }],
+                  filas: [{ cursoId: cursoId || null, semana: Number(semana), guia: Number(guia), fecha: fechaClaseIso, actividadId: actividadClasesId, temaId: temaId || null, nivel }],
                 }),
               });
               const dataCal = await resCal.json().catch(() => null);
@@ -517,6 +522,18 @@ export default function Home() {
             )}
           </Field>
 
+          <Field
+            label="Nivel de la malla"
+            hint={semanaProgramadaId ? "(lo define la semana programada)" : "(de qué malla sale el tema)"}
+            className="mt-4"
+          >
+            {(id) => (
+              <Select id={id} value={nivel} onChange={(e) => { setNivel(e.target.value as Nivel); setTemaId(""); }} disabled={!!semanaProgramadaId}>
+                {NIVELES.map((n) => <option key={n} value={n}>{ETIQUETA_NIVEL[n]}</option>)}
+              </Select>
+            )}
+          </Field>
+
           <Field label="Tema de la malla" required className="mt-4">
             {(id) => (
               <>
@@ -528,7 +545,7 @@ export default function Home() {
                   required
                 >
                   <option value="" disabled>
-                    {cursoId ? (temas.length ? "Selecciona un tema…" : "Este curso no tiene malla cargada todavía") : "Elige primero un curso"}
+                    {cursoId ? (temas.length ? "Selecciona un tema…" : `Este curso no tiene malla ${ETIQUETA_NIVEL[nivel]} cargada todavía`) : "Elige primero un curso"}
                   </option>
                   {temas.map((t) => (
                     <option key={t.id} value={t.id}>{t.numero}. {t.tema}</option>

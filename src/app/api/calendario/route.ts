@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { esNivel, type Nivel } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ interface FilaHorario {
   actividadId: string;
   /** Si se pasa, se usa directo (ya se sabe qué tema se generó) en vez de resolverlo por posición en el lote. */
   temaId?: string | null;
+  /** Nivel de la malla con que se programa este curso (basico si no se indica). */
+  nivel?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
   const filas = await sql`
     select cc.id, cc.semana_academica as semana, cc.guia_numero as guia, cc.fecha_clase as fecha,
-           cc.origen, cc.curso_id, cc.tema_id, a.nombre as actividad_nombre,
+           cc.origen, cc.nivel, cc.curso_id, cc.tema_id, a.nombre as actividad_nombre,
            c.nombre as curso_nombre, t.numero as tema_numero, t.tema as tema_nombre,
            exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'estandar' and g.estado = 'generada') as guia_estandar_generada,
            exists(select 1 from guias g where g.calendario_clase_id = cc.id and g.tipo = 'dua' and g.estado = 'generada') as guia_dua_generada
@@ -66,6 +69,11 @@ export async function POST(request: NextRequest) {
 
   if (!cicloId || !jornadaId || !Array.isArray(filas) || filas.length === 0) {
     return NextResponse.json({ error: "Faltan cicloId, jornadaId o filas." }, { status: 400 });
+  }
+
+  const nivelInvalido = filas.find((f) => f.nivel !== undefined && !esNivel(f.nivel));
+  if (nivelInvalido) {
+    return NextResponse.json({ error: `Nivel inválido en la semana ${nivelInvalido.semana}.` }, { status: 400 });
   }
 
   const confirmar = body?.confirmar === true;
@@ -131,20 +139,24 @@ export async function POST(request: NextRequest) {
     // quedado en la base de datos (no en 0), para que cargar el horario en
     // varias sesiones (ej. por semestre) siga la numeración correcta en vez
     // de reasignar temas ya usados.
+    // Cada nivel del mismo curso tiene su propia malla y su propio contador:
+    // programar Intermedio después de Básico arranca en el tema 1 de Intermedio.
     const contadorPorCurso = new Map<string, number>();
-    async function siguienteTemaId(cursoId: string): Promise<string | null> {
-      if (!contadorPorCurso.has(cursoId)) {
+    async function siguienteTemaId(cursoId: string, nivel: Nivel): Promise<string | null> {
+      const clave = `${cursoId}|${nivel}`;
+      if (!contadorPorCurso.has(clave)) {
         const [fila] = await sql`
           select coalesce(max(t.numero), 0) as maximo
           from calendario_clases cc
           join temas t on t.id = cc.tema_id
           where cc.ciclo_id = ${cicloId!} and cc.jornada_id = ${jornadaId!} and cc.curso_id = ${cursoId}
+            and t.nivel = ${nivel}
         `;
-        contadorPorCurso.set(cursoId, Number(fila?.maximo ?? 0));
+        contadorPorCurso.set(clave, Number(fila?.maximo ?? 0));
       }
-      const posicion = (contadorPorCurso.get(cursoId) ?? 0) + 1;
-      contadorPorCurso.set(cursoId, posicion);
-      const [tema] = await sql`select id from temas where curso_id = ${cursoId} and nivel = 'basico' and numero = ${posicion} and activo`;
+      const posicion = (contadorPorCurso.get(clave) ?? 0) + 1;
+      contadorPorCurso.set(clave, posicion);
+      const [tema] = await sql`select id from temas where curso_id = ${cursoId} and nivel = ${nivel} and numero = ${posicion} and activo`;
       return tema?.id ?? null;
     }
 
@@ -153,15 +165,16 @@ export async function POST(request: NextRequest) {
 
     for (const fila of filas) {
       let temaId: string | null = fila.temaId ?? null;
+      const nivel: Nivel = esNivel(fila.nivel) ? fila.nivel : "basico";
       const esClase = fila.actividadId === actividadClasesId;
       if (temaId === null && fila.cursoId && esClase) {
-        temaId = await siguienteTemaId(fila.cursoId);
+        temaId = await siguienteTemaId(fila.cursoId, nivel);
       }
 
       if (origen === "ad_hoc") {
         const insertados = await sql`
-          insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
-          values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'ad_hoc')
+          insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen, nivel)
+          values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'ad_hoc', ${nivel})
           on conflict (ciclo_id, jornada_id, semana_academica) do nothing
           returning id
         `;
@@ -173,12 +186,12 @@ export async function POST(request: NextRequest) {
         if (fila_db) idsPorSemana[fila.semana] = fila_db.id;
       } else {
         const [fila_db] = await sql`
-          insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen)
-          values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'horario')
+          insert into calendario_clases (fecha_clase, semana_academica, guia_numero, ciclo_id, jornada_id, curso_id, tema_id, actividad_id, origen, nivel)
+          values (${fila.fecha}, ${fila.semana}, ${fila.guia}, ${cicloId}, ${jornadaId}, ${fila.cursoId}, ${temaId}, ${fila.actividadId}, 'horario', ${nivel})
           on conflict (ciclo_id, jornada_id, semana_academica) do update set
             fecha_clase = excluded.fecha_clase, guia_numero = excluded.guia_numero,
             curso_id = excluded.curso_id, tema_id = excluded.tema_id, actividad_id = excluded.actividad_id,
-            origen = 'horario'
+            nivel = excluded.nivel, origen = 'horario'
           returning id
         `;
         filasInsertadas += 1;

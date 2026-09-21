@@ -159,6 +159,8 @@ create table calendario_clases (
   -- horario oficial todavía. Sirve para avisar antes de sobrescribir una
   -- fila 'ad_hoc' cuando después se carga el horario oficial real.
   origen text not null default 'horario' check (origen in ('horario', 'ad_hoc')),
+  -- Nivel de la malla con que se programó este curso (ver temas.nivel); también aplica a filas sin tema (exámenes).
+  nivel text not null default 'basico' check (nivel in ('basico', 'intermedio', 'avanzado')),
   created_at timestamptz not null default now(),
   unique (ciclo_id, jornada_id, semana_academica)
 );

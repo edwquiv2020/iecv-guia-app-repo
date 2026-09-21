@@ -161,9 +161,9 @@ describe("POST /api/generar-examen", () => {
     expect(data.archivos[0].nombre).toBe(
       "FTO-EDU-FOR-98_V1_Examen_Intermedio_Semana5_CLEI_III_SEMANAL1.docx"
     );
-    // 4 llamadas a sql: conteo del límite diario + registro + resolver
-    // la asignatura del curso + temasCubiertos.
-    expect(sql).toHaveBeenCalledTimes(4);
+    // 5 llamadas a sql: conteo del límite diario + registro + resolver
+    // la asignatura del curso + nivel de la semana del examen + temasCubiertos.
+    expect(sql).toHaveBeenCalledTimes(5);
     expect(generarContenidoExamen).toHaveBeenCalledWith(
       expect.objectContaining({ cursoId: "curso-1" }),
       ["FUNCIÓN SI — Sintaxis\nCondiciones"],
@@ -295,5 +295,41 @@ describe("POST /api/generar-examen", () => {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(diagnosticoParams),
     }));
     expect((await res.json()).advertencias).toEqual([]);
+  });
+
+  it("Intermedio: solo cuenta los temas del nivel con que se programó la semana del examen", async () => {
+    sql.mockImplementation((strings: TemplateStringsArray, ...vals: unknown[]) => {
+      const q = strings.join("?");
+      if (q.includes("asignaturas")) return Promise.resolve([{ nombre: "Tecnología e Informática" }]);
+      if (q.includes("select nivel from calendario_clases")) return Promise.resolve([{ nivel: "intermedio" }]);
+      if (q.includes("select t.tema")) {
+        // el filtro por nivel viaja como parámetro de la consulta de temas
+        expect(vals).toContain("intermedio");
+        return Promise.resolve([{ tema: "TEMA NIVEL INTERMEDIO", subtemas: "x" }]);
+      }
+      return Promise.resolve([]);
+    });
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(intermedioParams),
+    }));
+    expect(res.status).toBe(200);
+    expect(generarContenidoExamen).toHaveBeenCalledWith(expect.anything(), ["TEMA NIVEL INTERMEDIO — x"], expect.anything());
+  });
+
+  it("Intermedio con la semana aún sin programar: no filtra por nivel (parámetro nulo)", async () => {
+    sql.mockImplementation((strings: TemplateStringsArray, ...vals: unknown[]) => {
+      const q = strings.join("?");
+      if (q.includes("asignaturas")) return Promise.resolve([{ nombre: "Tecnología e Informática" }]);
+      if (q.includes("select nivel from calendario_clases")) return Promise.resolve([]);
+      if (q.includes("select t.tema")) {
+        expect(vals).toContain(null);
+        return Promise.resolve([{ tema: "T", subtemas: "x" }]);
+      }
+      return Promise.resolve([]);
+    });
+    const res = await POST(new NextRequest("http://localhost/api/generar-examen", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(intermedioParams),
+    }));
+    expect(res.status).toBe(200);
   });
 });
