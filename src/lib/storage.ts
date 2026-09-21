@@ -29,6 +29,9 @@ function supabase() {
 
 export const BUCKET_GUIAS = "guia-archivos";
 
+const INTENTOS_SUBIDA = 3;
+const PAUSA_REINTENTO_MS = 500;
+
 function mimeTypePorNombre(nombre: string): string {
   return nombre.endsWith(".xlsx")
     ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -45,12 +48,23 @@ export async function subirArchivoGuia(
   const storagePath = `${tipo}/${guiaId}/${nombre}`;
   const bytes = Buffer.from(contenidoBase64, "base64");
   const mimeType = mimeTypePorNombre(nombre);
-  const { error } = await supabase().storage.from(BUCKET_GUIAS).upload(storagePath, bytes, {
-    contentType: mimeType,
-    upsert: true,
-  });
-  if (error) throw new Error(`Error subiendo ${nombre} a Storage: ${error.message}`);
-  return { storagePath, mimeType };
+  // Subir es idempotente (upsert), así que se puede reintentar sin riesgo: en
+  // producción falló de forma intermitente al generar varios exámenes seguidos.
+  let ultimoError = "";
+  for (let intento = 1; intento <= INTENTOS_SUBIDA; intento++) {
+    try {
+      const { error } = await supabase().storage.from(BUCKET_GUIAS).upload(storagePath, bytes, {
+        contentType: mimeType,
+        upsert: true,
+      });
+      if (!error) return { storagePath, mimeType };
+      ultimoError = error.message;
+    } catch (e) {
+      ultimoError = e instanceof Error ? e.message : String(e);
+    }
+    if (intento < INTENTOS_SUBIDA) await new Promise((r) => setTimeout(r, PAUSA_REINTENTO_MS * intento));
+  }
+  throw new Error(`Error subiendo ${nombre} a Storage: ${ultimoError}`);
 }
 
 /** Borra todos los archivos previos de una guía (por si se regenera) antes de subir los nuevos. */
