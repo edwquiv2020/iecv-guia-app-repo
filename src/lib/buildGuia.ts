@@ -29,13 +29,13 @@ function dimensionesPng(buf: Buffer): { width: number; height: number } {
 }
 
 /** Un paso numerado, con su ícono real inline al frente si está disponible. */
-async function pasoParagraph(n: number, texto: string, iconoBuf: Buffer | null) {
+async function pasoParagraph(n: number, texto: string, iconoBuf: Buffer | null, tam = 12) {
   const runs: (TextRun | ImageRun)[] = [];
   if (iconoBuf) {
     runs.push(new ImageRun({ data: iconoBuf, type: "png", transformation: { width: 16, height: 16 } }));
-    runs.push(new TextRun({ text: " ", font: FONT, size: 24 }));
+    runs.push(new TextRun({ text: " ", font: FONT, size: tam * 2 }));
   }
-  runs.push(new TextRun({ text: `${n}. ${texto}`, font: FONT, size: 24 }));
+  runs.push(new TextRun({ text: `${n}. ${texto}`, font: FONT, size: tam * 2 }));
   return new Paragraph({ spacing: { after: 100 }, indent: { left: 400, hanging: iconoBuf ? 0 : 300 }, children: runs });
 }
 
@@ -46,6 +46,9 @@ async function pasoParagraph(n: number, texto: string, iconoBuf: Buffer | null) 
 // IDÉNTICA a la validada en la skill original — no se toca su diseño.
 
 const FONT = "Arial";
+
+/** Tamaño de letra (pt) de la plantilla FTO-EDU-FOR-96: Arial 10. La guía DUA conserva 12 a propósito (accesibilidad). */
+const TAM_PLANTILLA_ESTANDAR = 10;
 
 function p(text: string, opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; after?: number; before?: number; size?: number; bold?: boolean; italics?: boolean } = {}) {
   return new Paragraph({
@@ -72,28 +75,28 @@ function heading(text: string, opts: { align?: (typeof AlignmentType)[keyof type
   });
 }
 
-function numItem(n: number, text: string) {
+function numItem(n: number, text: string, tam = 12) {
   return new Paragraph({
     spacing: { after: 140 },
     indent: { left: 400, hanging: 300 },
     children: [
-      new TextRun({ text: `${n}. `, font: FONT, size: 24 }),
-      new TextRun({ text, font: FONT, size: 24 }),
+      new TextRun({ text: `${n}. `, font: FONT, size: tam * 2 }),
+      new TextRun({ text, font: FONT, size: tam * 2 }),
     ],
   });
 }
 
-function videoApoyoParagraph(v: ParametrosGuia["videoApoyo"]) {
+function videoApoyoParagraph(v: ParametrosGuia["videoApoyo"], tam = 12) {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
     spacing: { after: 160 },
     children: [
-      new TextRun({ text: "Video de apoyo (", font: FONT, size: 24, bold: true }),
-      new TextRun({ text: `máx. 5 min — ${v.duracion}): `, font: FONT, size: 24, bold: true }),
-      new TextRun({ text: `"${v.titulo}" — ${v.canal}. `, font: FONT, size: 24 }),
+      new TextRun({ text: "Video de apoyo (", font: FONT, size: tam * 2, bold: true }),
+      new TextRun({ text: `máx. 5 min — ${v.duracion}): `, font: FONT, size: tam * 2, bold: true }),
+      new TextRun({ text: `"${v.titulo}" — ${v.canal}. `, font: FONT, size: tam * 2 }),
       new ExternalHyperlink({
         link: v.url,
-        children: [new TextRun({ text: v.url, font: FONT, size: 24, style: "Hyperlink" })],
+        children: [new TextRun({ text: v.url, font: FONT, size: tam * 2, style: "Hyperlink" })],
       }),
     ],
   });
@@ -104,7 +107,7 @@ const SHADE_AMARILLO = "FFF2CC";
 const SHADE_AZUL = "DDEBF7";
 const SHADE_VERDE = "E2EFDA";
 
-function box(titulo: string, cuerpo: string[], shade: string) {
+function box(titulo: string, cuerpo: string[], shade: string, tam = 11) {
   return new Table({
     width: { size: 10500, type: WidthType.DXA },
     // Sin columnWidths, Pages/Google Docs/vistas previas toman una columna angosta por defecto.
@@ -117,8 +120,8 @@ function box(titulo: string, cuerpo: string[], shade: string) {
             shading: { type: ShadingType.CLEAR, fill: shade },
             margins: { top: 120, bottom: 120, left: 150, right: 150 },
             children: [
-              new Paragraph({ spacing: { after: cuerpo.length ? 80 : 0 }, children: [new TextRun({ text: titulo, font: FONT, size: 22, bold: true })] }),
-              ...cuerpo.map((linea) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 60 }, children: [new TextRun({ text: linea, font: FONT, size: 22 })] })),
+              new Paragraph({ spacing: { after: cuerpo.length ? 80 : 0 }, children: [new TextRun({ text: titulo, font: FONT, size: tam * 2, bold: true })] }),
+              ...cuerpo.map((linea) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 60 }, children: [new TextRun({ text: linea, font: FONT, size: tam * 2 })] })),
             ],
           }),
         ],
@@ -128,9 +131,9 @@ function box(titulo: string, cuerpo: string[], shade: string) {
 }
 
 /** "MAPA DE LO QUE VAS A APRENDER HOY" — secuencia de los subtemas en orden, unidos con flechas. */
-function mapaAprendizaje(titulosSubtemas: string[]) {
+function mapaAprendizaje(titulosSubtemas: string[], tam = 11) {
   const texto = titulosSubtemas.map((t, i) => `${i + 1}. ${t}`).join("   →   ");
-  return box("MAPA DE LO QUE VAS A APRENDER HOY", [texto], SHADE_VERDE);
+  return box("MAPA DE LO QUE VAS A APRENDER HOY", [texto], SHADE_VERDE, tam);
 }
 
 /** "FICHA RESUMEN" — tabla de 2 a 4 columnas, una por concepto clave. */
@@ -291,10 +294,43 @@ function buildRubricTable(rows: string[][]) {
 }
 const RUBRIC_HEADER_ROW = ["Criterios a evaluar", "Superior (5.0 - 4.6)", "Alto (4.5 - 4.0)", "Básico (3.9 - 3.0)", "Bajo (2.9 - 1.0)"];
 
-// Criterios genéricos institucionales (no dependen del tema puntual).
-const CRITERIO_PARTICIPACION = ["Participación", "Participa activamente en toda la sesión, aporta y respeta los aportes de sus compañeros.", "Participa la mayor parte de la sesión, con aportes pertinentes.", "Participa de forma intermitente o con aportes poco pertinentes.", "No participa o su participación es disruptiva."];
-const CRITERIO_HERRAMIENTAS = ["Reconocimiento de herramientas de la cinta", "Identifica y utiliza correctamente todas las herramientas de la cinta de opciones trabajadas.", "Identifica y utiliza la mayoría de las herramientas trabajadas.", "Identifica algunas herramientas, con apoyo del docente.", "No identifica ni utiliza las herramientas trabajadas."];
-const CRITERIO_ENTREGA = ["Trabajo práctico (entrega)", "Entrega el trabajo completo, en el formato y fecha indicados, sin errores.", "Entrega el trabajo completo, en el formato y fecha indicados, con errores menores.", "Entrega el trabajo incompleto o fuera del formato/fecha indicados.", "No entrega el trabajo."];
+// Los 6 criterios generales que trae la plantilla FTO-EDU-FOR-96 V3 (sus
+// nombres son los del formato original; la plantilla deja los descriptores de
+// cada nivel en blanco, así que estos textos son una redacción estándar según
+// la escala Superior/Alto/Básico/Bajo — se editan aquí, en un solo lugar).
+// Después de estos van los criterios propios del tema, generados por la IA.
+export const CRITERIOS_INSTITUCIONALES: string[][] = [
+  ["Pone en práctica lo aprendido y desarrollo de actividades en el aula",
+    "Aplica lo aprendido con seguridad y desarrolla todas las actividades de la clase de forma completa y correcta.",
+    "Aplica lo aprendido y desarrolla la mayoría de las actividades, con errores menores.",
+    "Aplica lo aprendido con ayuda del docente y desarrolla solo una parte de las actividades.",
+    "No logra aplicar lo aprendido ni desarrollar las actividades de la clase."],
+  ["Puntualidad en la entrega y cargue de actividades en la plataforma",
+    "Carga todas las actividades en la plataforma dentro de la fecha y la hora indicadas.",
+    "Carga las actividades con un retraso mínimo que no afecta su revisión.",
+    "Carga las actividades con retraso o de forma incompleta.",
+    "No carga las actividades en la plataforma."],
+  ["Participación en clase",
+    "Participa activamente en toda la sesión, aporta y respeta los aportes de sus compañeros.",
+    "Participa la mayor parte de la sesión, con aportes pertinentes.",
+    "Participa de forma intermitente o con aportes poco pertinentes.",
+    "No participa o su participación es disruptiva."],
+  ["Convivencia en clase y/o asistencia",
+    "Asiste puntualmente y mantiene un trato respetuoso con sus compañeros y el docente durante toda la clase.",
+    "Asiste y mantiene un trato respetuoso, con llamados de atención ocasionales.",
+    "Asiste de forma irregular o requiere llamados frecuentes para mantener el respeto en clase.",
+    "Presenta inasistencia reiterada o afecta la convivencia en la clase."],
+  ["Usa adecuadamente el cuaderno",
+    "Registra en el cuaderno todos los apuntes y actividades, de forma ordenada y legible.",
+    "Registra la mayoría de los apuntes y actividades, con orden.",
+    "Registra apuntes incompletos o desordenados.",
+    "No usa el cuaderno para registrar los apuntes de la clase."],
+  ["Actividades de mejoramiento y trabajo autónomo en casa",
+    "Desarrolla por iniciativa propia las actividades de mejoramiento y el trabajo autónomo, y los entrega completos.",
+    "Desarrolla las actividades de mejoramiento y el trabajo autónomo, con errores menores.",
+    "Desarrolla solo una parte de las actividades de mejoramiento o del trabajo autónomo.",
+    "No desarrolla las actividades de mejoramiento ni el trabajo autónomo."],
+];
 
 // ---------- Tabla de cargue (estructura fija) ----------
 function cLabel(text: string) {
@@ -334,6 +370,7 @@ export interface BuildGuiaAssets {
 /** Arma el .docx completo y devuelve el Buffer listo para descargar. */
 export async function buildGuiaDocx(params: ParametrosGuia, contenido: ContenidoGuia, assets: BuildGuiaAssets): Promise<Buffer> {
   const { duracion, maxPaginas } = duracionPorClei(params.clei);
+  const TAM = TAM_PLANTILLA_ESTANDAR;
 
   const children: (Paragraph | Table)[] = [];
 
@@ -343,45 +380,46 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: "ESTRUCTURA DE LA GUÍA DE FORMACIÓN", font: FONT, size: 24, bold: true })] }));
 
   // INICIO
-  children.push(heading("INICIO", { size: 16, before: 200 }));
+  children.push(heading("INICIO", { size: TAM, before: 200 }));
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 }, children: [new ImageRun({ data: assets.ilustracionBuf, type: "png", transformation: { width: 260, height: 217 } })] }));
 
-  children.push(heading("1. Saludo y Motivación:", { size: 13 }));
-  children.push(p(contenido.saludoMotivacion));
+  children.push(heading("1. Saludo y Motivación:", { size: TAM }));
+  children.push(p(contenido.saludoMotivacion, { size: TAM }));
 
-  children.push(heading("2. Introducción:", { size: 13 }));
-  children.push(p(contenido.introduccion));
-  children.push(videoApoyoParagraph(params.videoApoyo));
+  children.push(heading("2. Introducción:", { size: TAM }));
+  children.push(p(contenido.introduccion, { size: TAM }));
+  children.push(videoApoyoParagraph(params.videoApoyo, TAM));
 
-  children.push(heading("3. Competencias y Desempeños:", { size: 13 }));
-  children.push(pRuns([{ text: "Competencia: ", bold: true }, { text: contenido.competencia }], { indent: { left: 400 }, after: 100 }));
-  children.push(pRuns([{ text: "Desempeño: ", bold: true }, { text: contenido.desempeno }], { indent: { left: 400 } }));
+  children.push(heading("3. Competencias y Desempeños:", { size: TAM }));
+  children.push(pRuns([{ text: "Competencia: ", bold: true }, { text: contenido.competencia }], { indent: { left: 400 }, after: 100, size: TAM }));
+  children.push(pRuns([{ text: "Desempeño: ", bold: true }, { text: contenido.desempeno }], { indent: { left: 400 }, size: TAM }));
 
   children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
   children.push(box(
     "OBJETIVO DE LA GUÍA (lo que vas a lograr hoy)",
     [`Al terminar, vas a poder: ${contenido.objetivoGuia.map((o, i) => `(${i + 1}) ${o}`).join(", ")}.`],
     SHADE_AMARILLO,
+    TAM,
   ));
   children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
 
-  children.push(heading("4. Duración de horas de la guía:", { size: 13 }));
-  children.push(p(duracion));
+  children.push(heading("4. Duración de horas de la guía:", { size: TAM }));
+  children.push(p(duracion, { size: TAM }));
 
   // DESARROLLO
-  children.push(heading("DESARROLLO", { size: 16, before: 500 }));
+  children.push(heading("DESARROLLO", { size: TAM, before: 500 }));
 
-  children.push(heading("1. Actividades de Reflexión Inicial.", { size: 13 }));
-  children.push(p(contenido.reflexionInicial));
-
-  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
-  children.push(box("PARTE DE LO QUE YA SABES", [contenido.parteDeLoQueYaSabes], SHADE_AZUL));
-  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
-
-  children.push(heading("2. Explicación y presentación de temáticas, ejemplarización de contenidos, ejercicios, definiciones, leyes, premisas y recursos didácticos:", { size: 13 }));
+  children.push(heading("1. Actividades de Reflexión Inicial.", { size: TAM }));
+  children.push(p(contenido.reflexionInicial, { size: TAM }));
 
   children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
-  children.push(mapaAprendizaje(contenido.subtemas.map((s) => s.titulo)));
+  children.push(box("PARTE DE LO QUE YA SABES", [contenido.parteDeLoQueYaSabes], SHADE_AZUL, TAM));
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+
+  children.push(heading("2. Explicación y presentación de temáticas, ejemplarización de contenidos, ejercicios, definiciones, leyes, premisas y recursos didácticos:", { size: TAM }));
+
+  children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+  children.push(mapaAprendizaje(contenido.subtemas.map((s) => s.titulo), TAM));
   children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
 
   const letras = "ABCDEFGH";
@@ -389,8 +427,8 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
   const rutasVisualesPorSubtema = assets.rutasVisuales ?? [];
   for (let i = 0; i < contenido.subtemas.length; i++) {
     const st = contenido.subtemas[i];
-    children.push(heading(`${letras[i] || i + 1}. ${st.titulo}`, { size: 12, before: 200, italics: true }));
-    children.push(pRuns([{ text: "Función: ", bold: true }, { text: st.funcion }], { indent: { left: 400 } }));
+    children.push(heading(`${letras[i] || i + 1}. ${st.titulo}`, { size: TAM, before: 200, italics: true }));
+    children.push(pRuns([{ text: "Función: ", bold: true }, { text: st.funcion }], { indent: { left: 400 }, size: TAM }));
     const rutaVisualBuf = rutasVisualesPorSubtema.find((rv) => rv.subtemaIndex === i)?.buffer;
     if (rutaVisualBuf) {
       // Alto fijo (~el mismo porte visual que la ilustración de INICIO),
@@ -410,47 +448,45 @@ export async function buildGuiaDocx(params: ParametrosGuia, contenido: Contenido
       for (let j = 0; j < st.pasos.length; j++) {
         const paso = st.pasos[j];
         const iconoBuf = await cargarIcono(paso.icono);
-        children.push(await pasoParagraph(j + 1, paso.texto, iconoBuf));
+        children.push(await pasoParagraph(j + 1, paso.texto, iconoBuf, TAM));
       }
     }
     const imgs = imagenesPorSubtema.filter((img) => img.subtemaIndex === i);
     if (imgs.length) children.push(...imagenesDeSubtema(imgs));
   }
 
-  children.push(heading("3. Asignación de Actividades Formativas:", { size: 13, before: 300 }));
+  children.push(heading("3. Asignación de Actividades Formativas:", { size: TAM, before: 300 }));
   contenido.talleres.forEach((taller, i) => {
-    children.push(heading(`TALLER ${i + 1}: ${taller.tipo}`, { size: 12, italics: true }));
-    children.push(p(taller.instrucciones));
-    taller.items.forEach((item, j) => children.push(numItem(j + 1, item)));
+    children.push(heading(`TALLER ${i + 1}: ${taller.tipo}`, { size: TAM, italics: true }));
+    children.push(p(taller.instrucciones, { size: TAM }));
+    taller.items.forEach((item, j) => children.push(numItem(j + 1, item, TAM)));
   });
 
   children.push(new Paragraph({ text: "", spacing: { before: 200, after: 100 } }));
-  children.push(box("LISTA DE VERIFICACIÓN ANTES DE ENTREGAR", contenido.listaVerificacion.map((it) => `☐ ${it}`), SHADE_AMARILLO));
+  children.push(box("LISTA DE VERIFICACIÓN ANTES DE ENTREGAR", contenido.listaVerificacion.map((it) => `☐ ${it}`), SHADE_AMARILLO, TAM));
   children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
-  children.push(box("ANTES DE CERRAR: ¿EN QUÉ TE SIRVE ESTO?", [contenido.antesDeCerrarPregunta], SHADE_AZUL));
+  children.push(box("ANTES DE CERRAR: ¿EN QUÉ TE SIRVE ESTO?", [contenido.antesDeCerrarPregunta], SHADE_AZUL, TAM));
   children.push(new Paragraph({ text: "", spacing: { after: 100 } }));
   children.push(fichaResumen(contenido.fichaResumen));
   children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
 
-  children.push(heading("4. Seguimiento, retroalimentación, evaluación y verificación del cumplimiento de objetivos, competencias y desempeños (RÚBRICA)", { size: 13, before: 300 }));
-  children.push(heading("RÚBRICA CRITERIOS GENERALES (FTO-EDU-FOR-96 V3)", { size: 12, italics: true, before: 100 }));
+  children.push(heading("4. Seguimiento, retroalimentación, evaluación y verificación del cumplimiento de objetivos, competencias y desempeños (RÚBRICA)", { size: TAM, before: 300 }));
+  children.push(heading("RÚBRICA CRITERIOS GENERALES (FTO-EDU-FOR-96 V3)", { size: TAM, italics: true, before: 100 }));
   const rubricRows: string[][] = [
     RUBRIC_HEADER_ROW,
-    CRITERIO_PARTICIPACION,
+    ...CRITERIOS_INSTITUCIONALES,
     ...contenido.rubricaCriteriosEspecificos.map((c) => [c.criterio, c.superior, c.alto, c.basico, c.bajo]),
-    CRITERIO_HERRAMIENTAS,
-    CRITERIO_ENTREGA,
   ];
   children.push(buildRubricTable(rubricRows));
 
-  children.push(pRuns([{ text: "5. INDICACIONES ", bold: true }, { text: "PARA EL CARGUE DE LAS ACTIVIDADES:" }], { after: 160, before: 400 }));
+  children.push(pRuns([{ text: "5. INDICACIONES ", bold: true }, { text: "PARA EL CARGUE DE LAS ACTIVIDADES:" }], { after: 160, before: 400, size: TAM }));
   children.push(buildCargueTable(params, maxPaginas));
 
-  children.push(heading("6. BIBLIOGRAFÍA Y WEBGRAFÍA:", { size: 13, before: 400 }));
+  children.push(heading("6. BIBLIOGRAFÍA Y WEBGRAFÍA:", { size: TAM, before: 400 }));
   contenido.bibliografia.forEach((ref) => {
-    children.push(pRuns([{ text: `${ref.autor}. ` }, { text: `(${ref.anio}). ${ref.titulo}.`, italics: true }], { indent: { left: 400 } }));
+    children.push(pRuns([{ text: `${ref.autor}. ` }, { text: `(${ref.anio}). ${ref.titulo}.`, italics: true }], { indent: { left: 400 }, size: TAM }));
   });
-  children.push(pRuns([{ text: "Formato estandarizado institucional de diseño instruccional integrado: " }, { text: "FTO-EDU-FOR-96 V3.", italics: true }], { indent: { left: 400 } }));
+  children.push(pRuns([{ text: "Formato estandarizado institucional de diseño instruccional integrado: " }, { text: "FTO-EDU-FOR-96 V3.", italics: true }], { indent: { left: 400 }, size: TAM }));
 
   const doc = new Document({
     sections: [

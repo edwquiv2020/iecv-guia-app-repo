@@ -94,7 +94,7 @@ const CONTENIDO_TOOL = {
       },
       rubricaCriteriosEspecificos: {
         type: "array",
-        description: "3 a 4 criterios específicos (uno por subtema), SIN incluir los genéricos de Participación / Herramientas / Entrega (esos ya los agrega la app).",
+        description: "3 a 4 criterios específicos (uno por subtema), SIN incluir los 6 criterios generales institucionales (pone en práctica lo aprendido, puntualidad en el cargue, participación, convivencia/asistencia, uso del cuaderno, mejoramiento y trabajo autónomo): esos ya los agrega la app.",
         items: {
           type: "object",
           properties: {
