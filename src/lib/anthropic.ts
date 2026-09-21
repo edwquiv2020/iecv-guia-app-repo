@@ -405,7 +405,15 @@ export async function generarContenidoDua(params: ParametrosGuia, contenidoEstan
 
     return {
       ...data,
-      subtemaTitulo: params.subtemas[0] ?? contenidoEstandar.subtemas[0]?.titulo ?? "",
+      // El título del subtema A de la Estándar (limpio, ya separado por la IA)
+      // es el mismo subtema del que se deriva esta DUA (ver userPromptDua).
+      // La primera línea del formulario puede ser un párrafo entero con
+      // varios subtemas separados por ";" (así vienen las mallas) — solo es
+      // respaldo, y ahí se toma el primer fragmento.
+      subtemaTitulo:
+        contenidoEstandar.subtemas[0]?.titulo ||
+        params.subtemas[0]?.split(";")[0].trim() ||
+        "",
       bibliografia: [...data.bibliografia, ...BIBLIOGRAFIA_TEORICA_DUA],
     };
   }

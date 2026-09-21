@@ -166,19 +166,27 @@ describe("generarContenidoDua", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("en éxito: agrega la bibliografía teórica DUA y usa subtemas[0] del formulario como subtemaTitulo", async () => {
+  it("en éxito: agrega la bibliografía teórica DUA y usa el título del subtema A de la Estándar como subtemaTitulo", async () => {
     mockCreate.mockResolvedValue(toolUseResponse(contenidoDuaValido));
 
     const resultado = await generarContenidoDua(paramsGuia, contenidoEstandar);
 
-    expect(resultado.subtemaTitulo).toBe(paramsGuia.subtemas[0]);
+    expect(resultado.subtemaTitulo).toBe(contenidoEstandar.subtemas[0].titulo);
     expect(resultado.bibliografia).toEqual([
       ...contenidoDuaValido.bibliografia,
       ...(await import("@/lib/types")).BIBLIOGRAFIA_TEORICA_DUA,
     ]);
   });
 
-  it("si el formulario no trae subtemas, usa el título del subtema A de la Estándar como respaldo", async () => {
+  it("regresión: si el formulario trae un párrafo con varios subtemas separados por ';', el título NO es el párrafo entero", async () => {
+    mockCreate.mockResolvedValue(toolUseResponse(contenidoDuaValido));
+    const parrafo = "Lectura y escritura de números; suma y resta; jerarquía de operaciones";
+    const resultado = await generarContenidoDua({ ...paramsGuia, subtemas: [parrafo] }, contenidoEstandar);
+    expect(resultado.subtemaTitulo).toBe(contenidoEstandar.subtemas[0].titulo);
+    expect(resultado.subtemaTitulo).not.toContain(";");
+  });
+
+  it("si el formulario no trae subtemas, igual usa el título del subtema A de la Estándar", async () => {
     mockCreate.mockResolvedValue(toolUseResponse(contenidoDuaValido));
     const resultado = await generarContenidoDua({ ...paramsGuia, subtemas: [] }, contenidoEstandar);
     expect(resultado.subtemaTitulo).toBe(contenidoEstandar.subtemas[0].titulo);
